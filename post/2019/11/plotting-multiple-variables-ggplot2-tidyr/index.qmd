@@ -1,0 +1,133 @@
+---
+title: Plotting multiple variables at once using ggplot2 and tidyr
+author: Cameron Patrick
+date: '2019-11-26'
+draft: false
+slug: plotting-multiple-variables-ggplot2-tidyr
+categories: [r, ggplot]
+subtitle: ''
+summary: 'In exploratory data analysis, it''s common to want to make similar
+  plots of a number of variables at once. Here is a way to achieve
+  this using R and `ggplot2`.'
+lastmod: '2019-11-26T11:00:00+11:00'
+---
+
+In exploratory data analysis, it's common to want to make similar
+plots of a number of variables at once. For example, a randomised trial may
+look at several outcomes, or a survey may have a large number of questions.
+Here is a way to achieve to plot them efficiently using R and `ggplot2`.
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, dpi = 144, fig.retina = 2)
+
+library(tidyverse)
+theme_set(theme_bw() +
+            theme(panel.grid.minor.x = element_blank(),
+                  panel.grid.minor.y = element_blank()))
+```
+
+```{r simulate-survey, include = FALSE}
+likert_distributions <- list(
+  group = c(0.5, 0.5, 0, 0, 0),
+  Q1 = c(0.01, 0.05, 0.09, 0.55, 0.30),
+  Q2 = c(0.14, 0.45, 0.10, 0.22, 0.09),
+  Q3 = c(0.01, 0.01, 0.01, 0.39, 0.58),
+  Q4 = c(0.47, 0.32, 0.06, 0.14, 0.01),
+  Q5 = c(0.14, 0.33, 0.11, 0.36, 0.06),
+  Q6 = c(0.17, 0.21, 0.40, 0.13, 0.09)
+)
+n_samples <- 300
+set.seed(12345)
+survey_data <- map_dfc(likert_distributions, 
+                       ~ sample(1:5, n_samples, replace = TRUE, prob = .)) %>%
+  mutate(group = factor(group, levels = 1:2, labels = c("A", "B")))
+```
+
+
+## Pivoting longer: turning your variables into rows
+
+`ggplot2` doesn't provide an easy facility to plot multiple variables
+at once because this is usually a sign that [your data is not "tidy"](https://r4ds.had.co.nz/tidy-data.html). For example, in situations where you want
+to plot two columns on a graph as points with different colours, the two
+columns often really represent the same variable, and there is a hidden
+grouping factor which distinguishes the data points you want to colour differently.
+The usual answer in this scenario is that you
+should restructure your data before plotting it. As a bonus, it will probably be
+easier to analyse your data in that form too.
+
+Likewise, if you want to split a plot into panels (or
+facets, in `ggplot2`-speak),
+you must plot a single response variable, with a grouping variable to indicate
+which panel the data should be plotted in.
+The best structure for your data depends
+on what you're trying to do with it, and in this situation, even if your data
+is in the right form for analysis, it may not be right for some of the plots you want
+to make.
+
+Fortunately, restructuring your data into the right form is straightforward using the `tidyr`
+package and the `pivot_longer()` function. In this example, I'm going to look at some
+mocked-up survey data, with six questions stored in variables `Q1` through `Q6`.
+The original data frame looks like this:
+
+```{r show-original-data}
+print(survey_data)
+```
+
+You can convert this into a
+longer data frame where the question number is stored in one column and the
+response is stored in a separate column:
+
+```{r pivot-longer-example}
+longer_data <- survey_data %>%
+  pivot_longer(Q1:Q6, names_to = "question", values_to = "response")
+print(longer_data)
+```
+
+You don't even need to store the 'long form' data as a separate variable. If you're
+not going to use the data in this form for anything else, it's
+simpler to pipe the data straight into `ggplot2`. Here I use the `facet_wrap()`
+function to plot each question in a separate panel, so we can see the distribution
+of all of the questions at once:
+
+```{r panel-plot, fig.width = 5, fig.height = 3}
+survey_data %>%
+  pivot_longer(Q1:Q6, names_to = "question", values_to = "response") %>%
+  ggplot(aes(x = response)) +
+  geom_bar() +
+  facet_wrap(vars(question), ncol = 3) +
+  labs(x = "Response (on a 1 to 5 scale)", y = "Number of respondents")
+```
+
+You can use `question` as a factor anywhere else you would use a categorical
+variable with ggplot. For example, you can make some box plots:
+
+```{r box-plot, fig.width = 5, fig.height = 3}
+survey_data %>%
+  pivot_longer(Q1:Q6, names_to = "question", values_to = "response") %>%
+  ggplot(aes(y = response, x = question)) +
+  geom_boxplot() +
+  labs(x = "Question", y = "Response (on a 1 to 5 scale)")
+```
+
+This is also a nice demonstration of how box plots are rarely the best way to
+present Likert scale data.
+
+Any other variables are retained after you call `pivot_longer()`, so you can
+e.g. compare the responses to survey questions based on a demographic variable:
+
+```{r line-plot, fig.width = 5, fig.height = 3}
+survey_data %>%
+  pivot_longer(Q1:Q6, names_to = "question", values_to = "response") %>%
+  ggplot(aes(x = response, colour = group)) +
+  facet_wrap(vars(question), ncol = 3) +
+  geom_point(stat = "count") +
+  geom_line(stat = "count") +
+  labs(x = "Response (on a 1 to 5 scale)", y = "Number of respondents")
+```
+
+By default, R will sort the levels of factors alphabetically. This isn't always
+what you want in this situation---often the order of the variables in your data
+frame has some meaning to it. The `fct_inorder()` function allows you to reorder
+levels of a factor in the order of first appearance in the file. If you use that
+with the column produced by `pivot_longer()`, the factor will be ordered by the
+order of the columns in the original data frame.

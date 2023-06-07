@@ -1,0 +1,34 @@
+---
+title: "Cameron Patrick"
+about:
+  template: trestles
+  image-shape: round
+  image: "Cam_headshot_small.jpg"
+  links:
+    - icon: twitter
+      href: https://twitter.com/camjpatrick
+    - icon: github
+      href: https://github.com/cmrnp
+format:
+  html:
+    page-layout: full
+---
+
+I am a PhD student with the [Clinical Epidemiology & Biostatistics Unit (CEBU)](https://www.mcri.edu.au/research/research-areas/population-health/clinical-epidemiology-biostatistics-cebu) at the Murdoch Children's Research Institute in Melbourne, Australia. My research is about estimating complier average causal effects (CACE) in clinical trials in the presence of missing data. My supervisors are [Professor Katherine Lee](https://www.mcri.edu.au/researcher-details/katherine-lee), [Associate Professor Margarita Moreno-Betancur](https://www.mcri.edu.au/researcher-details/margarita-moreno-betancur) and [Dr Thomas Sullivan](https://research.sahmri.org.au/en/persons/thomas-sullivan).
+
+I also work part-time as a statistical consultant at the University of Melbourne [Statistical Consulting Centre (SCC)](https://scc.ms.unimelb.edu.au/), where I've worked since 2017. This involves working with researchers at the University and clients outside the University. We can assist with all stages of quantitative research: designing experiments or surveys, planning an appropriate analysis, analysing data, making graphs and communicating results clearly in papers or reports. As part of my role at the SCC, I also teach the short course [Introduction to R and Reproducible Research](https://scc.ms.unimelb.edu.au/statistics-courses/course-listing/research-and-r) twice per year, alongside Dr Sandy Clarke-Errey.
+
+I've been on the [Statistical Society of Australia](https://statsoc.org.au/) Victoria and Tasmania Branch Council since 2021.
+
+You can find me [on Twitter](https://twitter.com/camjpatrick) or email me at cameron.patrick@unimelb.edu.au
+
+## Education
+
+**PhD (in progress)**<br>
+University of Melbourne, 2023---<br>
+
+**Master of Science (Mathematics and Statistics)**<br>
+University of Melbourne, 2016
+
+**Bachelor of Science (Pure Mathematics)**<br>
+University of Western Australia, 2009

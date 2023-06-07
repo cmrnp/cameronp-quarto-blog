@@ -1,0 +1,123 @@
+---
+title: Understanding levels of variation and mixed models
+author: Cameron Patrick
+date: '2019-12-10'
+draft: false
+slug: understanding-levels-variation
+categories: [statistics, mixed-models]
+lastmod: '2019-12-10T15:00:00+11:00'
+---
+
+Data that has some kind of hierarchical structure to it is very common in many
+fields, but is rarely discussed in introductory statistics courses. Terms used to
+describe this kind of data include hierarchical data, multi-level data, longitudinal
+data, split-plot designs or repeated measures designs. Statistical models used for
+these types of data include mixed-effects models (often abbreviated to just *mixed models*),
+repeated measures ANOVA and generalised estimating equations (GEEs).
+
+All of these terms and models arose from different contexts, but they share a common
+feature. Observations are not independent, as many classical statistical methods
+assume, and there is structure to the dependence which can be
+incorporated into a statistical model.
+
+**Using a statistical model which doesn't account for the hierarchical nature
+of this data will give incorrect results.**
+
+## Common examples of hierarchical data
+
+Data with two levels of variation often arise when multiple measurements are
+made on the same units of observation. In the case of designed experiments,
+treatments may also be assigned to different levels of the hierarchy. Factors
+are commonly described as *within*-subject (varying at the lowest level) or
+*between*-subject (varying at a higher level). Some examples:
+
+* Measurements made on the same people at several points in time. This is often
+called longitudinal data. In this example, time would be a within-subject factor
+and most other variables of interest---e.g., treatment, age or gender---would be
+between-subject.
+* Measurements made at different depths of a number of rock core samples. In this example,
+the depths would be a within-subject factor and the location where the sample was obtained
+would be a between-subject factor.
+* Assigning different treatments to different legs, arms or eyes of a number of people.
+For example, one eye may be given a new drug and the other eye a placebo. In this
+example, treatment is a within-subject factor.
+* A split-plot experiment in agriculture: splitting plots of land into sections,
+planting different crops in each section, and using different irrigation methods
+on different plots. In this example, variety is a within-plot factor and irrigation
+is a between-plot factor.
+* A split-mouth design in dentistry: assigning different treatments to different
+parts of participants' mouths.
+
+It is possible to have more than two levels of variation. Some examples from
+different fields of research:
+
+* Students within classrooms within schools.
+* Repeated surveys administered to individuals within organisations.
+* Glands within lesions within patients.
+* Blocks of land divided into plots divided into subplots.
+
+In situations with multiple levels, it is common to describe variables based on the
+level at which they are measured or assigned, e.g. student-level, classroom-level or
+school-level.
+
+## Random effects
+
+Multi-level data is commonly modelled using *mixed-effects models*, which get their
+name because they have both fixed effects and random effects. Fixed effects are
+the kind of explanatory variables you may be used to in ANOVA or linear regression: you
+would like to directly estimate the effect of these variables on your outcome. For
+example: treatment (drug or placebo) and time; crop variety and irrigation;
+depth and location of rock core samples.
+In these examples, the random effects would be the variables which group together correlated
+observations: participants in a trial; plots of land; rock core samples.
+
+Here are two different ways to think about random effects:
+
+1. Random effects are factors where the individual levels are random samples from
+a larger population, or can be thought of in this way.
+2. Random effects are factors where you don't care about the actual effect they
+have on your outcome, just their ability to account for correlation between
+observations.
+
+For a random effect, instead of estimating the effect of each specific level of
+the factor (e.g. each individual in a study), the model estimates the variance
+explained by that factor.
+This is sometimes reported as the proportion of variation explained at each level,
+e.g. 63% of variance was at the individual level.
+
+Random effects can be "nested" inside other random effects if there are more than
+two levels of variation. For example, "classroom within school" could be specified
+as a random effect.
+
+## Simpler analysis options
+
+It is sometimes possible to simplify an analysis if there are no variables which
+distinguish individuals at a particular level. For example, consider an experiment in
+which treatments were randomly assigned to litters of pigs but measurements were made on
+individual pigs, with no pig-level variables (e.g. sex) of interest in
+the analysis. In this situation, analysing litter averages would be a simpler analysis
+providing the same results as the mixed model.
+
+Another common situation is when there is a single within-subjects factor with two
+levels, for example before and after measurements. This kind of design can be
+analysed with a paired t-test or Wilcoxon signed rank test.
+
+As a practical consideration, random effects work best when they have a reasonable
+number of different levels. It may be better to treat a factor which is conceptually
+random as a fixed effect instead in some cases; e.g. if you are studying students
+from two or three schools, school should probably be a fixed effect rather than
+a random effect. There are also situations where this approach is not appropriate.
+
+If in doubt about how to analyse your multi-level data, 
+[consult a statistician](https://scc.ms.unimelb.edu.au/).
+
+## Study design considerations
+
+Effects at the lowest level of the hierarchy (e.g. within-subject) are usually estimated
+more precisely than effects at higher levels (e.g. between-subject). Or equivalently,
+tests of within-subject effects tend to be more powerful than tests of between-subject
+effects. One intuition about this is that there are more observations at the lowest level
+(e.g. number of subplots) than there are at higher levels (e.g. number of plots).
+Another way to look at this is that for within-subject factors, each individual
+unit of observation is effectively their own control.
+

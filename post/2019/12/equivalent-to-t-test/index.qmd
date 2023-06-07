@@ -1,0 +1,79 @@
+---
+title: "Things which are equivalent to t-tests"
+author: "Cameron Patrick"
+date: "2019-12-16"
+draft: false
+slug: "equivalent-to-t-test"
+categories: [statistics, t-test]
+lastmod: '2019-12-16T13:00:00+11:00'
+---
+
+If you have a continuous measurement and two groups you'd like to compare based
+on that measurement, what's the first statistical test that comes to mind? Chances are it's
+the two-sample t-test, sometimes known as *Student's t-test*. It's typically the
+first statistical test taught in an introductory statistics course, it's well
+known and understood, and it has good theoretical properties---so if a t-test
+answers your research question, you should probably use it. (Actually, in practice,
+you should probably use *Welch's t-test* which doesn't assume equal variance
+within groups. For the rest of the post, I'm only going to consider the equal
+variance case.)
+
+Every now and again, I find a client in this situation who has done something
+which is... not a t-test. Here are some other ways to do the same thing which
+turn out to be identical to the two-sample t-test:
+
+* One-way ANOVA: since ANOVA is often taught immediately after the t-test as
+"what do I do if I have more than two groups", it should perhaps be no surprise
+that ANOVA gives identical p-values and confidence intervals to the t-test when
+you are only comparing two groups. This
+applies to both the overall F-test and the "post-hoc" pairwise t-test, which produce
+identical p-values in the two group scenario.
+
+* Linear regression with an indicator variable: by this I mean an explanatory variable
+which
+takes one numerical value for the first group and a different numerical value for
+the second group. For example, 0 for the first group and 1 for the second group.
+This also turns out to be equivalent to a t-test. If you've seen how ANOVA is
+implemented by most software
+as a linear model with indicator variables for categories, this might not surprise
+you either.
+
+* Linear regression with the indicator variable as the outcome and the measurement
+as the explanatory variable: as backwards as this may sound, this will also produce exactly
+the same p-value as a t-test. The hypothesis test for linear regression slope is
+the same regardless of which variable is the outcome and which is the predictor,
+although the regression equation is usually different.
+
+* Correlation with an indicator variable: this is also equivalent to a t-test.
+This follows from the above two because the hypothesis test for correlation being
+equal to zero is equivalent to the hypothesis test for linear regression slope
+being equal to zero.
+
+* Logistic regression with the group variable as the outcome and the continuous
+variable as a predictor: this is *not quite* the same as a t-test. 
+However, if the measurements
+of the two groups are normally distributed, then the t-test and logistic regression are asymptotically
+equivalent---meaning that for a sufficiently large sample size, they will give the
+same p-values. 
+The two methods also answer different research questions:
+the t-test is for a difference in means between two groups while logistic regression
+estimates the odds ratio of having a positive outcome (being in a particular
+group) for a given increase in the continuous predictor. The choice between the
+two methods should be based on which variable is your outcome
+and which variable is your explanatory variable; or whether you would prefer to
+discuss an odds ratio or a difference in means.
+
+* Pairwise comparisons from an ANOVA model with more than two groups are
+also not quite equivalent to a t-test. What's the difference? Both use a test
+statistic that has a *t*  distribution calculated from the same difference in
+means, but the ANOVA pairwise comparisons will have better power because they
+use a pooled standard deviation from all groups (which, if the assumption of
+equal standard deviation in every group is true, will be more a precise estimate)
+and a *t* distribution with more degrees of freedom (which can make a big difference
+with a small sample size). As the sample
+size increases, the advantage of ANOVA over individual t-tests diminishes.
+
+* **Bonus:** The Mann-Whitney test (or Wilcoxon rank sum test) is equivalent to
+proportional odds logistic regression. (This claim is made in Frank Harrell's
+*Regression Modeling Strategies* text; unlike the other examples above, I haven't
+proved or read a proof of this equivalence.)

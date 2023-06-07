@@ -1,0 +1,27 @@
+project:
+  type: website
+
+website:
+  title: "Cameron Patrick"
+  site-url: https://cameronpatrick.com/
+  favicon: Cam_headshot_small.jpg
+  navbar:
+    right:
+      - blog.qmd
+      - icon: twitter
+        href: https://twitter.com/camjpatrick
+      - icon: github
+        href: https://github.com/cmrnp
+format:
+  html:
+    theme: simplex
+    css: styles.css
+    fontsize: 1.2em
+    mainfont: Helvetica, Arial, sans
+    monofont: Cascadia Mono, Menlo, Courier New
+    knitr:
+      opts_chunk:
+        dev: "ragg_png"
+
+editor: source
+
