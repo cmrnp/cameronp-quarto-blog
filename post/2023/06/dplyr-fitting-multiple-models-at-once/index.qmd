@@ -115,13 +115,13 @@ penguin_means <- penguin_models %>%
   )
 ```
 
-The first few rows of the resulting data frame look like this:
+The first few rows of the resulting data frame are shown below. There is a row for each outcome for each species, containing the mean (`emmean`), standard error (`SE`), degrees of freedom (`df`) and lower and upper confidence limits (`lower.CL` and `upper.CL`).
 
 ```{r}
 head(penguin_means)
 ```
 
-We can use `ggplot()` to present the results visually. The plot shows that there's a huge variation between species in means of all of these measurements.
+We can use `ggplot()` to present the results visually. The plot shows that there's a substantial variation between species in means of all of these measurements, with little or no overlap between many of the confidence intervals. Gentoo penguins appear to be heavier, and have longer flippers but shorter and shallower bills, than the other species.
 
 ```{r}
 penguin_means %>%
@@ -169,7 +169,7 @@ penguin_tests <- penguin_models %>%
   )
 ```
 
-This is what the resulting data frame looks like:
+The resulting data frame is shown below. This time there is one row per model, but if there had been multiple variables in the model, there would have been one row per variable or interaction term (distinguished by the `model term` column). Each row contains the results of a hypothesis test: numerator and denominator degrees of freedom (`df1` and `df2`), F-statistics (`F.ratio`) and p-value (`p.value`).
 
 ```{r}
 print(penguin_tests)
@@ -205,7 +205,7 @@ penguin_pairs <- penguin_models %>%
   )
 ```
 
-The first few rows of the data frame look like this:
+The first few rows of the data frame are shown below. The contents are similar to what we saw earlier for the estimated means, but this time each row contains information on a difference between pairs of means (described in the `contrast` column), along with the estimated difference in means, standard error, degrees of freedom, confidence interval, t-statistic and p-value.
 
 ```{r}
 head(penguin_pairs)
