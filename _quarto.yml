@@ -17,8 +17,10 @@ format:
     theme: simplex
     css: styles.css
     fontsize: 1.2em
+    linestretch: 1.7
     mainfont: Helvetica, Arial, sans
     monofont: Cascadia Mono, Menlo, Courier New
+    backgroundcolor: white
     knitr:
       opts_chunk:
         dev: "ragg_png"
