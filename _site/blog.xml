@@ -10,7 +10,1765 @@
 <atom:link href="https://cameronpatrick.com/blog.xml" rel="self" type="application/rss+xml"/>
 <description></description>
 <generator>quarto-1.3.302</generator>
-<lastBuildDate>Sat, 14 Mar 2020 13:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 07 Jun 2023 14:00:00 GMT</lastBuildDate>
+<item>
+  <title>Fitting many statistical models at once using dplyr</title>
+  <dc:creator>Cameron Patrick</dc:creator>
+  <link>https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>One common task in applied statistics is to fit and interpret a number of statistical models at once. For example, fitting a model with the same structure to a number of different outcome or explanatory variables, or fitting several models with different structure to the same data. Here are some examples of how I usually do this, using features that were introduced with <code>dplyr</code> version 1.1.0.</p>
+<p>For this demonstration, we’ll be using the R packages <code>dplyr</code>, <code>tidyr</code>, <code>ggplot2</code> (all of which are included in the <code>tidyverse</code>), as well as <code>gt</code> for making tables, <code>emmeans</code> for obtaining estimated means and comparisons, and <code>performance</code> for model-checking.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(tidyverse)</span>
+<span id="cb1-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(gt)</span>
+<span id="cb1-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(emmeans)</span>
+<span id="cb1-4"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(performance)</span></code></pre></div>
+</div>
+<p>We’ll be using the <a href="https://allisonhorst.github.io/palmerpenguins/">Palmer Penguins data</a> collected at Palmer Station, Antarctica, made available by Dr Kristen Gorman, and conveniently accessible in R using the <code>palmerpenguins</code> package. This dataset contains measurements on a number of penguins of different species on different islands.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(palmerpenguins)</span>
+<span id="cb2-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">data</span>(penguins)</span>
+<span id="cb2-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">head</span>(penguins)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 8
+  species island    bill_length_mm bill_depth_mm flipper_length_mm body_mass_g
+  &lt;fct&gt;   &lt;fct&gt;              &lt;dbl&gt;         &lt;dbl&gt;             &lt;int&gt;       &lt;int&gt;
+1 Adelie  Torgersen           39.1          18.7               181        3750
+2 Adelie  Torgersen           39.5          17.4               186        3800
+3 Adelie  Torgersen           40.3          18                 195        3250
+4 Adelie  Torgersen           NA            NA                  NA          NA
+5 Adelie  Torgersen           36.7          19.3               193        3450
+6 Adelie  Torgersen           39.3          20.6               190        3650
+# ℹ 2 more variables: sex &lt;fct&gt;, year &lt;int&gt;</code></pre>
+</div>
+</div>
+<p>Suppose we want to compare bill length, bill depth, flipper length, and body mass between species. We could manually run a separate model for each, but here’s a way. As with many things in R, the trick to doing this easily is to get the data in long form, with the outcomes stacked on top of each other, and a variable indicating which outcome is being measured.</p>
+<p>The <code>pivot_longer()</code> function from <code>tidyr</code> gets the data into this format. I’ve also taken an extra step of recoding the “outcome” variable to give more descriptive labels. This isn’t required but it will make the tables and plots that we make later look nicer.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">penguins_long <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguins <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb4-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pivot_longer</span>(</span>
+<span id="cb4-3">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g),</span>
+<span id="cb4-4">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">names_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"outcome"</span>,</span>
+<span id="cb4-5">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">values_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"value"</span></span>
+<span id="cb4-6">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb4-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(</span>
+<span id="cb4-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">outcome =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fct_inorder</span>(outcome),</span>
+<span id="cb4-9">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">outcome =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fct_recode</span>(</span>
+<span id="cb4-10">      outcome,</span>
+<span id="cb4-11">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Bill length (mm)"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"bill_length_mm"</span>,</span>
+<span id="cb4-12">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Bill depth (mm)"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"bill_depth_mm"</span>,</span>
+<span id="cb4-13">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Flipper length (mm)"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"flipper_length_mm"</span>,</span>
+<span id="cb4-14">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Body mass (g)"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"body_mass_g"</span></span>
+<span id="cb4-15">    )</span>
+<span id="cb4-16">  )</span></code></pre></div>
+</div>
+<p>You can see we now have four rows for each penguin, one for each type of measurement:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">head</span>(penguins_long)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 6
+  species island    sex     year outcome              value
+  &lt;fct&gt;   &lt;fct&gt;     &lt;fct&gt;  &lt;int&gt; &lt;fct&gt;                &lt;dbl&gt;
+1 Adelie  Torgersen male    2007 Bill length (mm)      39.1
+2 Adelie  Torgersen male    2007 Bill depth (mm)       18.7
+3 Adelie  Torgersen male    2007 Flipper length (mm)  181  
+4 Adelie  Torgersen male    2007 Body mass (g)       3750  
+5 Adelie  Torgersen female  2007 Bill length (mm)      39.5
+6 Adelie  Torgersen female  2007 Bill depth (mm)       17.4</code></pre>
+</div>
+</div>
+<p>We can use <code>group_by()</code> and <code>summarise()</code> from the <code>dplyr</code> package to group the rows by outcome, and then “summarise” these groups of rows down to a single row containing a statistical model. This makes use of a couple of R tricks: ‘list columns’, a data frame column that contains a more complex object than the standard R data types (numeric, character, etc); and the new <code>pick()</code> verb which returns a data frame containing selected columns (in this case, all of them) within the group that’s being operated on.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1">penguin_models <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguins_long <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb7-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">group_by</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb7-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">summarise</span>(</span>
+<span id="cb7-4">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">model =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">list</span>(</span>
+<span id="cb7-5">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">lm</span>(value <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> species, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">data =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pick</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">everything</span>()))</span>
+<span id="cb7-6">    )</span>
+<span id="cb7-7">  )</span></code></pre></div>
+</div>
+<p>You can see the resulting data from contains four rows, one for each outcome, and a statistical model (“lm”) for each:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">print</span>(penguin_models)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 2
+  outcome             model 
+  &lt;fct&gt;               &lt;list&gt;
+1 Bill length (mm)    &lt;lm&gt;  
+2 Bill depth (mm)     &lt;lm&gt;  
+3 Flipper length (mm) &lt;lm&gt;  
+4 Body mass (g)       &lt;lm&gt;  </code></pre>
+</div>
+</div>
+<p>Ideally we would also do a visual check of model assumptions. One way to do this is something like the code below, which saves a residual plot for each model to an image file, which can be inspected later. It uses the <code>check_model()</code> function in the <code>performance</code> package to generate the plots. This blog post doesn’t show the generated residual plots, but they all look fine.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">walk2</span>(</span>
+<span id="cb10-2">  penguin_models<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>outcome, </span>
+<span id="cb10-3">  penguin_models<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>model,</span>
+<span id="cb10-4">  <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggsave</span>(</span>
+<span id="cb10-5">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">paste0</span>(.x, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">".png"</span>),</span>
+<span id="cb10-6">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">check_model</span>(.y, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">check =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"pp_check"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"linearity"</span>,</span>
+<span id="cb10-7">                                   <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"homogeneity"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"qq"</span>))),</span>
+<span id="cb10-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">width =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">12</span>,</span>
+<span id="cb10-9">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">height =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">9</span></span>
+<span id="cb10-10">  )</span>
+<span id="cb10-11">)</span></code></pre></div>
+</div>
+<p>Once we’ve fitted the models, we can obtain quantities of interest from them. In this example we’ll look at estimated means for each species, p-values testing the hypothesis that all species means are equal, and comparisons (differences in means) between all pairs of species.</p>
+<p>The <code>reframe()</code> function from <code>dplyr</code> allows us to run some code that produces a data frame on each model and stack the results on top of each other. We can use the <code>emmeans()</code> function from the <code>emmeans</code> package to obtain estimated marginal means, and <code>as_tibble()</code> to convert the result into a data frame. The <code>rowwise(outcome)</code> at the start tells <code>reframe()</code> that we want to call <code>emmeans()</code> separately for each row of the data frame (i.e., each outcome model), and preserve the <code>outcome</code> variable in the result.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1">penguin_means <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguin_models <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb11-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rowwise</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb11-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reframe</span>(</span>
+<span id="cb11-4">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">emmeans</span>(model, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"species"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb11-5">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_tibble</span>()</span>
+<span id="cb11-6">  )</span></code></pre></div>
+</div>
+<p>The first few rows of the resulting data frame look like this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">head</span>(penguin_means)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 7
+  outcome          species   emmean     SE    df lower.CL upper.CL
+  &lt;fct&gt;            &lt;fct&gt;      &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+1 Bill length (mm) Adelie      38.8 0.241    339     38.3     39.3
+2 Bill length (mm) Chinstrap   48.8 0.359    339     48.1     49.5
+3 Bill length (mm) Gentoo      47.5 0.267    339     47.0     48.0
+4 Bill depth (mm)  Adelie      18.3 0.0912   339     18.2     18.5
+5 Bill depth (mm)  Chinstrap   18.4 0.136    339     18.2     18.7
+6 Bill depth (mm)  Gentoo      15.0 0.101    339     14.8     15.2</code></pre>
+</div>
+</div>
+<p>We can use <code>ggplot()</code> to present the results visually, for example like this. We can see that there’s a huge variation between species in means of all of these measurements.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1">penguin_means <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb14-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> emmean, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> species, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmin =</span> lower.CL, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmax =</span> upper.CL)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_errorbar</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">width =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_point</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">facet_wrap</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vars</span>(outcome), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nrow =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">scales =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"free_x"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(</span>
+<span id="cb14-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Mean"</span>, </span>
+<span id="cb14-9">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Species"</span>,</span>
+<span id="cb14-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">caption =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Error bars show 95% confidence interval for mean."</span></span>
+<span id="cb14-11">  )</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+<p>The <code>gt()</code> function can be used to produce a nice table of results. In the code shown below I’ve combined the <code>lower.CL</code> and <code>upper.CL</code> columns to produce a single column with the confidence interval, and separately specified fewer decimal places for body mass than the other measures. The <code>group_by()</code> function before <code>gt()</code> results in a table sub-heading for each outcome. You could easily change this to <code>group_by(species)</code> to arrange the results by species.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">penguin_means <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">group_by</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">gt</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(emmean, SE, lower.CL, upper.CL),</span>
+<span id="cb15-5">             <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">use_seps =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(emmean, SE, lower.CL, upper.CL),</span>
+<span id="cb15-7">             <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">rows =</span> outcome <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Body mass (g)"</span>,</span>
+<span id="cb15-8">             <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">use_seps =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-9">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(df, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-10">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_align</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"left"</span>, species) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-11">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_merge_range</span>(lower.CL, upper.CL, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">sep =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">", "</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-12">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_label</span>(</span>
+<span id="cb15-13">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">species =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Species"</span>,</span>
+<span id="cb15-14">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">emmean =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Mean"</span>,</span>
+<span id="cb15-15">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">lower.CL =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"95% Confidence Interval"</span></span>
+<span id="cb15-16">  )</span></code></pre></div>
+<div class="cell-output-display">
+
+<div id="goipanpigs" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#goipanpigs table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#goipanpigs thead, #goipanpigs tbody, #goipanpigs tfoot, #goipanpigs tr, #goipanpigs td, #goipanpigs th {
+  border-style: none;
+}
+
+#goipanpigs p {
+  margin: 0;
+  padding: 0;
+}
+
+#goipanpigs .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#goipanpigs .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#goipanpigs .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#goipanpigs .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#goipanpigs .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#goipanpigs .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#goipanpigs .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#goipanpigs .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#goipanpigs .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#goipanpigs .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#goipanpigs .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#goipanpigs .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#goipanpigs .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#goipanpigs .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#goipanpigs .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#goipanpigs .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#goipanpigs .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#goipanpigs .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#goipanpigs .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#goipanpigs .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#goipanpigs .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#goipanpigs .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#goipanpigs .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#goipanpigs .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#goipanpigs .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#goipanpigs .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#goipanpigs .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#goipanpigs .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#goipanpigs .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#goipanpigs .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#goipanpigs .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_left {
+  text-align: left;
+}
+
+#goipanpigs .gt_center {
+  text-align: center;
+}
+
+#goipanpigs .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#goipanpigs .gt_font_normal {
+  font-weight: normal;
+}
+
+#goipanpigs .gt_font_bold {
+  font-weight: bold;
+}
+
+#goipanpigs .gt_font_italic {
+  font-style: italic;
+}
+
+#goipanpigs .gt_super {
+  font-size: 65%;
+}
+
+#goipanpigs .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#goipanpigs .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#goipanpigs .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#goipanpigs .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#goipanpigs .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#goipanpigs .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#goipanpigs .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="Species">Species</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="Mean">Mean</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="SE">SE</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="df">df</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="95% Confidence Interval">95% Confidence Interval</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" scope="colgroup" id="Bill length (mm)">Bill length (mm)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Bill length (mm)  species" class="gt_row gt_left">Adelie</td>
+<td headers="Bill length (mm)  emmean" class="gt_row gt_right">38.8</td>
+<td headers="Bill length (mm)  SE" class="gt_row gt_right">0.2</td>
+<td headers="Bill length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill length (mm)  lower.CL" class="gt_row gt_right">38.3, 39.3</td></tr>
+    <tr><td headers="Bill length (mm)  species" class="gt_row gt_left">Chinstrap</td>
+<td headers="Bill length (mm)  emmean" class="gt_row gt_right">48.8</td>
+<td headers="Bill length (mm)  SE" class="gt_row gt_right">0.4</td>
+<td headers="Bill length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill length (mm)  lower.CL" class="gt_row gt_right">48.1, 49.5</td></tr>
+    <tr><td headers="Bill length (mm)  species" class="gt_row gt_left">Gentoo</td>
+<td headers="Bill length (mm)  emmean" class="gt_row gt_right">47.5</td>
+<td headers="Bill length (mm)  SE" class="gt_row gt_right">0.3</td>
+<td headers="Bill length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill length (mm)  lower.CL" class="gt_row gt_right">47.0, 48.0</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" scope="colgroup" id="Bill depth (mm)">Bill depth (mm)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Bill depth (mm)  species" class="gt_row gt_left">Adelie</td>
+<td headers="Bill depth (mm)  emmean" class="gt_row gt_right">18.3</td>
+<td headers="Bill depth (mm)  SE" class="gt_row gt_right">0.1</td>
+<td headers="Bill depth (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill depth (mm)  lower.CL" class="gt_row gt_right">18.2, 18.5</td></tr>
+    <tr><td headers="Bill depth (mm)  species" class="gt_row gt_left">Chinstrap</td>
+<td headers="Bill depth (mm)  emmean" class="gt_row gt_right">18.4</td>
+<td headers="Bill depth (mm)  SE" class="gt_row gt_right">0.1</td>
+<td headers="Bill depth (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill depth (mm)  lower.CL" class="gt_row gt_right">18.2, 18.7</td></tr>
+    <tr><td headers="Bill depth (mm)  species" class="gt_row gt_left">Gentoo</td>
+<td headers="Bill depth (mm)  emmean" class="gt_row gt_right">15.0</td>
+<td headers="Bill depth (mm)  SE" class="gt_row gt_right">0.1</td>
+<td headers="Bill depth (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill depth (mm)  lower.CL" class="gt_row gt_right">14.8, 15.2</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" scope="colgroup" id="Flipper length (mm)">Flipper length (mm)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Flipper length (mm)  species" class="gt_row gt_left">Adelie</td>
+<td headers="Flipper length (mm)  emmean" class="gt_row gt_right">190.0</td>
+<td headers="Flipper length (mm)  SE" class="gt_row gt_right">0.5</td>
+<td headers="Flipper length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Flipper length (mm)  lower.CL" class="gt_row gt_right">188.9, 191.0</td></tr>
+    <tr><td headers="Flipper length (mm)  species" class="gt_row gt_left">Chinstrap</td>
+<td headers="Flipper length (mm)  emmean" class="gt_row gt_right">195.8</td>
+<td headers="Flipper length (mm)  SE" class="gt_row gt_right">0.8</td>
+<td headers="Flipper length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Flipper length (mm)  lower.CL" class="gt_row gt_right">194.2, 197.4</td></tr>
+    <tr><td headers="Flipper length (mm)  species" class="gt_row gt_left">Gentoo</td>
+<td headers="Flipper length (mm)  emmean" class="gt_row gt_right">217.2</td>
+<td headers="Flipper length (mm)  SE" class="gt_row gt_right">0.6</td>
+<td headers="Flipper length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Flipper length (mm)  lower.CL" class="gt_row gt_right">216.0, 218.4</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" scope="colgroup" id="Body mass (g)">Body mass (g)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Body mass (g)  species" class="gt_row gt_left">Adelie</td>
+<td headers="Body mass (g)  emmean" class="gt_row gt_right">3701</td>
+<td headers="Body mass (g)  SE" class="gt_row gt_right">38</td>
+<td headers="Body mass (g)  df" class="gt_row gt_right">339</td>
+<td headers="Body mass (g)  lower.CL" class="gt_row gt_right">3627, 3775</td></tr>
+    <tr><td headers="Body mass (g)  species" class="gt_row gt_left">Chinstrap</td>
+<td headers="Body mass (g)  emmean" class="gt_row gt_right">3733</td>
+<td headers="Body mass (g)  SE" class="gt_row gt_right">56</td>
+<td headers="Body mass (g)  df" class="gt_row gt_right">339</td>
+<td headers="Body mass (g)  lower.CL" class="gt_row gt_right">3623, 3843</td></tr>
+    <tr><td headers="Body mass (g)  species" class="gt_row gt_left">Gentoo</td>
+<td headers="Body mass (g)  emmean" class="gt_row gt_right">5076</td>
+<td headers="Body mass (g)  SE" class="gt_row gt_right">42</td>
+<td headers="Body mass (g)  df" class="gt_row gt_right">339</td>
+<td headers="Body mass (g)  lower.CL" class="gt_row gt_right">4994, 5158</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<p>We can do similar to produce an overall “F” test for each model, testing the hypothesis that all species have equal means for a particular measure. The <code>joint_test()</code> function in <code>emmeans</code> does this.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1">penguin_tests <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguin_models <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb16-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rowwise</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb16-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reframe</span>(</span>
+<span id="cb16-4">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">joint_tests</span>(model) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb16-5">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_tibble</span>()</span>
+<span id="cb16-6">  )</span></code></pre></div>
+</div>
+<p>This is what the resulting data frame looks like:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">print</span>(penguin_tests)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 6
+  outcome             `model term`   df1   df2 F.ratio   p.value
+  &lt;fct&gt;               &lt;chr&gt;        &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt;
+1 Bill length (mm)    species          2   339    411. 2.69e- 91
+2 Bill depth (mm)     species          2   339    360. 1.51e- 84
+3 Flipper length (mm) species          2   339    595. 1.35e-111
+4 Body mass (g)       species          2   339    344. 2.89e- 82</code></pre>
+</div>
+</div>
+<p>Again, this can be presented in a table using <code>gt()</code>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1">penguin_tests <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">gt</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(F.ratio, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(p.value, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_merge_range</span>(df1, df2, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">sep =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">", "</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sub_small_vals</span>(p.value, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">threshold =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.001</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_label</span>(</span>
+<span id="cb19-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">outcome =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Outcome"</span>,</span>
+<span id="cb19-9">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">`</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">model term</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">`</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Predictor"</span>,</span>
+<span id="cb19-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">df1 =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"df"</span>,</span>
+<span id="cb19-11">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">F.ratio =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"F"</span>,</span>
+<span id="cb19-12">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">p.value =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"p-value"</span></span>
+<span id="cb19-13">  )</span></code></pre></div>
+<div class="cell-output-display">
+
+<div id="hcjdmhjwdf" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#hcjdmhjwdf table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#hcjdmhjwdf thead, #hcjdmhjwdf tbody, #hcjdmhjwdf tfoot, #hcjdmhjwdf tr, #hcjdmhjwdf td, #hcjdmhjwdf th {
+  border-style: none;
+}
+
+#hcjdmhjwdf p {
+  margin: 0;
+  padding: 0;
+}
+
+#hcjdmhjwdf .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#hcjdmhjwdf .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#hcjdmhjwdf .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#hcjdmhjwdf .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#hcjdmhjwdf .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#hcjdmhjwdf .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#hcjdmhjwdf .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#hcjdmhjwdf .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#hcjdmhjwdf .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#hcjdmhjwdf .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#hcjdmhjwdf .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#hcjdmhjwdf .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#hcjdmhjwdf .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#hcjdmhjwdf .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#hcjdmhjwdf .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#hcjdmhjwdf .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#hcjdmhjwdf .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#hcjdmhjwdf .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#hcjdmhjwdf .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#hcjdmhjwdf .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_left {
+  text-align: left;
+}
+
+#hcjdmhjwdf .gt_center {
+  text-align: center;
+}
+
+#hcjdmhjwdf .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#hcjdmhjwdf .gt_font_normal {
+  font-weight: normal;
+}
+
+#hcjdmhjwdf .gt_font_bold {
+  font-weight: bold;
+}
+
+#hcjdmhjwdf .gt_font_italic {
+  font-style: italic;
+}
+
+#hcjdmhjwdf .gt_super {
+  font-size: 65%;
+}
+
+#hcjdmhjwdf .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#hcjdmhjwdf .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#hcjdmhjwdf .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#hcjdmhjwdf .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#hcjdmhjwdf .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#hcjdmhjwdf .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#hcjdmhjwdf .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Outcome">Outcome</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="Predictor">Predictor</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="df">df</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="F">F</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="p-value">p-value</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="outcome" class="gt_row gt_center">Bill length (mm)</td>
+<td headers="model term" class="gt_row gt_left">species</td>
+<td headers="df1" class="gt_row gt_right">2, 339</td>
+<td headers="F.ratio" class="gt_row gt_right">410.6</td>
+<td headers="p.value" class="gt_row gt_right">&lt;0.001</td></tr>
+    <tr><td headers="outcome" class="gt_row gt_center">Bill depth (mm)</td>
+<td headers="model term" class="gt_row gt_left">species</td>
+<td headers="df1" class="gt_row gt_right">2, 339</td>
+<td headers="F.ratio" class="gt_row gt_right">359.8</td>
+<td headers="p.value" class="gt_row gt_right">&lt;0.001</td></tr>
+    <tr><td headers="outcome" class="gt_row gt_center">Flipper length (mm)</td>
+<td headers="model term" class="gt_row gt_left">species</td>
+<td headers="df1" class="gt_row gt_right">2, 339</td>
+<td headers="F.ratio" class="gt_row gt_right">594.8</td>
+<td headers="p.value" class="gt_row gt_right">&lt;0.001</td></tr>
+    <tr><td headers="outcome" class="gt_row gt_center">Body mass (g)</td>
+<td headers="model term" class="gt_row gt_left">species</td>
+<td headers="df1" class="gt_row gt_right">2, 339</td>
+<td headers="F.ratio" class="gt_row gt_right">343.6</td>
+<td headers="p.value" class="gt_row gt_right">&lt;0.001</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<p>Finally, we often want to obtain comparisons between particular estimated quantities. In this example we use the <code>emmeans</code> package again for this, this time using the <code>pairs()</code> function to produce comparisons between all pairs of species.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1">penguin_pairs <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguin_models <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb20-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rowwise</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb20-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reframe</span>(</span>
+<span id="cb20-4">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">emmeans</span>(model, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"species"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb20-5">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pairs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">infer =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">reverse =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">adjust =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"none"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb20-6">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_tibble</span>()</span>
+<span id="cb20-7">  )</span></code></pre></div>
+</div>
+<p>The first few rows of the data frame look like this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">head</span>(penguin_pairs)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 9
+  outcome       contrast estimate    SE    df lower.CL upper.CL t.ratio  p.value
+  &lt;fct&gt;         &lt;chr&gt;       &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+1 Bill length … Chinstr…  10.0    0.432   339    9.19    10.9    23.2   4.23e-72
+2 Bill length … Gentoo …   8.71   0.360   339    8.01     9.42   24.2   5.33e-76
+3 Bill length … Gentoo …  -1.33   0.447   339   -2.21    -0.449  -2.97  3.18e- 3
+4 Bill depth (… Chinstr…   0.0742 0.164   339   -0.248    0.396   0.453 6.50e- 1
+5 Bill depth (… Gentoo …  -3.36   0.136   339   -3.63    -3.10  -24.7   7.93e-78
+6 Bill depth (… Gentoo …  -3.44   0.169   339   -3.77    -3.11  -20.3   1.59e-60</code></pre>
+</div>
+</div>
+<p>And once again, these can comparisons can be plotted or presented in a table. In the plot below I’ve also added a dotted line indicating zero difference.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1">penguin_pairs <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb23-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> estimate, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> contrast, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmin =</span> lower.CL, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmax =</span> upper.CL)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_vline</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xintercept =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">linetype =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"dotted"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_errorbar</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">width =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_point</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">facet_wrap</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vars</span>(outcome), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nrow =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">scales =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"free_x"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-8">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(</span>
+<span id="cb23-9">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Difference in means"</span>, </span>
+<span id="cb23-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Contrast"</span>,</span>
+<span id="cb23-11">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">caption =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Error bars show 95% confidence interval for difference in mean."</span></span>
+<span id="cb23-12">  )</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+
+
+
+ ]]></description>
+  <category>r</category>
+  <category>statistical-models</category>
+  <guid>https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html</guid>
+  <pubDate>Wed, 07 Jun 2023 14:00:00 GMT</pubDate>
+</item>
 <item>
   <title>Making beautiful bar charts with ggplot</title>
   <dc:creator>Cameron Patrick</dc:creator>

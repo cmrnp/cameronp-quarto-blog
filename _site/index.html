@@ -31,6 +31,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
 <link href="./Cam_headshot_small.jpg" rel="icon" type="image/jpeg">
+<script src="site_libs/quarto-listing/list.min.js"></script>
+<script src="site_libs/quarto-listing/quarto-listing.js"></script>
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -58,7 +60,38 @@ ul.task-list li input[type="checkbox"] {
     "search-submit-button-title": "Submit"
   }
 }</script>
+<script>
 
+  window.document.addEventListener("DOMContentLoaded", function (_event) {
+    const listingTargetEl = window.document.querySelector('#listing-listing .list');
+    if (!listingTargetEl) {
+      // No listing discovered, do not attach.
+      return; 
+    }
+
+    const options = {
+      valueNames: ['listing-title','listing-author','listing-date','listing-image','listing-description',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-date-sort'] },{ data: ['listing-file-modified-sort'] }],
+      
+      searchColumns: ["listing-title","listing-author","listing-date","listing-image","listing-description"],
+    };
+
+    window['quarto-listings'] = window['quarto-listings'] || {};
+    window['quarto-listings']['listing-listing'] = new List('listing-listing', options);
+
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  });
+
+  window.addEventListener('hashchange',() => {
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  })
+  </script>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -139,10 +172,88 @@ ul.task-list li input[type="checkbox"] {
 <p><strong>PhD (in progress)</strong><br> University of Melbourne, 2023—<br></p>
 <p><strong>Master of Science (Mathematics and Statistics)</strong><br> University of Melbourne, 2016</p>
 <p><strong>Bachelor of Science (Pure Mathematics)</strong><br> University of Western Australia, 2009</p>
+</section>
+<section id="recent-blog-posts" class="level2">
+<h2 data-anchor-id="recent-blog-posts">Recent blog posts</h2>
 
 
 </section>
-</main></div>
+<div class="quarto-listing quarto-listing-container-grid" id="listing-listing">
+<div class="list grid quarto-listing-cols-3">
+<div class="g-col-1" data-index="0" data-categories="r,statistical-models" data-listing-date-sort="1686146400000" data-listing-file-modified-sort="1686202741756" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="8">
+<a href="./post/2023/06/dplyr-fitting-multiple-models-at-once/index.html" class="quarto-grid-link">
+<div class="quarto-grid-item card h-100 card-left">
+<p class="card-img-top"><img src="post/2023/06/dplyr-fitting-multiple-models-at-once/index_files/figure-html/unnamed-chunk-10-1.png" style="height: 150px;"  class="thumbnail-image card-img"/></p>
+<div class="card-body post-contents">
+<h5 class="no-anchor card-title listing-title">
+Fitting many statistical models at once using dplyr
+</h5>
+<div class="card-text listing-description">
+One common task in applied statistics is to fit and interpret a number of statistical models at once. For example, fitting a model with the same structure to a number of…<code></code>
+</div>
+<div class="card-attribution card-text-small justify">
+<div class="listing-author">
+Cameron Patrick
+</div>
+<div class="listing-date">
+Jun 8, 2023
+</div>
+</div>
+</div>
+</div>
+</a>
+</div>
+<div class="g-col-1" data-index="1" data-categories="r,ggplot2" data-listing-date-sort="1584190800000" data-listing-file-modified-sort="1686145322197" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="11">
+<a href="./post/2020/03/beautiful-bar-charts-ggplot/index.html" class="quarto-grid-link">
+<div class="quarto-grid-item card h-100 card-left">
+<p class="card-img-top"><img src="post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart1-1.png" style="height: 150px;"  class="thumbnail-image card-img"/></p>
+<div class="card-body post-contents">
+<h5 class="no-anchor card-title listing-title">
+Making beautiful bar charts with ggplot
+</h5>
+<div class="card-text listing-description">
+Bar charts (or bar graphs) are commonly used, but they’re also a simple type of graph where the defaults in ggplot leave a lot to be desired. This is a step-by-step…
+</div>
+<div class="card-attribution card-text-small justify">
+<div class="listing-author">
+Cameron Patrick
+</div>
+<div class="listing-date">
+Mar 15, 2020
+</div>
+</div>
+</div>
+</div>
+</a>
+</div>
+<div class="g-col-1" data-index="2" data-categories="statistics,t-test" data-listing-date-sort="1576414800000" data-listing-file-modified-sort="1686144988633" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4">
+<a href="./post/2019/12/equivalent-to-t-test/index.html" class="quarto-grid-link">
+<div class="quarto-grid-item card h-100 card-left">
+<div class="listing-item-img-placeholder card-img-top" style="height: 150px;">&nbsp;</div>
+<div class="card-body post-contents">
+<h5 class="no-anchor card-title listing-title">
+Things which are equivalent to t-tests
+</h5>
+<div class="card-text listing-description">
+If you have a continuous measurement…<em></em><em></em>
+</div>
+<div class="card-attribution card-text-small justify">
+<div class="listing-author">
+Cameron Patrick
+</div>
+<div class="listing-date">
+Dec 16, 2019
+</div>
+</div>
+</div>
+</div>
+</a>
+</div>
+</div>
+<div class="listing-no-matching d-none">
+No matching items
+</div>
+</div></main></div>
 </div>
  <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
