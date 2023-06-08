@@ -60,7 +60,7 @@ font-style: inherit;">head</span>(penguins)</span></code></pre></div>
 # ℹ 2 more variables: sex &lt;fct&gt;, year &lt;int&gt;</code></pre>
 </div>
 </div>
-<p>Suppose we want to compare bill length, bill depth, flipper length, and body mass between species. We could manually run a separate model for each, but here’s a way. As with many things in R, the trick to doing this easily is to get the data in long form, with the outcomes stacked on top of each other, and a variable indicating which outcome is being measured.</p>
+<p>Suppose we want to compare bill length, bill depth, flipper length, and body mass between species. We could manually run a separate model for each, but here’s a way to to automate the process. As with many things in R, the trick to doing this easily is to get the data in long form, with the outcomes stacked on top of each other, and a variable indicating which outcome is being measured.</p>
 <p>The <code>pivot_longer()</code> function from <code>tidyr</code> gets the data into this format. I’ve also taken an extra step of recoding the “outcome” variable to give more descriptive labels. This isn’t required but it will make the tables and plots that we make later look nicer.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">penguins_long <span class="ot" style="color: #003B4F;
@@ -132,7 +132,7 @@ font-style: inherit;">"body_mass_g"</span></span>
 <span id="cb4-15">    )</span>
 <span id="cb4-16">  )</span></code></pre></div>
 </div>
-<p>You can see we now have four rows for each penguin, one for each type of measurement:</p>
+<p>Looking at the first few rows of this data frame, you can see we now have four rows for each penguin, one for each type of measurement:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -149,7 +149,7 @@ font-style: inherit;">head</span>(penguins_long)</span></code></pre></div>
 6 Adelie  Torgersen female  2007 Bill depth (mm)       17.4</code></pre>
 </div>
 </div>
-<p>We can use <code>group_by()</code> and <code>summarise()</code> from the <code>dplyr</code> package to group the rows by outcome, and then “summarise” these groups of rows down to a single row containing a statistical model. This makes use of a couple of R tricks: ‘list columns’, a data frame column that contains a more complex object than the standard R data types (numeric, character, etc); and the new <code>pick()</code> verb which returns a data frame containing selected columns (in this case, all of them) within the group that’s being operated on.</p>
+<p>We can use <code>group_by()</code> and <code>summarise()</code> from the <code>dplyr</code> package to group the rows by outcome, and then “summarise” these groups of rows down to a single row containing a statistical model for each outcome. This makes use of a couple of R tricks: ‘list columns’, a column in a data frame that contains a more complex object than the standard R data types (numeric, character, etc); and the new <code>pick()</code> verb which returns a data frame containing selected columns (in this case, all of them) within the group that’s being operated on.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1">penguin_models <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -198,7 +198,7 @@ font-style: inherit;">print</span>(penguin_models)</span></code></pre></div>
 4 Body mass (g)       &lt;lm&gt;  </code></pre>
 </div>
 </div>
-<p>Ideally we would also do a visual check of model assumptions. One way to do this is something like the code below, which saves a residual plot for each model to an image file, which can be inspected later. It uses the <code>check_model()</code> function in the <code>performance</code> package to generate the plots. This blog post doesn’t show the generated residual plots, but they all look fine.</p>
+<p>Ideally we would also do a visual check of model assumptions. One way to do this is something like the code below, which saves a residual plot for each model to an image file, which can be inspected later. It uses the <code>check_model()</code> function in the <code>performance</code> package to generate the plots. The generated residual plots aren’t shown here, but they all look fine.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -250,8 +250,8 @@ font-style: inherit;">9</span></span>
 <span id="cb10-10">  )</span>
 <span id="cb10-11">)</span></code></pre></div>
 </div>
-<p>Once we’ve fitted the models, we can obtain quantities of interest from them. In this example we’ll look at estimated means for each species, p-values testing the hypothesis that all species means are equal, and comparisons (differences in means) between all pairs of species.</p>
-<p>The <code>reframe()</code> function from <code>dplyr</code> allows us to run some code that produces a data frame on each model and stack the results on top of each other. We can use the <code>emmeans()</code> function from the <code>emmeans</code> package to obtain estimated marginal means, and <code>as_tibble()</code> to convert the result into a data frame. The <code>rowwise(outcome)</code> at the start tells <code>reframe()</code> that we want to call <code>emmeans()</code> separately for each row of the data frame (i.e., each outcome model), and preserve the <code>outcome</code> variable in the result.</p>
+<p>Once we’ve fitted the models, we can obtain quantities of interest from them. In this example we’ll look at estimated means for each species, p-values testing the hypothesis that all species means are equal (against at least one pair of means being different), and comparisons (differences in means) between all pairs of species.</p>
+<p>The <code>reframe()</code> function from <code>dplyr</code> allows us to run some code that produces a data frame on each model and stack the results on top of each other. We can use the <code>emmeans()</code> function from the <code>emmeans</code> package to obtain estimated marginal means and <code>as_tibble()</code> to convert the result into a data frame. The <code>rowwise(outcome)</code> at the start tells <code>reframe()</code> that we want to call <code>emmeans()</code> separately for each row of the data frame (i.e., each outcome model), and preserve the <code>outcome</code> variable in the result.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb11" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1">penguin_means <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -295,7 +295,7 @@ font-style: inherit;">head</span>(penguin_means)</span></code></pre></div>
 6 Bill depth (mm)  Gentoo      15.0 0.101    339     14.8     15.2</code></pre>
 </div>
 </div>
-<p>We can use <code>ggplot()</code> to present the results visually, for example like this. We can see that there’s a huge variation between species in means of all of these measurements.</p>
+<p>We can use <code>ggplot()</code> to present the results visually. The plot shows that there’s a huge variation between species in means of all of these measurements.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb14" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1">penguin_means <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -374,7 +374,7 @@ font-style: inherit;">"Error bars show 95% confidence interval for mean."</span>
 <p><img src="https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="1170"></p>
 </div>
 </div>
-<p>The <code>gt()</code> function can be used to produce a nice table of results. In the code shown below I’ve combined the <code>lower.CL</code> and <code>upper.CL</code> columns to produce a single column with the confidence interval, and separately specified fewer decimal places for body mass than the other measures. The <code>group_by()</code> function before <code>gt()</code> results in a table sub-heading for each outcome. You could easily change this to <code>group_by(species)</code> to arrange the results by species.</p>
+<p>The <code>gt()</code> function can be used to produce a nice table of results. The code shown below combines the <code>lower.CL</code> and <code>upper.CL</code> columns to produce a single column with the confidence interval, and separately specifies fewer decimal places for body mass than the other measures. The <code>group_by()</code> function before <code>gt()</code> results in a table sub-heading for each outcome. You could easily change this to <code>group_by(species)</code> to arrange the results by species.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">penguin_means <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -474,23 +474,23 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
 <span id="cb15-16">  )</span></code></pre></div>
 <div class="cell-output-display">
 
-<div id="goipanpigs" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#goipanpigs table {
+<div id="qqzlcfstph" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#qqzlcfstph table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#goipanpigs thead, #goipanpigs tbody, #goipanpigs tfoot, #goipanpigs tr, #goipanpigs td, #goipanpigs th {
+#qqzlcfstph thead, #qqzlcfstph tbody, #qqzlcfstph tfoot, #qqzlcfstph tr, #qqzlcfstph td, #qqzlcfstph th {
   border-style: none;
 }
 
-#goipanpigs p {
+#qqzlcfstph p {
   margin: 0;
   padding: 0;
 }
 
-#goipanpigs .gt_table {
+#qqzlcfstph .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -516,12 +516,12 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-left-color: #D3D3D3;
 }
 
-#goipanpigs .gt_caption {
+#qqzlcfstph .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#goipanpigs .gt_title {
+#qqzlcfstph .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -533,7 +533,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-bottom-width: 0;
 }
 
-#goipanpigs .gt_subtitle {
+#qqzlcfstph .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -545,7 +545,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-top-width: 0;
 }
 
-#goipanpigs .gt_heading {
+#qqzlcfstph .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -557,13 +557,13 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-right-color: #D3D3D3;
 }
 
-#goipanpigs .gt_bottom_border {
+#qqzlcfstph .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#goipanpigs .gt_col_headings {
+#qqzlcfstph .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -578,7 +578,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-right-color: #D3D3D3;
 }
 
-#goipanpigs .gt_col_heading {
+#qqzlcfstph .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -598,7 +598,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   overflow-x: hidden;
 }
 
-#goipanpigs .gt_column_spanner_outer {
+#qqzlcfstph .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -610,15 +610,15 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   padding-right: 4px;
 }
 
-#goipanpigs .gt_column_spanner_outer:first-child {
+#qqzlcfstph .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#goipanpigs .gt_column_spanner_outer:last-child {
+#qqzlcfstph .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#goipanpigs .gt_column_spanner {
+#qqzlcfstph .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -630,11 +630,11 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   width: 100%;
 }
 
-#goipanpigs .gt_spanner_row {
+#qqzlcfstph .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#goipanpigs .gt_group_heading {
+#qqzlcfstph .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -660,7 +660,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   text-align: left;
 }
 
-#goipanpigs .gt_empty_group_heading {
+#qqzlcfstph .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -675,15 +675,15 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   vertical-align: middle;
 }
 
-#goipanpigs .gt_from_md > :first-child {
+#qqzlcfstph .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#goipanpigs .gt_from_md > :last-child {
+#qqzlcfstph .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#goipanpigs .gt_row {
+#qqzlcfstph .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -702,7 +702,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   overflow-x: hidden;
 }
 
-#goipanpigs .gt_stub {
+#qqzlcfstph .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -715,7 +715,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   padding-right: 5px;
 }
 
-#goipanpigs .gt_stub_row_group {
+#qqzlcfstph .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -729,15 +729,15 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   vertical-align: top;
 }
 
-#goipanpigs .gt_row_group_first td {
+#qqzlcfstph .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#goipanpigs .gt_row_group_first th {
+#qqzlcfstph .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#goipanpigs .gt_summary_row {
+#qqzlcfstph .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -747,16 +747,16 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   padding-right: 5px;
 }
 
-#goipanpigs .gt_first_summary_row {
+#qqzlcfstph .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#goipanpigs .gt_first_summary_row.thick {
+#qqzlcfstph .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#goipanpigs .gt_last_summary_row {
+#qqzlcfstph .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -766,7 +766,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-bottom-color: #D3D3D3;
 }
 
-#goipanpigs .gt_grand_summary_row {
+#qqzlcfstph .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -776,7 +776,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   padding-right: 5px;
 }
 
-#goipanpigs .gt_first_grand_summary_row {
+#qqzlcfstph .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -786,7 +786,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-top-color: #D3D3D3;
 }
 
-#goipanpigs .gt_last_grand_summary_row_top {
+#qqzlcfstph .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -796,11 +796,11 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-bottom-color: #D3D3D3;
 }
 
-#goipanpigs .gt_striped {
+#qqzlcfstph .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#goipanpigs .gt_table_body {
+#qqzlcfstph .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -809,7 +809,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-bottom-color: #D3D3D3;
 }
 
-#goipanpigs .gt_footnotes {
+#qqzlcfstph .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -823,7 +823,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-right-color: #D3D3D3;
 }
 
-#goipanpigs .gt_footnote {
+#qqzlcfstph .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -832,7 +832,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   padding-right: 5px;
 }
 
-#goipanpigs .gt_sourcenotes {
+#qqzlcfstph .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -846,7 +846,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   border-right-color: #D3D3D3;
 }
 
-#goipanpigs .gt_sourcenote {
+#qqzlcfstph .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -854,63 +854,63 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
   padding-right: 5px;
 }
 
-#goipanpigs .gt_left {
+#qqzlcfstph .gt_left {
   text-align: left;
 }
 
-#goipanpigs .gt_center {
+#qqzlcfstph .gt_center {
   text-align: center;
 }
 
-#goipanpigs .gt_right {
+#qqzlcfstph .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#goipanpigs .gt_font_normal {
+#qqzlcfstph .gt_font_normal {
   font-weight: normal;
 }
 
-#goipanpigs .gt_font_bold {
+#qqzlcfstph .gt_font_bold {
   font-weight: bold;
 }
 
-#goipanpigs .gt_font_italic {
+#qqzlcfstph .gt_font_italic {
   font-style: italic;
 }
 
-#goipanpigs .gt_super {
+#qqzlcfstph .gt_super {
   font-size: 65%;
 }
 
-#goipanpigs .gt_footnote_marks {
+#qqzlcfstph .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#goipanpigs .gt_asterisk {
+#qqzlcfstph .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#goipanpigs .gt_indent_1 {
+#qqzlcfstph .gt_indent_1 {
   text-indent: 5px;
 }
 
-#goipanpigs .gt_indent_2 {
+#qqzlcfstph .gt_indent_2 {
   text-indent: 10px;
 }
 
-#goipanpigs .gt_indent_3 {
+#qqzlcfstph .gt_indent_3 {
   text-indent: 15px;
 }
 
-#goipanpigs .gt_indent_4 {
+#qqzlcfstph .gt_indent_4 {
   text-indent: 20px;
 }
 
-#goipanpigs .gt_indent_5 {
+#qqzlcfstph .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -1005,7 +1005,7 @@ font-style: inherit;">"95% Confidence Interval"</span></span>
 </div>
 </div>
 </div>
-<p>We can do similar to produce an overall “F” test for each model, testing the hypothesis that all species have equal means for a particular measure. The <code>joint_test()</code> function in <code>emmeans</code> does this.</p>
+<p>We can do similar to produce an overall “F” test for each model, testing the hypothesis that all species have equal means for a particular measure against the hypothesis that at least one pair of means is different. The <code>joint_tests()</code> function in <code>emmeans</code> does this.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1">penguin_tests <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -1128,23 +1128,23 @@ font-style: inherit;">"p-value"</span></span>
 <span id="cb19-13">  )</span></code></pre></div>
 <div class="cell-output-display">
 
-<div id="hcjdmhjwdf" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#hcjdmhjwdf table {
+<div id="mpdhlutfqs" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#mpdhlutfqs table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#hcjdmhjwdf thead, #hcjdmhjwdf tbody, #hcjdmhjwdf tfoot, #hcjdmhjwdf tr, #hcjdmhjwdf td, #hcjdmhjwdf th {
+#mpdhlutfqs thead, #mpdhlutfqs tbody, #mpdhlutfqs tfoot, #mpdhlutfqs tr, #mpdhlutfqs td, #mpdhlutfqs th {
   border-style: none;
 }
 
-#hcjdmhjwdf p {
+#mpdhlutfqs p {
   margin: 0;
   padding: 0;
 }
 
-#hcjdmhjwdf .gt_table {
+#mpdhlutfqs .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -1170,12 +1170,12 @@ font-style: inherit;">"p-value"</span></span>
   border-left-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_caption {
+#mpdhlutfqs .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#hcjdmhjwdf .gt_title {
+#mpdhlutfqs .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1187,7 +1187,7 @@ font-style: inherit;">"p-value"</span></span>
   border-bottom-width: 0;
 }
 
-#hcjdmhjwdf .gt_subtitle {
+#mpdhlutfqs .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1199,7 +1199,7 @@ font-style: inherit;">"p-value"</span></span>
   border-top-width: 0;
 }
 
-#hcjdmhjwdf .gt_heading {
+#mpdhlutfqs .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1211,13 +1211,13 @@ font-style: inherit;">"p-value"</span></span>
   border-right-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_bottom_border {
+#mpdhlutfqs .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_col_headings {
+#mpdhlutfqs .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1232,7 +1232,7 @@ font-style: inherit;">"p-value"</span></span>
   border-right-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_col_heading {
+#mpdhlutfqs .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1252,7 +1252,7 @@ font-style: inherit;">"p-value"</span></span>
   overflow-x: hidden;
 }
 
-#hcjdmhjwdf .gt_column_spanner_outer {
+#mpdhlutfqs .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1264,15 +1264,15 @@ font-style: inherit;">"p-value"</span></span>
   padding-right: 4px;
 }
 
-#hcjdmhjwdf .gt_column_spanner_outer:first-child {
+#mpdhlutfqs .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#hcjdmhjwdf .gt_column_spanner_outer:last-child {
+#mpdhlutfqs .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#hcjdmhjwdf .gt_column_spanner {
+#mpdhlutfqs .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1284,11 +1284,11 @@ font-style: inherit;">"p-value"</span></span>
   width: 100%;
 }
 
-#hcjdmhjwdf .gt_spanner_row {
+#mpdhlutfqs .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#hcjdmhjwdf .gt_group_heading {
+#mpdhlutfqs .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1314,7 +1314,7 @@ font-style: inherit;">"p-value"</span></span>
   text-align: left;
 }
 
-#hcjdmhjwdf .gt_empty_group_heading {
+#mpdhlutfqs .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1329,15 +1329,15 @@ font-style: inherit;">"p-value"</span></span>
   vertical-align: middle;
 }
 
-#hcjdmhjwdf .gt_from_md > :first-child {
+#mpdhlutfqs .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#hcjdmhjwdf .gt_from_md > :last-child {
+#mpdhlutfqs .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#hcjdmhjwdf .gt_row {
+#mpdhlutfqs .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1356,7 +1356,7 @@ font-style: inherit;">"p-value"</span></span>
   overflow-x: hidden;
 }
 
-#hcjdmhjwdf .gt_stub {
+#mpdhlutfqs .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1369,7 +1369,7 @@ font-style: inherit;">"p-value"</span></span>
   padding-right: 5px;
 }
 
-#hcjdmhjwdf .gt_stub_row_group {
+#mpdhlutfqs .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1383,15 +1383,15 @@ font-style: inherit;">"p-value"</span></span>
   vertical-align: top;
 }
 
-#hcjdmhjwdf .gt_row_group_first td {
+#mpdhlutfqs .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#hcjdmhjwdf .gt_row_group_first th {
+#mpdhlutfqs .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#hcjdmhjwdf .gt_summary_row {
+#mpdhlutfqs .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1401,16 +1401,16 @@ font-style: inherit;">"p-value"</span></span>
   padding-right: 5px;
 }
 
-#hcjdmhjwdf .gt_first_summary_row {
+#mpdhlutfqs .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_first_summary_row.thick {
+#mpdhlutfqs .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#hcjdmhjwdf .gt_last_summary_row {
+#mpdhlutfqs .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1420,7 +1420,7 @@ font-style: inherit;">"p-value"</span></span>
   border-bottom-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_grand_summary_row {
+#mpdhlutfqs .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1430,7 +1430,7 @@ font-style: inherit;">"p-value"</span></span>
   padding-right: 5px;
 }
 
-#hcjdmhjwdf .gt_first_grand_summary_row {
+#mpdhlutfqs .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1440,7 +1440,7 @@ font-style: inherit;">"p-value"</span></span>
   border-top-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_last_grand_summary_row_top {
+#mpdhlutfqs .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1450,11 +1450,11 @@ font-style: inherit;">"p-value"</span></span>
   border-bottom-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_striped {
+#mpdhlutfqs .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#hcjdmhjwdf .gt_table_body {
+#mpdhlutfqs .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1463,7 +1463,7 @@ font-style: inherit;">"p-value"</span></span>
   border-bottom-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_footnotes {
+#mpdhlutfqs .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1477,7 +1477,7 @@ font-style: inherit;">"p-value"</span></span>
   border-right-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_footnote {
+#mpdhlutfqs .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -1486,7 +1486,7 @@ font-style: inherit;">"p-value"</span></span>
   padding-right: 5px;
 }
 
-#hcjdmhjwdf .gt_sourcenotes {
+#mpdhlutfqs .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1500,7 +1500,7 @@ font-style: inherit;">"p-value"</span></span>
   border-right-color: #D3D3D3;
 }
 
-#hcjdmhjwdf .gt_sourcenote {
+#mpdhlutfqs .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1508,63 +1508,63 @@ font-style: inherit;">"p-value"</span></span>
   padding-right: 5px;
 }
 
-#hcjdmhjwdf .gt_left {
+#mpdhlutfqs .gt_left {
   text-align: left;
 }
 
-#hcjdmhjwdf .gt_center {
+#mpdhlutfqs .gt_center {
   text-align: center;
 }
 
-#hcjdmhjwdf .gt_right {
+#mpdhlutfqs .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#hcjdmhjwdf .gt_font_normal {
+#mpdhlutfqs .gt_font_normal {
   font-weight: normal;
 }
 
-#hcjdmhjwdf .gt_font_bold {
+#mpdhlutfqs .gt_font_bold {
   font-weight: bold;
 }
 
-#hcjdmhjwdf .gt_font_italic {
+#mpdhlutfqs .gt_font_italic {
   font-style: italic;
 }
 
-#hcjdmhjwdf .gt_super {
+#mpdhlutfqs .gt_super {
   font-size: 65%;
 }
 
-#hcjdmhjwdf .gt_footnote_marks {
+#mpdhlutfqs .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#hcjdmhjwdf .gt_asterisk {
+#mpdhlutfqs .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#hcjdmhjwdf .gt_indent_1 {
+#mpdhlutfqs .gt_indent_1 {
   text-indent: 5px;
 }
 
-#hcjdmhjwdf .gt_indent_2 {
+#mpdhlutfqs .gt_indent_2 {
   text-indent: 10px;
 }
 
-#hcjdmhjwdf .gt_indent_3 {
+#mpdhlutfqs .gt_indent_3 {
   text-indent: 15px;
 }
 
-#hcjdmhjwdf .gt_indent_4 {
+#mpdhlutfqs .gt_indent_4 {
   text-indent: 20px;
 }
 
-#hcjdmhjwdf .gt_indent_5 {
+#mpdhlutfqs .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -1668,7 +1668,7 @@ font-style: inherit;">head</span>(penguin_pairs)</span></code></pre></div>
 6 Bill depth (… Gentoo …  -3.44   0.169   339   -3.77    -3.11  -20.3   1.59e-60</code></pre>
 </div>
 </div>
-<p>And once again, these can comparisons can be plotted or presented in a table. In the plot below I’ve also added a dotted line indicating zero difference.</p>
+<p>These comparisons can be plotted or presented in a table using code very similar to what we used for the estimated means. The plot below also includes a dotted line indicating zero difference, which can be used as a visual indicator for whether comparisons are statistically significant.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb23" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1">penguin_pairs <span class="sc" style="color: #5E5E5E;
 background-color: null;
