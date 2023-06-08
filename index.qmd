@@ -17,7 +17,7 @@ listing:
   sort: "date desc"
   type: grid
   categories: false
-  feed: false
+  feed: true
   sort-ui: false
   filter-ui: false
   max-items: 3
