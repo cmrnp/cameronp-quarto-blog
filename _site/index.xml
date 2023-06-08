@@ -1,0 +1,3008 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss  xmlns:atom="http://www.w3.org/2005/Atom" 
+      xmlns:media="http://search.yahoo.com/mrss/" 
+      xmlns:content="http://purl.org/rss/1.0/modules/content/" 
+      xmlns:dc="http://purl.org/dc/elements/1.1/" 
+      version="2.0">
+<channel>
+<title>Cameron Patrick</title>
+<link>https://cameronpatrick.com/index.html</link>
+<atom:link href="https://cameronpatrick.com/index.xml" rel="self" type="application/rss+xml"/>
+<description></description>
+<generator>quarto-1.3.302</generator>
+<lastBuildDate>Wed, 07 Jun 2023 14:00:00 GMT</lastBuildDate>
+<item>
+  <title>Fitting many statistical models at once using dplyr</title>
+  <dc:creator>Cameron Patrick</dc:creator>
+  <link>https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>One common task in applied statistics is to fit and interpret a number of statistical models at once. For example, fitting a model with the same structure to a number of different outcome or explanatory variables, or fitting several models with different structure to the same data. Here are some examples of how I usually do this, using features that were introduced with <code>dplyr</code> version 1.1.0.</p>
+<p>For this demonstration, we’ll be using the R packages <code>dplyr</code>, <code>tidyr</code>, <code>ggplot2</code> (all of which are included in the <code>tidyverse</code>), as well as <code>gt</code> for making tables, <code>emmeans</code> for obtaining estimated means and comparisons, and <code>performance</code> for model-checking.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(tidyverse)</span>
+<span id="cb1-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(gt)</span>
+<span id="cb1-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(emmeans)</span>
+<span id="cb1-4"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(performance)</span></code></pre></div>
+</div>
+<p>We’ll be using the <a href="https://allisonhorst.github.io/palmerpenguins/">Palmer Penguins data</a> collected at Palmer Station, Antarctica, made available by Dr Kristen Gorman, and conveniently accessible in R using the <code>palmerpenguins</code> package. This dataset contains measurements on a number of penguins of different species on different islands.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(palmerpenguins)</span>
+<span id="cb2-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">data</span>(penguins)</span>
+<span id="cb2-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">head</span>(penguins)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 8
+  species island    bill_length_mm bill_depth_mm flipper_length_mm body_mass_g
+  &lt;fct&gt;   &lt;fct&gt;              &lt;dbl&gt;         &lt;dbl&gt;             &lt;int&gt;       &lt;int&gt;
+1 Adelie  Torgersen           39.1          18.7               181        3750
+2 Adelie  Torgersen           39.5          17.4               186        3800
+3 Adelie  Torgersen           40.3          18                 195        3250
+4 Adelie  Torgersen           NA            NA                  NA          NA
+5 Adelie  Torgersen           36.7          19.3               193        3450
+6 Adelie  Torgersen           39.3          20.6               190        3650
+# ℹ 2 more variables: sex &lt;fct&gt;, year &lt;int&gt;</code></pre>
+</div>
+</div>
+<p>Suppose we want to compare bill length, bill depth, flipper length, and body mass between species. We could manually run a separate model for each, but here’s a way. As with many things in R, the trick to doing this easily is to get the data in long form, with the outcomes stacked on top of each other, and a variable indicating which outcome is being measured.</p>
+<p>The <code>pivot_longer()</code> function from <code>tidyr</code> gets the data into this format. I’ve also taken an extra step of recoding the “outcome” variable to give more descriptive labels. This isn’t required but it will make the tables and plots that we make later look nicer.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">penguins_long <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguins <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb4-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pivot_longer</span>(</span>
+<span id="cb4-3">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g),</span>
+<span id="cb4-4">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">names_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"outcome"</span>,</span>
+<span id="cb4-5">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">values_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"value"</span></span>
+<span id="cb4-6">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb4-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(</span>
+<span id="cb4-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">outcome =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fct_inorder</span>(outcome),</span>
+<span id="cb4-9">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">outcome =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fct_recode</span>(</span>
+<span id="cb4-10">      outcome,</span>
+<span id="cb4-11">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Bill length (mm)"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"bill_length_mm"</span>,</span>
+<span id="cb4-12">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Bill depth (mm)"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"bill_depth_mm"</span>,</span>
+<span id="cb4-13">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Flipper length (mm)"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"flipper_length_mm"</span>,</span>
+<span id="cb4-14">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Body mass (g)"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"body_mass_g"</span></span>
+<span id="cb4-15">    )</span>
+<span id="cb4-16">  )</span></code></pre></div>
+</div>
+<p>You can see we now have four rows for each penguin, one for each type of measurement:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">head</span>(penguins_long)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 6
+  species island    sex     year outcome              value
+  &lt;fct&gt;   &lt;fct&gt;     &lt;fct&gt;  &lt;int&gt; &lt;fct&gt;                &lt;dbl&gt;
+1 Adelie  Torgersen male    2007 Bill length (mm)      39.1
+2 Adelie  Torgersen male    2007 Bill depth (mm)       18.7
+3 Adelie  Torgersen male    2007 Flipper length (mm)  181  
+4 Adelie  Torgersen male    2007 Body mass (g)       3750  
+5 Adelie  Torgersen female  2007 Bill length (mm)      39.5
+6 Adelie  Torgersen female  2007 Bill depth (mm)       17.4</code></pre>
+</div>
+</div>
+<p>We can use <code>group_by()</code> and <code>summarise()</code> from the <code>dplyr</code> package to group the rows by outcome, and then “summarise” these groups of rows down to a single row containing a statistical model. This makes use of a couple of R tricks: ‘list columns’, a data frame column that contains a more complex object than the standard R data types (numeric, character, etc); and the new <code>pick()</code> verb which returns a data frame containing selected columns (in this case, all of them) within the group that’s being operated on.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1">penguin_models <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguins_long <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb7-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">group_by</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb7-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">summarise</span>(</span>
+<span id="cb7-4">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">model =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">list</span>(</span>
+<span id="cb7-5">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">lm</span>(value <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> species, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">data =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pick</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">everything</span>()))</span>
+<span id="cb7-6">    )</span>
+<span id="cb7-7">  )</span></code></pre></div>
+</div>
+<p>You can see the resulting data from contains four rows, one for each outcome, and a statistical model (“lm”) for each:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">print</span>(penguin_models)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 2
+  outcome             model 
+  &lt;fct&gt;               &lt;list&gt;
+1 Bill length (mm)    &lt;lm&gt;  
+2 Bill depth (mm)     &lt;lm&gt;  
+3 Flipper length (mm) &lt;lm&gt;  
+4 Body mass (g)       &lt;lm&gt;  </code></pre>
+</div>
+</div>
+<p>Ideally we would also do a visual check of model assumptions. One way to do this is something like the code below, which saves a residual plot for each model to an image file, which can be inspected later. It uses the <code>check_model()</code> function in the <code>performance</code> package to generate the plots. This blog post doesn’t show the generated residual plots, but they all look fine.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">walk2</span>(</span>
+<span id="cb10-2">  penguin_models<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>outcome, </span>
+<span id="cb10-3">  penguin_models<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>model,</span>
+<span id="cb10-4">  <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggsave</span>(</span>
+<span id="cb10-5">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">paste0</span>(.x, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">".png"</span>),</span>
+<span id="cb10-6">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">check_model</span>(.y, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">check =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"pp_check"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"linearity"</span>,</span>
+<span id="cb10-7">                                   <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"homogeneity"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"qq"</span>))),</span>
+<span id="cb10-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">width =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">12</span>,</span>
+<span id="cb10-9">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">height =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">9</span></span>
+<span id="cb10-10">  )</span>
+<span id="cb10-11">)</span></code></pre></div>
+</div>
+<p>Once we’ve fitted the models, we can obtain quantities of interest from them. In this example we’ll look at estimated means for each species, p-values testing the hypothesis that all species means are equal, and comparisons (differences in means) between all pairs of species.</p>
+<p>The <code>reframe()</code> function from <code>dplyr</code> allows us to run some code that produces a data frame on each model and stack the results on top of each other. We can use the <code>emmeans()</code> function from the <code>emmeans</code> package to obtain estimated marginal means, and <code>as_tibble()</code> to convert the result into a data frame. The <code>rowwise(outcome)</code> at the start tells <code>reframe()</code> that we want to call <code>emmeans()</code> separately for each row of the data frame (i.e., each outcome model), and preserve the <code>outcome</code> variable in the result.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1">penguin_means <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguin_models <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb11-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rowwise</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb11-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reframe</span>(</span>
+<span id="cb11-4">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">emmeans</span>(model, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"species"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb11-5">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_tibble</span>()</span>
+<span id="cb11-6">  )</span></code></pre></div>
+</div>
+<p>The first few rows of the resulting data frame look like this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">head</span>(penguin_means)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 7
+  outcome          species   emmean     SE    df lower.CL upper.CL
+  &lt;fct&gt;            &lt;fct&gt;      &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+1 Bill length (mm) Adelie      38.8 0.241    339     38.3     39.3
+2 Bill length (mm) Chinstrap   48.8 0.359    339     48.1     49.5
+3 Bill length (mm) Gentoo      47.5 0.267    339     47.0     48.0
+4 Bill depth (mm)  Adelie      18.3 0.0912   339     18.2     18.5
+5 Bill depth (mm)  Chinstrap   18.4 0.136    339     18.2     18.7
+6 Bill depth (mm)  Gentoo      15.0 0.101    339     14.8     15.2</code></pre>
+</div>
+</div>
+<p>We can use <code>ggplot()</code> to present the results visually, for example like this. We can see that there’s a huge variation between species in means of all of these measurements.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1">penguin_means <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb14-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> emmean, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> species, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmin =</span> lower.CL, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmax =</span> upper.CL)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_errorbar</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">width =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_point</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">facet_wrap</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vars</span>(outcome), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nrow =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">scales =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"free_x"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb14-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(</span>
+<span id="cb14-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Mean"</span>, </span>
+<span id="cb14-9">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Species"</span>,</span>
+<span id="cb14-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">caption =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Error bars show 95% confidence interval for mean."</span></span>
+<span id="cb14-11">  )</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+<p>The <code>gt()</code> function can be used to produce a nice table of results. In the code shown below I’ve combined the <code>lower.CL</code> and <code>upper.CL</code> columns to produce a single column with the confidence interval, and separately specified fewer decimal places for body mass than the other measures. The <code>group_by()</code> function before <code>gt()</code> results in a table sub-heading for each outcome. You could easily change this to <code>group_by(species)</code> to arrange the results by species.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">penguin_means <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">group_by</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">gt</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(emmean, SE, lower.CL, upper.CL),</span>
+<span id="cb15-5">             <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">use_seps =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(emmean, SE, lower.CL, upper.CL),</span>
+<span id="cb15-7">             <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">rows =</span> outcome <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Body mass (g)"</span>,</span>
+<span id="cb15-8">             <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">use_seps =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-9">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(df, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-10">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_align</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"left"</span>, species) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-11">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_merge_range</span>(lower.CL, upper.CL, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">sep =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">", "</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb15-12">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_label</span>(</span>
+<span id="cb15-13">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">species =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Species"</span>,</span>
+<span id="cb15-14">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">emmean =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Mean"</span>,</span>
+<span id="cb15-15">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">lower.CL =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"95% Confidence Interval"</span></span>
+<span id="cb15-16">  )</span></code></pre></div>
+<div class="cell-output-display">
+
+<div id="goipanpigs" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#goipanpigs table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#goipanpigs thead, #goipanpigs tbody, #goipanpigs tfoot, #goipanpigs tr, #goipanpigs td, #goipanpigs th {
+  border-style: none;
+}
+
+#goipanpigs p {
+  margin: 0;
+  padding: 0;
+}
+
+#goipanpigs .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#goipanpigs .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#goipanpigs .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#goipanpigs .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#goipanpigs .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#goipanpigs .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#goipanpigs .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#goipanpigs .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#goipanpigs .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#goipanpigs .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#goipanpigs .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#goipanpigs .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#goipanpigs .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#goipanpigs .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#goipanpigs .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#goipanpigs .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#goipanpigs .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#goipanpigs .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#goipanpigs .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#goipanpigs .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#goipanpigs .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#goipanpigs .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#goipanpigs .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#goipanpigs .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#goipanpigs .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#goipanpigs .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#goipanpigs .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#goipanpigs .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#goipanpigs .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#goipanpigs .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#goipanpigs .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#goipanpigs .gt_left {
+  text-align: left;
+}
+
+#goipanpigs .gt_center {
+  text-align: center;
+}
+
+#goipanpigs .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#goipanpigs .gt_font_normal {
+  font-weight: normal;
+}
+
+#goipanpigs .gt_font_bold {
+  font-weight: bold;
+}
+
+#goipanpigs .gt_font_italic {
+  font-style: italic;
+}
+
+#goipanpigs .gt_super {
+  font-size: 65%;
+}
+
+#goipanpigs .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#goipanpigs .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#goipanpigs .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#goipanpigs .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#goipanpigs .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#goipanpigs .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#goipanpigs .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="Species">Species</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="Mean">Mean</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="SE">SE</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="df">df</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="95% Confidence Interval">95% Confidence Interval</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" scope="colgroup" id="Bill length (mm)">Bill length (mm)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Bill length (mm)  species" class="gt_row gt_left">Adelie</td>
+<td headers="Bill length (mm)  emmean" class="gt_row gt_right">38.8</td>
+<td headers="Bill length (mm)  SE" class="gt_row gt_right">0.2</td>
+<td headers="Bill length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill length (mm)  lower.CL" class="gt_row gt_right">38.3, 39.3</td></tr>
+    <tr><td headers="Bill length (mm)  species" class="gt_row gt_left">Chinstrap</td>
+<td headers="Bill length (mm)  emmean" class="gt_row gt_right">48.8</td>
+<td headers="Bill length (mm)  SE" class="gt_row gt_right">0.4</td>
+<td headers="Bill length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill length (mm)  lower.CL" class="gt_row gt_right">48.1, 49.5</td></tr>
+    <tr><td headers="Bill length (mm)  species" class="gt_row gt_left">Gentoo</td>
+<td headers="Bill length (mm)  emmean" class="gt_row gt_right">47.5</td>
+<td headers="Bill length (mm)  SE" class="gt_row gt_right">0.3</td>
+<td headers="Bill length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill length (mm)  lower.CL" class="gt_row gt_right">47.0, 48.0</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" scope="colgroup" id="Bill depth (mm)">Bill depth (mm)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Bill depth (mm)  species" class="gt_row gt_left">Adelie</td>
+<td headers="Bill depth (mm)  emmean" class="gt_row gt_right">18.3</td>
+<td headers="Bill depth (mm)  SE" class="gt_row gt_right">0.1</td>
+<td headers="Bill depth (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill depth (mm)  lower.CL" class="gt_row gt_right">18.2, 18.5</td></tr>
+    <tr><td headers="Bill depth (mm)  species" class="gt_row gt_left">Chinstrap</td>
+<td headers="Bill depth (mm)  emmean" class="gt_row gt_right">18.4</td>
+<td headers="Bill depth (mm)  SE" class="gt_row gt_right">0.1</td>
+<td headers="Bill depth (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill depth (mm)  lower.CL" class="gt_row gt_right">18.2, 18.7</td></tr>
+    <tr><td headers="Bill depth (mm)  species" class="gt_row gt_left">Gentoo</td>
+<td headers="Bill depth (mm)  emmean" class="gt_row gt_right">15.0</td>
+<td headers="Bill depth (mm)  SE" class="gt_row gt_right">0.1</td>
+<td headers="Bill depth (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Bill depth (mm)  lower.CL" class="gt_row gt_right">14.8, 15.2</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" scope="colgroup" id="Flipper length (mm)">Flipper length (mm)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Flipper length (mm)  species" class="gt_row gt_left">Adelie</td>
+<td headers="Flipper length (mm)  emmean" class="gt_row gt_right">190.0</td>
+<td headers="Flipper length (mm)  SE" class="gt_row gt_right">0.5</td>
+<td headers="Flipper length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Flipper length (mm)  lower.CL" class="gt_row gt_right">188.9, 191.0</td></tr>
+    <tr><td headers="Flipper length (mm)  species" class="gt_row gt_left">Chinstrap</td>
+<td headers="Flipper length (mm)  emmean" class="gt_row gt_right">195.8</td>
+<td headers="Flipper length (mm)  SE" class="gt_row gt_right">0.8</td>
+<td headers="Flipper length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Flipper length (mm)  lower.CL" class="gt_row gt_right">194.2, 197.4</td></tr>
+    <tr><td headers="Flipper length (mm)  species" class="gt_row gt_left">Gentoo</td>
+<td headers="Flipper length (mm)  emmean" class="gt_row gt_right">217.2</td>
+<td headers="Flipper length (mm)  SE" class="gt_row gt_right">0.6</td>
+<td headers="Flipper length (mm)  df" class="gt_row gt_right">339</td>
+<td headers="Flipper length (mm)  lower.CL" class="gt_row gt_right">216.0, 218.4</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="5" class="gt_group_heading" scope="colgroup" id="Body mass (g)">Body mass (g)</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Body mass (g)  species" class="gt_row gt_left">Adelie</td>
+<td headers="Body mass (g)  emmean" class="gt_row gt_right">3701</td>
+<td headers="Body mass (g)  SE" class="gt_row gt_right">38</td>
+<td headers="Body mass (g)  df" class="gt_row gt_right">339</td>
+<td headers="Body mass (g)  lower.CL" class="gt_row gt_right">3627, 3775</td></tr>
+    <tr><td headers="Body mass (g)  species" class="gt_row gt_left">Chinstrap</td>
+<td headers="Body mass (g)  emmean" class="gt_row gt_right">3733</td>
+<td headers="Body mass (g)  SE" class="gt_row gt_right">56</td>
+<td headers="Body mass (g)  df" class="gt_row gt_right">339</td>
+<td headers="Body mass (g)  lower.CL" class="gt_row gt_right">3623, 3843</td></tr>
+    <tr><td headers="Body mass (g)  species" class="gt_row gt_left">Gentoo</td>
+<td headers="Body mass (g)  emmean" class="gt_row gt_right">5076</td>
+<td headers="Body mass (g)  SE" class="gt_row gt_right">42</td>
+<td headers="Body mass (g)  df" class="gt_row gt_right">339</td>
+<td headers="Body mass (g)  lower.CL" class="gt_row gt_right">4994, 5158</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<p>We can do similar to produce an overall “F” test for each model, testing the hypothesis that all species have equal means for a particular measure. The <code>joint_test()</code> function in <code>emmeans</code> does this.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1">penguin_tests <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguin_models <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb16-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rowwise</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb16-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reframe</span>(</span>
+<span id="cb16-4">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">joint_tests</span>(model) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb16-5">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_tibble</span>()</span>
+<span id="cb16-6">  )</span></code></pre></div>
+</div>
+<p>This is what the resulting data frame looks like:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">print</span>(penguin_tests)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 6
+  outcome             `model term`   df1   df2 F.ratio   p.value
+  &lt;fct&gt;               &lt;chr&gt;        &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt;
+1 Bill length (mm)    species          2   339    411. 2.69e- 91
+2 Bill depth (mm)     species          2   339    360. 1.51e- 84
+3 Flipper length (mm) species          2   339    595. 1.35e-111
+4 Body mass (g)       species          2   339    344. 2.89e- 82</code></pre>
+</div>
+</div>
+<p>Again, this can be presented in a table using <code>gt()</code>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1">penguin_tests <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">gt</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(F.ratio, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fmt_number</span>(p.value, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">decimals =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_merge_range</span>(df1, df2, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">sep =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">", "</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sub_small_vals</span>(p.value, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">threshold =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.001</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb19-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cols_label</span>(</span>
+<span id="cb19-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">outcome =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Outcome"</span>,</span>
+<span id="cb19-9">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">`</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">model term</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">`</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Predictor"</span>,</span>
+<span id="cb19-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">df1 =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"df"</span>,</span>
+<span id="cb19-11">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">F.ratio =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"F"</span>,</span>
+<span id="cb19-12">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">p.value =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"p-value"</span></span>
+<span id="cb19-13">  )</span></code></pre></div>
+<div class="cell-output-display">
+
+<div id="hcjdmhjwdf" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#hcjdmhjwdf table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#hcjdmhjwdf thead, #hcjdmhjwdf tbody, #hcjdmhjwdf tfoot, #hcjdmhjwdf tr, #hcjdmhjwdf td, #hcjdmhjwdf th {
+  border-style: none;
+}
+
+#hcjdmhjwdf p {
+  margin: 0;
+  padding: 0;
+}
+
+#hcjdmhjwdf .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#hcjdmhjwdf .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#hcjdmhjwdf .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#hcjdmhjwdf .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#hcjdmhjwdf .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#hcjdmhjwdf .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#hcjdmhjwdf .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#hcjdmhjwdf .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#hcjdmhjwdf .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#hcjdmhjwdf .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#hcjdmhjwdf .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#hcjdmhjwdf .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#hcjdmhjwdf .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#hcjdmhjwdf .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#hcjdmhjwdf .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#hcjdmhjwdf .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#hcjdmhjwdf .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#hcjdmhjwdf .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#hcjdmhjwdf .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#hcjdmhjwdf .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#hcjdmhjwdf .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#hcjdmhjwdf .gt_left {
+  text-align: left;
+}
+
+#hcjdmhjwdf .gt_center {
+  text-align: center;
+}
+
+#hcjdmhjwdf .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#hcjdmhjwdf .gt_font_normal {
+  font-weight: normal;
+}
+
+#hcjdmhjwdf .gt_font_bold {
+  font-weight: bold;
+}
+
+#hcjdmhjwdf .gt_font_italic {
+  font-style: italic;
+}
+
+#hcjdmhjwdf .gt_super {
+  font-size: 65%;
+}
+
+#hcjdmhjwdf .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#hcjdmhjwdf .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#hcjdmhjwdf .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#hcjdmhjwdf .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#hcjdmhjwdf .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#hcjdmhjwdf .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#hcjdmhjwdf .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Outcome">Outcome</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="Predictor">Predictor</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="df">df</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="F">F</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="p-value">p-value</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="outcome" class="gt_row gt_center">Bill length (mm)</td>
+<td headers="model term" class="gt_row gt_left">species</td>
+<td headers="df1" class="gt_row gt_right">2, 339</td>
+<td headers="F.ratio" class="gt_row gt_right">410.6</td>
+<td headers="p.value" class="gt_row gt_right">&lt;0.001</td></tr>
+    <tr><td headers="outcome" class="gt_row gt_center">Bill depth (mm)</td>
+<td headers="model term" class="gt_row gt_left">species</td>
+<td headers="df1" class="gt_row gt_right">2, 339</td>
+<td headers="F.ratio" class="gt_row gt_right">359.8</td>
+<td headers="p.value" class="gt_row gt_right">&lt;0.001</td></tr>
+    <tr><td headers="outcome" class="gt_row gt_center">Flipper length (mm)</td>
+<td headers="model term" class="gt_row gt_left">species</td>
+<td headers="df1" class="gt_row gt_right">2, 339</td>
+<td headers="F.ratio" class="gt_row gt_right">594.8</td>
+<td headers="p.value" class="gt_row gt_right">&lt;0.001</td></tr>
+    <tr><td headers="outcome" class="gt_row gt_center">Body mass (g)</td>
+<td headers="model term" class="gt_row gt_left">species</td>
+<td headers="df1" class="gt_row gt_right">2, 339</td>
+<td headers="F.ratio" class="gt_row gt_right">343.6</td>
+<td headers="p.value" class="gt_row gt_right">&lt;0.001</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<p>Finally, we often want to obtain comparisons between particular estimated quantities. In this example we use the <code>emmeans</code> package again for this, this time using the <code>pairs()</code> function to produce comparisons between all pairs of species.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1">penguin_pairs <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> penguin_models <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb20-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rowwise</span>(outcome) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb20-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reframe</span>(</span>
+<span id="cb20-4">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">emmeans</span>(model, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"species"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb20-5">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pairs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">infer =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">reverse =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">adjust =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"none"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb20-6">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_tibble</span>()</span>
+<span id="cb20-7">  )</span></code></pre></div>
+</div>
+<p>The first few rows of the data frame look like this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">head</span>(penguin_pairs)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 9
+  outcome       contrast estimate    SE    df lower.CL upper.CL t.ratio  p.value
+  &lt;fct&gt;         &lt;chr&gt;       &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+1 Bill length … Chinstr…  10.0    0.432   339    9.19    10.9    23.2   4.23e-72
+2 Bill length … Gentoo …   8.71   0.360   339    8.01     9.42   24.2   5.33e-76
+3 Bill length … Gentoo …  -1.33   0.447   339   -2.21    -0.449  -2.97  3.18e- 3
+4 Bill depth (… Chinstr…   0.0742 0.164   339   -0.248    0.396   0.453 6.50e- 1
+5 Bill depth (… Gentoo …  -3.36   0.136   339   -3.63    -3.10  -24.7   7.93e-78
+6 Bill depth (… Gentoo …  -3.44   0.169   339   -3.77    -3.11  -20.3   1.59e-60</code></pre>
+</div>
+</div>
+<p>And once again, these can comparisons can be plotted or presented in a table. In the plot below I’ve also added a dotted line indicating zero difference.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1">penguin_pairs <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb23-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> estimate, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> contrast, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmin =</span> lower.CL, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmax =</span> upper.CL)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_vline</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xintercept =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">linetype =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"dotted"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_errorbar</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">width =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_point</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">facet_wrap</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vars</span>(outcome), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nrow =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">scales =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"free_x"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb23-8">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(</span>
+<span id="cb23-9">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Difference in means"</span>, </span>
+<span id="cb23-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Contrast"</span>,</span>
+<span id="cb23-11">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">caption =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Error bars show 95% confidence interval for difference in mean."</span></span>
+<span id="cb23-12">  )</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+
+
+
+ ]]></description>
+  <category>r</category>
+  <category>statistical-models</category>
+  <guid>https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html</guid>
+  <pubDate>Wed, 07 Jun 2023 14:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>Making beautiful bar charts with ggplot</title>
+  <dc:creator>Cameron Patrick</dc:creator>
+  <link>https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>Bar charts (or bar graphs) are commonly used, but they’re also a simple type of graph where the defaults in ggplot leave a lot to be desired. This is a step-by-step description of how I’d go about improving them, describing the thought processess along the way. Every plot is different and the decisions you make need to reflect the message you’re trying to convey, so don’t treat this post as a recipe, treat it as some points to consider—and hopefully, a few tips that will help you achieve the look you want in your own plots.</p>
+<p>For this blog post, I’m going to use the number of seats won by each political party in the 2018 Victorian state election as an example. This data was obtained from <a href="https://www.vec.vic.gov.au/Results/State2018/Summary.html">the Victorian Electoral Commission</a>. Victorians may remember this election being described as a “Danslide”, where Labor, led by Premier Daniel Andrews, won a clear majority of seats.</p>
+<p>Here’s the data as an R command you can paste if you want to try making these plots yourself:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1">election_data <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tribble</span>(</span>
+<span id="cb1-2">                    <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span>party, <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span>seats_won,</span>
+<span id="cb1-3">       <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Australian Greens"</span>,          <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>,</span>
+<span id="cb1-4">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Australian Labor Party"</span>,         <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">55</span>,</span>
+<span id="cb1-5">                 <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Liberal"</span>,         <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">21</span>,</span>
+<span id="cb1-6">           <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"The Nationals"</span>,          <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">6</span>,</span>
+<span id="cb1-7">        <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Other Candidates"</span>,          <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span></span>
+<span id="cb1-8">)</span></code></pre></div>
+</div>
+<p>The first decision to make when you’re thinking of making a bar chart is whether you’d be better off using a different type of plot entirely. Bar charts are most suitable for displaying counts, percentages or other quantities where zero has a special meaning. If you make a bar chart, your axis should always start at zero, or the area of the bar gives a misleading visual impression. Other ways of representing data, such as box plots or points with error bars, may be more appropriate for quantities where zero is not an important reference point. If you are representing time series data (repeated observations made over time), a continuous line (perhaps with points at the the times where observations were made) is almost always better than a sequence of bars.</p>
+<p>The second decision to make is which axis to put the categorical variable and which axis to put the numerical variable. Having the categories on the <em>y</em> axis often works best. It gives you more space when you have either a large number of categories or categories with long labels.</p>
+<p>A lot of software either makes it more difficult to put categories on the <em>y</em> axis, or requires you to change a setting away from the default. This used to be the case for ggplot, but as of version 3.3.0, you just need to tell it which variable goes on which axis, and it will figure out the rest:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data,</span>
+<span id="cb2-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb2-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_col</span>()</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart1-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>The bar chart above is a good starting point, but quite a few things could be improved. The order of the categories is a bit odd: from top to bottom, it’s in reverse alphabetical order. This is the default in ggplot, but it is almost never what you want. The easiest way to change this is to give the option <code>limits = rev</code> to the <em>y</em> axis scale (this is also new in ggplot version 3.3.0):</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data,</span>
+<span id="cb3-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb3-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_col</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb3-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev)</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart2-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>In this particular case, alphabetical ordering isn’t the best choice. It’s often best to order categories from most common to least common, or from most to least in the variable you’re displaying (e.g.&nbsp;most to least seats won). There are two functions in the <code>forcats</code> package which can help with this: <code>fct_infreq</code> orders the level of a factor by how frequently they occur in the data, and <code>fct_reorder</code> orders the level of a factor by the values of a different variable.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">election_data_sorted <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> election_data <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb4-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">party =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fct_reorder</span>(party, seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">.desc =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>))</span></code></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data_sorted,</span>
+<span id="cb5-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb5-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_col</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb5-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev)</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart3-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>If I was doing exploratory data analysis, or making a quick plot to show a colleague, I might stop at this point. But there is still plenty of room for improvement. To start with, the axis labels are the variable names in our data frame, which is better than no labels at all, but are usually too brief or jargon-laden for a wider audience. A good plot can be interpreted clearly with as little supporting information as possible—remember that a reader’s eye will be drawn to a large, colourful figure and ignore the paragraphs of text you’ve written describing the full context.</p>
+<p>I’ve also changed the origin of the <em>x</em> axis so the bars are hard against the axis. Putting a blank space to the left of zero on a bar chart is something I’ve only ever seen in ggplot. It’s caused by ggplot’s standard rule of adding 10% padding on either side of the biggest and smallest values plotted. You can turn it off by setting the <code>expand</code> option on the <em>x</em> axis scale.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data_sorted,</span>
+<span id="cb6-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb6-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_col</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb6-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_x_continuous</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">expand =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">expansion</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mult =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>))) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb6-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb6-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of seats won"</span>,</span>
+<span id="cb6-7">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Party"</span>)</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart4-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>The grey background with white gridlines is a very distinctive ggplot default. Sometimes it works well—it can reduce the visual noise of gridlines in complex plots—but in this case I would normally opt for a simpler. I often use <code>theme_bw</code> or <code>theme_minimal</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data_sorted,</span>
+<span id="cb7-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb7-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_col</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb7-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_x_continuous</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">expand =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">expansion</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mult =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>))) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb7-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb7-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of seats won"</span>,</span>
+<span id="cb7-7">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Party"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb7-8">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_bw</span>()</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart5-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>The gridlines on the <em>x</em> axis are useful guides to the eye, but for a categorical variable with only a few categories, the gridlines only introduce clutter. They can be removed using the <code>theme</code> function.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data_sorted,</span>
+<span id="cb8-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb8-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_col</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb8-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_x_continuous</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">expand =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">expansion</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mult =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>))) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb8-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb8-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of seats won"</span>,</span>
+<span id="cb8-7">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Party"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb8-8">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_bw</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb8-9">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">panel.grid.major.y =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">element_blank</span>())</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart6-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>The default dark grey bars look a bit drab. You can choose a colour and give it as an option to <code>geom_col</code>. If you’re like me, you’ll probably try a couple of wrong things first: either passing the colour inside <code>aes()</code> (won’t work, because the colour will be interpreted as data to plot) or using <code>colour</code> instead of <code>fill</code> (which changes the border colour instead). You can either use a hexadecimal colour code (like in HTML), or one of <a href="http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf">a number of built-in colour names</a>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data_sorted,</span>
+<span id="cb9-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb9-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_col</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">fill =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"darkorchid"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb9-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_x_continuous</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">expand =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">expansion</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mult =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>))) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb9-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb9-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of seats won"</span>,</span>
+<span id="cb9-7">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Party"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb9-8">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_bw</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb9-9">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">panel.grid.major.y =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">element_blank</span>())</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart7-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>In this context, it would be conventional to colour the bars based on the party being represented. Here I’ve set <code>fill = party</code>, then given a manual scale for the fill based on party colours found on Wikipedia. I also disabled the legend, which isn’t necessary in this instance—the party names are already next to the bars. I’ve also added a title and a caption indicating the source of the data; these wouldn’t normally be included in an academic publication but are a very good idea for a plot which might be copied out of context.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data_sorted,</span>
+<span id="cb10-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">fill =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb10-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_col</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb10-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_x_continuous</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">expand =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">expansion</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mult =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>))) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb10-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb10-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_fill_manual</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">breaks =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Australian Labor Party"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Liberal"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"The Nationals"</span>,</span>
+<span id="cb10-7">                               <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Australian Greens"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Other Candidates"</span>),</span>
+<span id="cb10-8">                    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">values =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#DE3533"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#0047AB"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#006644"</span>,</span>
+<span id="cb10-9">                               <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#10C25B"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#808080"</span>)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb10-10">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of seats won"</span>,</span>
+<span id="cb10-11">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Party"</span>,</span>
+<span id="cb10-12">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">title =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Victorian election 2018 lower house results"</span>,</span>
+<span id="cb10-13">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">caption =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Data source: Victorian Electoral Commission"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb10-14">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_bw</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb10-15">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">panel.grid.major.y =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">element_blank</span>(),</span>
+<span id="cb10-16">        <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">legend.position =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"off"</span>)</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart8-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>Depending on what you’re trying to show with the graph, you may want to add annotations beyond what is contained in the original data. For example, you could add a dashed line at 44 seats indicating the number required for a party to form a majority government (which could slightly misleading, since the Liberal and National parties govern in coalition). In ggplot, you can pass specific data to any <code>geom_</code> function; in this example I’m using <code>geom_vline</code> to draw the dashed line and <code>geom_text</code> to draw the label:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data_sorted,</span>
+<span id="cb11-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">fill =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb11-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_vline</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xintercept =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">44</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">linetype =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">colour =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"grey20"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb11-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_text</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">45</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">4</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">label =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"majority of</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">\n</span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">parliament"</span>, </span>
+<span id="cb11-5">            <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">hjust =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">size =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">11</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.8</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> .pt, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">colour =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"grey20"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb11-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_col</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb11-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_x_continuous</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">expand =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">expansion</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mult =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>))) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb11-8">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb11-9">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_fill_manual</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">breaks =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Australian Labor Party"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Liberal"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"The Nationals"</span>,</span>
+<span id="cb11-10">                               <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Australian Greens"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Other Candidates"</span>),</span>
+<span id="cb11-11">                    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">values =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#DE3533"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#0047AB"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#006644"</span>,</span>
+<span id="cb11-12">                               <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#10C25B"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#808080"</span>)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb11-13">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of seats won"</span>,</span>
+<span id="cb11-14">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Party"</span>,</span>
+<span id="cb11-15">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">title =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Victorian election 2018 lower house results"</span>,</span>
+<span id="cb11-16">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">caption =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Data source: Victorian Electoral Commission"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb11-17">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_bw</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb11-18">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">panel.grid.major.y =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">element_blank</span>(),</span>
+<span id="cb11-19">        <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">legend.position =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"off"</span>)</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart8b-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>Finally, another good option for representing the same type of data as a bar chart is a line with a point at the end. The point draws the eye to the end of the line, which is the actual value being represented. You can create this in ggplot by using a <code>geom_segment</code> to draw the line segment and <code>geom_point</code> to draw the point. You also need to give <code>xend</code> and <code>yend</code> for <code>geom_segment</code> to work—it’s a general function for drawing line segments, not a specific functon for creating this type of plot.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(election_data_sorted,</span>
+<span id="cb12-2">       <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> seats_won,</span>
+<span id="cb12-3">           <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xend =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,</span>
+<span id="cb12-4">           <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> party,</span>
+<span id="cb12-5">           <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">yend =</span> party,</span>
+<span id="cb12-6">           <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">colour =</span> party)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb12-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_segment</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb12-8">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_point</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb12-9">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_x_continuous</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">expand =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">expansion</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mult =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span>))) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb12-10">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb12-11">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_colour_manual</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">breaks =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Australian Labor Party"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Liberal"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"The Nationals"</span>,</span>
+<span id="cb12-12">                                 <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Australian Greens"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Other Candidates"</span>),</span>
+<span id="cb12-13">                      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">values =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#DE3533"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#0047AB"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#006644"</span>,</span>
+<span id="cb12-14">                                 <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#10C25B"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#808080"</span>)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb12-15">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of seats won"</span>,</span>
+<span id="cb12-16">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Party"</span>,</span>
+<span id="cb12-17">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">title =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Victorian election 2018 lower house results"</span>,</span>
+<span id="cb12-18">       <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">caption =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Data source: Victorian Electoral Commission"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb12-19">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">legend.position =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"off"</span>)</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index_files/figure-html/barchart9-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+
+
+
+ ]]></description>
+  <category>r</category>
+  <category>ggplot2</category>
+  <guid>https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index.html</guid>
+  <pubDate>Sat, 14 Mar 2020 13:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>Things which are equivalent to t-tests</title>
+  <dc:creator>Cameron Patrick</dc:creator>
+  <link>https://cameronpatrick.com/post/2019/12/equivalent-to-t-test/index.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>If you have a continuous measurement and two groups you’d like to compare based on that measurement, what’s the first statistical test that comes to mind? Chances are it’s the two-sample t-test, sometimes known as <em>Student’s t-test</em>. It’s typically the first statistical test taught in an introductory statistics course, it’s well known and understood, and it has good theoretical properties—so if a t-test answers your research question, you should probably use it. (Actually, in practice, you should probably use <em>Welch’s t-test</em> which doesn’t assume equal variance within groups. For the rest of the post, I’m only going to consider the equal variance case.)</p>
+<p>Every now and again, I find a client in this situation who has done something which is… not a t-test. Here are some other ways to do the same thing which turn out to be identical to the two-sample t-test:</p>
+<ul>
+<li><p>One-way ANOVA: since ANOVA is often taught immediately after the t-test as “what do I do if I have more than two groups”, it should perhaps be no surprise that ANOVA gives identical p-values and confidence intervals to the t-test when you are only comparing two groups. This applies to both the overall F-test and the “post-hoc” pairwise t-test, which produce identical p-values in the two group scenario.</p></li>
+<li><p>Linear regression with an indicator variable: by this I mean an explanatory variable which takes one numerical value for the first group and a different numerical value for the second group. For example, 0 for the first group and 1 for the second group. This also turns out to be equivalent to a t-test. If you’ve seen how ANOVA is implemented by most software as a linear model with indicator variables for categories, this might not surprise you either.</p></li>
+<li><p>Linear regression with the indicator variable as the outcome and the measurement as the explanatory variable: as backwards as this may sound, this will also produce exactly the same p-value as a t-test. The hypothesis test for linear regression slope is the same regardless of which variable is the outcome and which is the predictor, although the regression equation is usually different.</p></li>
+<li><p>Correlation with an indicator variable: this is also equivalent to a t-test. This follows from the above two because the hypothesis test for correlation being equal to zero is equivalent to the hypothesis test for linear regression slope being equal to zero.</p></li>
+<li><p>Logistic regression with the group variable as the outcome and the continuous variable as a predictor: this is <em>not quite</em> the same as a t-test. However, if the measurements of the two groups are normally distributed, then the t-test and logistic regression are asymptotically equivalent—meaning that for a sufficiently large sample size, they will give the same p-values. The two methods also answer different research questions: the t-test is for a difference in means between two groups while logistic regression estimates the odds ratio of having a positive outcome (being in a particular group) for a given increase in the continuous predictor. The choice between the two methods should be based on which variable is your outcome and which variable is your explanatory variable; or whether you would prefer to discuss an odds ratio or a difference in means.</p></li>
+<li><p>Pairwise comparisons from an ANOVA model with more than two groups are also not quite equivalent to a t-test. What’s the difference? Both use a test statistic that has a <em>t</em> distribution calculated from the same difference in means, but the ANOVA pairwise comparisons will have better power because they use a pooled standard deviation from all groups (which, if the assumption of equal standard deviation in every group is true, will be more a precise estimate) and a <em>t</em> distribution with more degrees of freedom (which can make a big difference with a small sample size). As the sample size increases, the advantage of ANOVA over individual t-tests diminishes.</p></li>
+<li><p><strong>Bonus:</strong> The Mann-Whitney test (or Wilcoxon rank sum test) is equivalent to proportional odds logistic regression. (This claim is made in Frank Harrell’s <em>Regression Modeling Strategies</em> text; unlike the other examples above, I haven’t proved or read a proof of this equivalence.)</p></li>
+</ul>
+
+
+
+ ]]></description>
+  <category>statistics</category>
+  <category>t-test</category>
+  <guid>https://cameronpatrick.com/post/2019/12/equivalent-to-t-test/index.html</guid>
+  <pubDate>Sun, 15 Dec 2019 13:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>Understanding levels of variation and mixed models</title>
+  <dc:creator>Cameron Patrick</dc:creator>
+  <link>https://cameronpatrick.com/post/2019/12/understanding-levels-variation/index.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>Data that has some kind of hierarchical structure to it is very common in many fields, but is rarely discussed in introductory statistics courses. Terms used to describe this kind of data include hierarchical data, multi-level data, longitudinal data, split-plot designs or repeated measures designs. Statistical models used for these types of data include mixed-effects models (often abbreviated to just <em>mixed models</em>), repeated measures ANOVA and generalised estimating equations (GEEs).</p>
+<p>All of these terms and models arose from different contexts, but they share a common feature. Observations are not independent, as many classical statistical methods assume, and there is structure to the dependence which can be incorporated into a statistical model.</p>
+<p><strong>Using a statistical model which doesn’t account for the hierarchical nature of this data will give incorrect results.</strong></p>
+<section id="common-examples-of-hierarchical-data" class="level2">
+<h2 class="anchored" data-anchor-id="common-examples-of-hierarchical-data">Common examples of hierarchical data</h2>
+<p>Data with two levels of variation often arise when multiple measurements are made on the same units of observation. In the case of designed experiments, treatments may also be assigned to different levels of the hierarchy. Factors are commonly described as <em>within</em>-subject (varying at the lowest level) or <em>between</em>-subject (varying at a higher level). Some examples:</p>
+<ul>
+<li>Measurements made on the same people at several points in time. This is often called longitudinal data. In this example, time would be a within-subject factor and most other variables of interest—e.g., treatment, age or gender—would be between-subject.</li>
+<li>Measurements made at different depths of a number of rock core samples. In this example, the depths would be a within-subject factor and the location where the sample was obtained would be a between-subject factor.</li>
+<li>Assigning different treatments to different legs, arms or eyes of a number of people. For example, one eye may be given a new drug and the other eye a placebo. In this example, treatment is a within-subject factor.</li>
+<li>A split-plot experiment in agriculture: splitting plots of land into sections, planting different crops in each section, and using different irrigation methods on different plots. In this example, variety is a within-plot factor and irrigation is a between-plot factor.</li>
+<li>A split-mouth design in dentistry: assigning different treatments to different parts of participants’ mouths.</li>
+</ul>
+<p>It is possible to have more than two levels of variation. Some examples from different fields of research:</p>
+<ul>
+<li>Students within classrooms within schools.</li>
+<li>Repeated surveys administered to individuals within organisations.</li>
+<li>Glands within lesions within patients.</li>
+<li>Blocks of land divided into plots divided into subplots.</li>
+</ul>
+<p>In situations with multiple levels, it is common to describe variables based on the level at which they are measured or assigned, e.g.&nbsp;student-level, classroom-level or school-level.</p>
+</section>
+<section id="random-effects" class="level2">
+<h2 class="anchored" data-anchor-id="random-effects">Random effects</h2>
+<p>Multi-level data is commonly modelled using <em>mixed-effects models</em>, which get their name because they have both fixed effects and random effects. Fixed effects are the kind of explanatory variables you may be used to in ANOVA or linear regression: you would like to directly estimate the effect of these variables on your outcome. For example: treatment (drug or placebo) and time; crop variety and irrigation; depth and location of rock core samples. In these examples, the random effects would be the variables which group together correlated observations: participants in a trial; plots of land; rock core samples.</p>
+<p>Here are two different ways to think about random effects:</p>
+<ol type="1">
+<li>Random effects are factors where the individual levels are random samples from a larger population, or can be thought of in this way.</li>
+<li>Random effects are factors where you don’t care about the actual effect they have on your outcome, just their ability to account for correlation between observations.</li>
+</ol>
+<p>For a random effect, instead of estimating the effect of each specific level of the factor (e.g.&nbsp;each individual in a study), the model estimates the variance explained by that factor. This is sometimes reported as the proportion of variation explained at each level, e.g.&nbsp;63% of variance was at the individual level.</p>
+<p>Random effects can be “nested” inside other random effects if there are more than two levels of variation. For example, “classroom within school” could be specified as a random effect.</p>
+</section>
+<section id="simpler-analysis-options" class="level2">
+<h2 class="anchored" data-anchor-id="simpler-analysis-options">Simpler analysis options</h2>
+<p>It is sometimes possible to simplify an analysis if there are no variables which distinguish individuals at a particular level. For example, consider an experiment in which treatments were randomly assigned to litters of pigs but measurements were made on individual pigs, with no pig-level variables (e.g.&nbsp;sex) of interest in the analysis. In this situation, analysing litter averages would be a simpler analysis providing the same results as the mixed model.</p>
+<p>Another common situation is when there is a single within-subjects factor with two levels, for example before and after measurements. This kind of design can be analysed with a paired t-test or Wilcoxon signed rank test.</p>
+<p>As a practical consideration, random effects work best when they have a reasonable number of different levels. It may be better to treat a factor which is conceptually random as a fixed effect instead in some cases; e.g.&nbsp;if you are studying students from two or three schools, school should probably be a fixed effect rather than a random effect. There are also situations where this approach is not appropriate.</p>
+<p>If in doubt about how to analyse your multi-level data, <a href="https://scc.ms.unimelb.edu.au/">consult a statistician</a>.</p>
+</section>
+<section id="study-design-considerations" class="level2">
+<h2 class="anchored" data-anchor-id="study-design-considerations">Study design considerations</h2>
+<p>Effects at the lowest level of the hierarchy (e.g.&nbsp;within-subject) are usually estimated more precisely than effects at higher levels (e.g.&nbsp;between-subject). Or equivalently, tests of within-subject effects tend to be more powerful than tests of between-subject effects. One intuition about this is that there are more observations at the lowest level (e.g.&nbsp;number of subplots) than there are at higher levels (e.g.&nbsp;number of plots). Another way to look at this is that for within-subject factors, each individual unit of observation is effectively their own control.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>statistics</category>
+  <category>mixed-models</category>
+  <guid>https://cameronpatrick.com/post/2019/12/understanding-levels-variation/index.html</guid>
+  <pubDate>Mon, 09 Dec 2019 13:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>Plotting multiple variables at once using ggplot2 and tidyr</title>
+  <dc:creator>Cameron Patrick</dc:creator>
+  <link>https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>In exploratory data analysis, it’s common to want to make similar plots of a number of variables at once. For example, a randomised trial may look at several outcomes, or a survey may have a large number of questions. Here is a way to achieve to plot them efficiently using R and <code>ggplot2</code>.</p>
+<section id="pivoting-longer-turning-your-variables-into-rows" class="level2">
+<h2 class="anchored" data-anchor-id="pivoting-longer-turning-your-variables-into-rows">Pivoting longer: turning your variables into rows</h2>
+<p><code>ggplot2</code> doesn’t provide an easy facility to plot multiple variables at once because this is usually a sign that <a href="https://r4ds.had.co.nz/tidy-data.html">your data is not “tidy”</a>. For example, in situations where you want to plot two columns on a graph as points with different colours, the two columns often really represent the same variable, and there is a hidden grouping factor which distinguishes the data points you want to colour differently. The usual answer in this scenario is that you should restructure your data before plotting it. As a bonus, it will probably be easier to analyse your data in that form too.</p>
+<p>Likewise, if you want to split a plot into panels (or facets, in <code>ggplot2</code>-speak), you must plot a single response variable, with a grouping variable to indicate which panel the data should be plotted in. The best structure for your data depends on what you’re trying to do with it, and in this situation, even if your data is in the right form for analysis, it may not be right for some of the plots you want to make.</p>
+<p>Fortunately, restructuring your data into the right form is straightforward using the <code>tidyr</code> package and the <code>pivot_longer()</code> function. In this example, I’m going to look at some mocked-up survey data, with six questions stored in variables <code>Q1</code> through <code>Q6</code>. The original data frame looks like this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">print</span>(survey_data)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 300 × 7
+   group    Q1    Q2    Q3    Q4    Q5    Q6
+   &lt;fct&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt;
+ 1 B         4     1     4     1     2     3
+ 2 B         5     2     5     4     3     3
+ 3 B         5     4     4     2     2     3
+ 4 B         5     1     5     2     4     3
+ 5 A         5     2     5     1     1     2
+ 6 A         5     3     5     3     2     2
+ 7 A         4     3     5     1     4     1
+ 8 B         4     3     5     1     2     1
+ 9 B         4     4     4     1     3     2
+10 B         4     4     5     2     5     4
+# ℹ 290 more rows</code></pre>
+</div>
+</div>
+<p>You can convert this into a longer data frame where the question number is stored in one column and the response is stored in a separate column:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1">longer_data <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> survey_data <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb3-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pivot_longer</span>(Q1<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>Q6, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">names_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"question"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">values_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"response"</span>)</span>
+<span id="cb3-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">print</span>(longer_data)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1,800 × 3
+   group question response
+   &lt;fct&gt; &lt;chr&gt;       &lt;int&gt;
+ 1 B     Q1              4
+ 2 B     Q2              1
+ 3 B     Q3              4
+ 4 B     Q4              1
+ 5 B     Q5              2
+ 6 B     Q6              3
+ 7 B     Q1              5
+ 8 B     Q2              2
+ 9 B     Q3              5
+10 B     Q4              4
+# ℹ 1,790 more rows</code></pre>
+</div>
+</div>
+<p>You don’t even need to store the ‘long form’ data as a separate variable. If you’re not going to use the data in this form for anything else, it’s simpler to pipe the data straight into <code>ggplot2</code>. Here I use the <code>facet_wrap()</code> function to plot each question in a separate panel, so we can see the distribution of all of the questions at once:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1">survey_data <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb5-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pivot_longer</span>(Q1<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>Q6, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">names_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"question"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">values_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"response"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb5-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> response)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb5-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_bar</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb5-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">facet_wrap</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vars</span>(question), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ncol =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb5-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Response (on a 1 to 5 scale)"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of respondents"</span>)</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index_files/figure-html/panel-plot-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>You can use <code>question</code> as a factor anywhere else you would use a categorical variable with ggplot. For example, you can make some box plots:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1">survey_data <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb6-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pivot_longer</span>(Q1<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>Q6, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">names_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"question"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">values_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"response"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb6-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> response, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> question)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb6-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_boxplot</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb6-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Question"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Response (on a 1 to 5 scale)"</span>)</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index_files/figure-html/box-plot-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>This is also a nice demonstration of how box plots are rarely the best way to present Likert scale data.</p>
+<p>Any other variables are retained after you call <code>pivot_longer()</code>, so you can e.g.&nbsp;compare the responses to survey questions based on a demographic variable:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1">survey_data <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb7-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pivot_longer</span>(Q1<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>Q6, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">names_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"question"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">values_to =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"response"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb7-3">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> response, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">colour =</span> group)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb7-4">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">facet_wrap</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vars</span>(question), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ncol =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb7-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_point</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stat =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"count"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb7-6">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_line</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stat =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"count"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb7-7">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Response (on a 1 to 5 scale)"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of respondents"</span>)</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index_files/figure-html/line-plot-1.png" class="img-fluid" width="720"></p>
+</div>
+</div>
+<p>By default, R will sort the levels of factors alphabetically. This isn’t always what you want in this situation—often the order of the variables in your data frame has some meaning to it. The <code>fct_inorder()</code> function allows you to reorder levels of a factor in the order of first appearance in the file. If you use that with the column produced by <code>pivot_longer()</code>, the factor will be ordered by the order of the columns in the original data frame.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>r</category>
+  <category>ggplot</category>
+  <guid>https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index.html</guid>
+  <pubDate>Mon, 25 Nov 2019 13:00:00 GMT</pubDate>
+</item>
+</channel>
+</rss>
