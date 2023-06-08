@@ -1,0 +1,229 @@
+---
+title: "Fitting many statistical models at once using dplyr"
+author: "Cameron Patrick"
+date: "2023-06-08"
+draft: false
+categories: [r, statistical-models]
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.width = 6,
+  fig.height = 3.5,
+  fig.retina = 2,
+  dpi = 195
+)
+```
+
+One common task in applied statistics is to fit and interpret a number of statistical models at once. For example, fitting a model with the same structure to a number of different outcome or explanatory variables, or fitting several models with different structure to the same data. Here are some examples of how I usually do this, using features that were introduced with `dplyr` version 1.1.0.
+
+For this demonstration, we'll be using the R packages `dplyr`, `tidyr`, `ggplot2` (all of which are included in the `tidyverse`), as well as `gt` for making tables, `emmeans` for obtaining estimated means and comparisons, and `performance` for model-checking.
+
+```{r packages, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(gt)
+library(emmeans)
+library(performance)
+```
+
+```{r, include = FALSE}
+theme_set(theme_bw())
+```
+
+We'll be using the [Palmer Penguins data](https://allisonhorst.github.io/palmerpenguins/) collected at Palmer Station, Antarctica, made available by Dr Kristen Gorman, and conveniently accessible in R using the `palmerpenguins` package. This dataset contains measurements on a number of penguins of different species on different islands.
+
+```{r}
+library(palmerpenguins)
+data(penguins)
+head(penguins)
+```
+
+Suppose we want to compare bill length, bill depth, flipper length, and body mass between species. We could manually run a separate model for each, but here's a way. As with many things in R, the trick to doing this easily is to get the data in long form, with the outcomes stacked on top of each other, and a variable indicating which outcome is being measured.
+
+The `pivot_longer()` function from `tidyr` gets the data into this format. I've also taken an extra step of recoding the "outcome" variable to give more descriptive labels. This isn't required but it will make the tables and plots that we make later look nicer.
+
+```{r}
+penguins_long <- penguins %>%
+  pivot_longer(
+    c(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g),
+    names_to = "outcome",
+    values_to = "value"
+  ) %>%
+  mutate(
+    outcome = fct_inorder(outcome),
+    outcome = fct_recode(
+      outcome,
+      "Bill length (mm)" = "bill_length_mm",
+      "Bill depth (mm)" = "bill_depth_mm",
+      "Flipper length (mm)" = "flipper_length_mm",
+      "Body mass (g)" = "body_mass_g"
+    )
+  )
+```
+
+You can see we now have four rows for each penguin, one for each type of measurement:
+
+```{r}
+head(penguins_long)
+```
+
+We can use `group_by()` and `summarise()` from the `dplyr` package to group the rows by outcome, and then "summarise" these groups of rows down to a single row containing a statistical model. This makes use of a couple of R tricks: 'list columns', a data frame column that contains a more complex object than the standard R data types (numeric, character, etc); and the new `pick()` verb which returns a data frame containing selected columns (in this case, all of them) within the group that's being operated on.
+
+```{r}
+penguin_models <- penguins_long %>%
+  group_by(outcome) %>%
+  summarise(
+    model = list(
+      lm(value ~ species, data = pick(everything()))
+    )
+  )
+```
+
+You can see the resulting data from contains four rows, one for each outcome, and a statistical model ("lm") for each:
+
+```{r}
+print(penguin_models)
+```
+
+Ideally we would also do a visual check of model assumptions. One way to do this is something like the code below, which saves a residual plot for each model to an image file, which can be inspected later. It uses the `check_model()` function in the `performance` package to generate the plots. This blog post doesn't show the generated residual plots, but they all look fine.
+
+```{r, eval = FALSE}
+walk2(
+  penguin_models$outcome, 
+  penguin_models$model,
+  ~ ggsave(
+    paste0(.x, ".png"),
+    plot(check_model(.y, check = c("pp_check", "linearity",
+                                   "homogeneity", "qq"))),
+    width = 12,
+    height = 9
+  )
+)
+```
+
+Once we've fitted the models, we can obtain quantities of interest from them. In this example we'll look at estimated means for each species, p-values testing the hypothesis that all species means are equal, and comparisons (differences in means) between all pairs of species.
+
+The `reframe()` function from `dplyr` allows us to run some code that produces a data frame on each model and stack the results on top of each other. We can use the `emmeans()` function from the `emmeans` package to obtain estimated marginal means, and `as_tibble()` to convert the result into a data frame. The `rowwise(outcome)` at the start tells `reframe()` that we want to call `emmeans()` separately for each row of the data frame (i.e., each outcome model), and preserve the `outcome` variable in the result.
+
+```{r}
+penguin_means <- penguin_models %>%
+  rowwise(outcome) %>%
+  reframe(
+    emmeans(model, "species") %>%
+      as_tibble()
+  )
+```
+
+The first few rows of the resulting data frame look like this:
+
+```{r}
+head(penguin_means)
+```
+
+We can use `ggplot()` to present the results visually, for example like this. We can see that there's a huge variation between species in means of all of these measurements.
+
+```{r}
+penguin_means %>%
+  ggplot(aes(x = emmean, y = species, xmin = lower.CL, xmax = upper.CL)) +
+  geom_errorbar(width = 0.5) +
+  geom_point() +
+  scale_y_discrete(limits = rev) +
+  facet_wrap(vars(outcome), nrow = 2, scales = "free_x") +
+  labs(
+    x = "Mean", 
+    y = "Species",
+    caption = "Error bars show 95% confidence interval for mean."
+  )
+```
+
+The `gt()` function can be used to produce a nice table of results. In the code shown below I've combined the `lower.CL` and `upper.CL` columns to produce a single column with the confidence interval, and separately specified fewer decimal places for body mass than the other measures. The `group_by()` function before `gt()` results in a table sub-heading for each outcome. You could easily change this to `group_by(species)` to arrange the results by species.
+
+```{r}
+penguin_means %>%
+  group_by(outcome) %>%
+  gt() %>%
+  fmt_number(c(emmean, SE, lower.CL, upper.CL),
+             decimals = 1, use_seps = FALSE) %>%
+  fmt_number(c(emmean, SE, lower.CL, upper.CL),
+             rows = outcome == "Body mass (g)",
+             decimals = 0, use_seps = FALSE) %>%
+  fmt_number(df, decimals = 0) %>%
+  cols_align("left", species) %>%
+  cols_merge_range(lower.CL, upper.CL, sep = ", ") %>%
+  cols_label(
+    species = "Species",
+    emmean = "Mean",
+    lower.CL = "95% Confidence Interval"
+  )
+```
+
+We can do similar to produce an overall "F" test for each model, testing the hypothesis that all species have equal means for a particular measure. The `joint_test()` function in `emmeans` does this.
+
+```{r}
+penguin_tests <- penguin_models %>%
+  rowwise(outcome) %>%
+  reframe(
+    joint_tests(model) %>%
+      as_tibble()
+  )
+```
+
+This is what the resulting data frame looks like:
+
+```{r}
+print(penguin_tests)
+```
+
+Again, this can be presented in a table using `gt()`:
+
+```{r}
+penguin_tests %>%
+  gt() %>%
+  fmt_number(F.ratio, decimals = 1) %>%
+  fmt_number(p.value, decimals = 3) %>%
+  cols_merge_range(df1, df2, sep = ", ") %>%
+  sub_small_vals(p.value, threshold = 0.001) %>%
+  cols_label(
+    outcome = "Outcome",
+    `model term` = "Predictor",
+    df1 = "df",
+    F.ratio = "F",
+    p.value = "p-value"
+  )
+```
+
+Finally, we often want to obtain comparisons between particular estimated quantities. In this example we use the `emmeans` package again for this, this time using the `pairs()` function to produce comparisons between all pairs of species.
+
+```{r}
+penguin_pairs <- penguin_models %>%
+  rowwise(outcome) %>%
+  reframe(
+    emmeans(model, "species") %>%
+      pairs(infer = TRUE, reverse = TRUE, adjust = "none") %>%
+      as_tibble()
+  )
+```
+
+The first few rows of the data frame look like this:
+
+```{r}
+head(penguin_pairs)
+```
+
+And once again, these can comparisons can be plotted or presented in a table. In the plot below I've also added a dotted line indicating zero difference.
+
+```{r}
+penguin_pairs %>%
+  ggplot(aes(x = estimate, y = contrast, xmin = lower.CL, xmax = upper.CL)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_errorbar(width = 0.5) +
+  geom_point() +
+  scale_y_discrete(limits = rev) +
+  facet_wrap(vars(outcome), nrow = 2, scales = "free_x") +
+  labs(
+    x = "Difference in means", 
+    y = "Contrast",
+    caption = "Error bars show 95% confidence interval for difference in mean."
+  )
+```
