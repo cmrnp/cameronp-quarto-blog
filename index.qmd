@@ -12,6 +12,15 @@ about:
 format:
   html:
     page-layout: full
+listing:
+  contents: post
+  sort: "date desc"
+  type: grid
+  categories: false
+  feed: false
+  sort-ui: false
+  filter-ui: false
+  max-items: 3
 ---
 
 I am a PhD student with the [Clinical Epidemiology & Biostatistics Unit (CEBU)](https://www.mcri.edu.au/research/research-areas/population-health/clinical-epidemiology-biostatistics-cebu) at the Murdoch Children's Research Institute in Melbourne, Australia. My research is about estimating complier average causal effects (CACE) in clinical trials in the presence of missing data. My supervisors are [Professor Katherine Lee](https://www.mcri.edu.au/researcher-details/katherine-lee), [Associate Professor Margarita Moreno-Betancur](https://www.mcri.edu.au/researcher-details/margarita-moreno-betancur) and [Dr Thomas Sullivan](https://research.sahmri.org.au/en/persons/thomas-sullivan).
@@ -32,3 +41,5 @@ University of Melbourne, 2016
 
 **Bachelor of Science (Pure Mathematics)**<br>
 University of Western Australia, 2009
+
+## Recent blog posts
