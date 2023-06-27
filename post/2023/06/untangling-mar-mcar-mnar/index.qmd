@@ -1,5 +1,5 @@
 ---
-title: "Untangling missing data terminology (MAR, MCAR, MNAR) using DAGs"
+title: "Untangling missing data mechanisms using causal DAGs"
 author: "Cameron Patrick"
 date: "2023-06-28"
 draft: true
@@ -57,13 +57,13 @@ Unfortunately, there's no way to determine the missing data mechanism purely by 
 
 It depends! (I'm statistician, you should have known I would say that.)
 
-Complete cases analysis is unbiased if the data is MCAR. This is a sufficient condition, not a necessary condition [@little_missing_2021]: there are situations where complete cases may be valid, or at least provide a valid estimate of a particular quantity of interest, under MAR or MNAR. Depending on the amount of missing data, complete cases analysis may be inefficient (i.e., have lower power than other methods) because other records where no variables are missing are used in the analysis.
+Complete cases analysis is unbiased if the data is MCAR. This is a sufficient condition, not a necessary condition [@little_missing_2021]: there are situations where complete cases may be valid, or at least provide a valid estimate of a particular quantity of interest, under MAR or MNAR. Depending on the amount of missing data, complete cases analysis may be inefficient (i.e., have lower power than other methods) because only cases where no variables have missing values are used in the analysis.
 
 Multiple imputation, likelihood-based methods and full Bayesian methods are unbiased if the data is MAR or MCAR [@little_missing_2021]. Multiple imputation is approximately equivalent to a maximum-likelihood method if the underlying model is the same.
 
 In some specific MNAR situations, either or both of the above methods may still be valid, depending on what you're trying to estimate [@white_bias_2010].
 
-## Describing missing data processes using causal diagrams (DAGs)
+## Making the missing data process explicit using causal diagrams (DAGs)
 
 Causal diagrams are used to represent causal relationships between variables in a study [@pearl_causal_1995]. These relationships are shown visually using a directed acyclic graph (DAG), which is a mathematical term for a bunch of circles with arrows between them. The circles (nodes) represent variables and arrows (edges) between them represent direct causal pathways. The direction of the arrows represents the direction of causation, and a valid DAG never has a path leading from a particular point back to that same point (a "cycle" in mathematician-speak). If there is no path following the arrows between two variables in a DAG, there is no causal connection between them.
 
