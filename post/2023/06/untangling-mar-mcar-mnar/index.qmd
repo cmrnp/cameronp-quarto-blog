@@ -7,7 +7,7 @@ csl: apa.csl
 bibliography: 
   - missing-data.bib
   - dags.bib
-categories: [missing-data]
+categories: [missing-data, statistics]
 format:
   html:
     toc: true
@@ -61,7 +61,7 @@ It depends! (I'm statistician, you should have known I would say that.)
 
 Complete cases analysis is unbiased if the data is MCAR. This is a sufficient condition, not a necessary condition [@little_missing_2021]: there are situations where complete cases may be valid, or at least provide a valid estimate of a particular quantity of interest, under MAR or MNAR. Depending on the amount of missing data, complete cases analysis may be inefficient (i.e., have lower power than other methods) because only cases where no variables have missing values are used in the analysis.
 
-Multiple imputation, likelihood-based methods and full Bayesian methods are unbiased if the data is MAR or MCAR [@little_missing_2021]. Multiple imputation is approximately equivalent to a maximum-likelihood method if the underlying model is the same.
+Multiple imputation, likelihood-based methods and full Bayesian methods are unbiased if the data is MAR or MCAR [@little_missing_2021]. Multiple imputation is approximately equivalent to a maximum-likelihood method if the underlying model is the same [@collins_comparison_2001].
 
 In some specific MNAR situations, either or both of the above methods may still be valid, depending on what you're trying to estimate [@white_bias_2010].
 

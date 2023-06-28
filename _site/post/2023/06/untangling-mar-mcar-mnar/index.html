@@ -164,6 +164,7 @@ div.csl-indent {
       <h1 class="title">Untangling missing data mechanisms using causal DAGs</h1>
                                 <div class="quarto-categories">
                 <div class="quarto-category">missing-data</div>
+                <div class="quarto-category">statistics</div>
               </div>
                   </div>
   </div>
@@ -263,7 +264,7 @@ Ignorable and non-ignorable missingness
 <h3 class="anchored" data-anchor-id="if-i-know-my-missing-data-mechanism-what-analysis-do-i-do">If I know my missing data mechanism, what analysis do I do?</h3>
 <p>It depends! (I’m statistician, you should have known I would say that.)</p>
 <p>Complete cases analysis is unbiased if the data is MCAR. This is a sufficient condition, not a necessary condition <span class="citation" data-cites="little_missing_2021">(<a href="#ref-little_missing_2021" role="doc-biblioref">Little, 2021</a>)</span>: there are situations where complete cases may be valid, or at least provide a valid estimate of a particular quantity of interest, under MAR or MNAR. Depending on the amount of missing data, complete cases analysis may be inefficient (i.e., have lower power than other methods) because only cases where no variables have missing values are used in the analysis.</p>
-<p>Multiple imputation, likelihood-based methods and full Bayesian methods are unbiased if the data is MAR or MCAR <span class="citation" data-cites="little_missing_2021">(<a href="#ref-little_missing_2021" role="doc-biblioref">Little, 2021</a>)</span>. Multiple imputation is approximately equivalent to a maximum-likelihood method if the underlying model is the same.</p>
+<p>Multiple imputation, likelihood-based methods and full Bayesian methods are unbiased if the data is MAR or MCAR <span class="citation" data-cites="little_missing_2021">(<a href="#ref-little_missing_2021" role="doc-biblioref">Little, 2021</a>)</span>. Multiple imputation is approximately equivalent to a maximum-likelihood method if the underlying model is the same <span class="citation" data-cites="collins_comparison_2001">(<a href="#ref-collins_comparison_2001" role="doc-biblioref">Collins et al., 2001</a>)</span>.</p>
 <p>In some specific MNAR situations, either or both of the above methods may still be valid, depending on what you’re trying to estimate <span class="citation" data-cites="white_bias_2010">(<a href="#ref-white_bias_2010" role="doc-biblioref">White &amp; Carlin, 2010</a>)</span>.</p>
 </section>
 </section>
@@ -383,6 +384,9 @@ Ignorable and non-ignorable missingness
 </section>
 
 <div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-line-spacing="2" role="list">
+<div id="ref-collins_comparison_2001" class="csl-entry" role="listitem">
+Collins, L. M., Schafer, J. L., &amp; Kam, C.-M. (2001). A comparison of inclusive and restrictive strategies in modern missing data procedures. <em>Psychological Methods</em>, <em>6</em>(4), 330–351. <a href="https://doi.org/10.1037/1082-989X.6.4.330">https://doi.org/10.1037/1082-989X.6.4.330</a>
+</div>
 <div id="ref-lee_assumptions_2023" class="csl-entry" role="listitem">
 Lee, K. J., Carlin, J. B., Simpson, J. A., &amp; Moreno-Betancur, M. (2023). Assumptions and analysis planning in studies with missing data in multiple variables: Moving beyond the <span>MCAR</span>/<span>MAR</span>/<span>MNAR</span> classification. <em>International Journal of Epidemiology</em>, dyad008. <a href="https://doi.org/10.1093/ije/dyad008">https://doi.org/10.1093/ije/dyad008</a>
 </div>
