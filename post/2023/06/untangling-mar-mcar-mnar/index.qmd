@@ -55,7 +55,7 @@ Sometimes you may hear missing data described as "ignorable" or "non-ignorable".
 
 Unfortunately, there's no way to determine the missing data mechanism purely by looking at the data --- you need to think about the process generating the data and why some of it is missing. A causal DAG is a good way to reason about the relationship between the variables and their reasons for being missing and can help you decide what analysis to use. I'll have examples of this later in this blog.
 
-### If I know my missing data mechanism, what analysis do I do?
+### If I know my missing data mechanism, what analysis should I do?
 
 It depends! (I'm statistician, you should have known I would say that.)
 
@@ -176,9 +176,9 @@ ggdag(dag_j) + theme_dag()
 
 If you have an m-DAG where a quantity of interest cannot be recovered, you can consider doing a sensitivity analysis using a $\delta$-adjustment. This process is described in popular texts on missing data, e.g. @van_buuren_flexible_2018 sec 9.2 (also [available online](https://stefvanbuuren.name/fimd/sec-sensitivity.html)) or @molenberghs_handbook_2015.
 
-## Tell me again, what method should I use?
+## Applying DAGs to real missing data problems
 
-The first place is start is to draw a DAG representing the causal relationships between your variables and their possible reasons for being missing. This will require some thinking about which arrows are plausible and which are not, based on your understanding of the real-world system.
+Start by drawing a DAG representing the causal relationships between your variables and their possible reasons for being missing. This will require some thinking about which arrows are plausible and which are not, based on your understanding of the real-world relationships between variables and the way the data has been collected.
 
 Once you've drawn a DAG for your study, you can compare it to the canonical DAGs in @moreno-betancur_canonical_2018. For canonical DAGs A, B, D and E, complete cases analysis was shown to provide a valid estimate of the relationship between the outcome and the exposure. For canonical DAGs A, B, C, D and E, multiple imputation was shown to provide a valid estimate of the relationship between the outcome and the exposure. @lee_assumptions_2023 provides further practical guidance for data analysis using missingness DAGs.
 
