@@ -85,20 +85,20 @@ dag_nomiss <- dagify(
   Y ~ X + Z1 + Z2,
   X ~ Z1 + Z2 + U,
   Z1 ~ U,
-  Z2 ~ U
-)
-coordinates(dag_nomiss) <- list(
-  x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3),
-  y = c(U = 0, Z1 = 1, Z2 = -1, X = 0, Y = 0)
+  Z2 ~ U,
+  coords = list(
+    x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3),
+    y = c(U = 0, Z1 = 1, Z2 = -1, X = 0, Y = 0)
+  )
 )
 ggdag(dag_nomiss) + theme_dag()
 ```
 
 This DAG is called a complete-data DAG, or *c-DAG*. It represents the causal relationships between the variables if all of them had been completely observed.
 
-To represent possible causes of missing data, we can introduce three new variables in the DAG: *MX*, *MY* and *MZ2*, representing whether or not the exposure, outcome, or incomplete confounders are missing. Adding these variables produces a missingness DAG, or *m-DAG*. @moreno-betancur_canonical_2018 also considers unmeasured causes of missingness (*W*) which are not related to any of the substantive variables in the study but do affect the probability of missingness.
+To represent possible causes of missing data, we can introduce three new variables in the DAG: *MX*, *MY* and *MZ2*, representing whether or not the exposure (*X*), outcome (*Y*), or partially-observed confounders (*Z2*) are missing. Adding these variables produces a missingness DAG, or *m-DAG*. @moreno-betancur_canonical_2018 also considers unmeasured causes of missingness (*W*) which are not related to any of the substantive variables in the study but do affect the probability of missingness.
 
-If we interpret the c-DAG above as an m-DAG, the absence of arrows to *MX*, *MY* and *MZ2* would mean that there is no causal relationship between any of the variables and their missingness. So the c-DAG is the m-DAG for MCAR. This scenario would be quite unusual in most real studies, unless the missing data was deliberately planned.
+If we turn the c-DAG above into an m-DAG by adding nodes for *MX*, *MY*, and *MZ2* but no additional arrows, the absence of arrows to *MX*, *MY* and *MZ2* would mean that there is no causal relationship between any of the variables and their missingness. In other words, the c-DAG is the m-DAG for MCAR. This scenario would be quite unusual in most real studies, unless the missing data was deliberately planned.
 
 Figure 2 in @moreno-betancur_canonical_2018 provides 10 examples of m-DAGs, with different combinations of the following features:
 
@@ -117,18 +117,18 @@ dag_a <- dagify(
   Z2 ~ U,
   MX ~ Z1 + W,
   MY ~ Z1 + W,
-  MZ2 ~ Z1 + W
-)
-coordinates(dag_a) <- list(
-  x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3,
-        MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
-  y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
-        MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
+  MZ2 ~ Z1 + W,
+  coords = list(
+    x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3,
+          MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
+    y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
+          MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
+  )
 )
 ggdag(dag_a) + theme_dag()
 ```
 
-In this DAG, both complete cases analysis and multiple imputation provide valid estimates of not just the relationship between the exposure and the outcome, but also the complete distribution of the outcome. This isn't something that should be obvious just from looking at the DAG --- there's a derivation in the supplementary materials for @moreno-betancur_canonical_2018 for this and the other DAGs, with the results summarised in Tables 1 and 2 of that paper.
+In this DAG, so long as the model's adjustment for confounders is correctly specified (a big "if"!), both complete cases analysis and multiple imputation provide valid estimates of not just the relationship between the exposure and the outcome, but also the complete distribution of the outcome. This isn't something that should be obvious just from looking at the DAG --- there's a derivation in the supplementary materials for @moreno-betancur_canonical_2018 for this and the other DAGs, with the results summarised in Tables 1 and 2 of that paper. Those who are familiar with causal DAGs may want to know that when there is missing data, this derivation is more complex than rules like "d-separation" and cannot be done algorithmically.
 
 In other missing data situations, it may be possible to obtain the effect of the exposure but not, for example, the population mean of the outcome. In some situations, it may not be possible to obtain a valid estimate of either.
 
@@ -142,13 +142,13 @@ dag_e <- dagify(
   Z2 ~ U,
   MX ~ Z1 + Z2 + X + W,
   MY ~ Z1 + Z2 + X + W,
-  MZ2 ~ Z1 + Z2 + X + W
-)
-coordinates(dag_e) <- list(
-  x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3,
-        MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
-  y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
-        MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
+  MZ2 ~ Z1 + Z2 + X + W,
+  coords = list(
+    x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3,
+          MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
+    y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
+          MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
+  )
 )
 ggdag(dag_e) + theme_dag()
 ```
@@ -163,18 +163,22 @@ dag_j <- dagify(
   Z2 ~ U,
   MX ~ Z1 + Z2 + X + Y + W,
   MY ~ Z1 + Z2 + X + Y + W,
-  MZ2 ~ Z1 + Z2 + X + Y + W
-)
-coordinates(dag_j) <- list(
-  x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3,
-        MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
-  y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
-        MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
+  MZ2 ~ Z1 + Z2 + X + Y + W,
+  coords = list(
+    x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3,
+          MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
+    y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
+          MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
+  )
 )
 ggdag(dag_j) + theme_dag()
 ```
 
+If you have an m-DAG where a quantity of interest cannot be recovered, you can consider doing a sensitivity analysis using a $\delta$-adjustment. This process is described in popular texts on missing data, e.g. @van_buuren_flexible_2018 sec 9.2 (also [available online](https://stefvanbuuren.name/fimd/sec-sensitivity.html)) or @molenberghs_handbook_2015.
+
 ## Tell me again, what method should I use?
+
+The first place is start is to draw a DAG representing the causal relationships between your variables and their possible reasons for being missing. This will require some thinking about which arrows are plausible and which are not, based on your understanding of the real-world system.
 
 Once you've drawn a DAG for your study, you can compare it to the canonical DAGs in @moreno-betancur_canonical_2018. For canonical DAGs A, B, D and E, complete cases analysis was shown to provide a valid estimate of the relationship between the outcome and the exposure. For canonical DAGs A, B, C, D and E, multiple imputation was shown to provide a valid estimate of the relationship between the outcome and the exposure. @lee_assumptions_2023 provides further practical guidance for data analysis using missingness DAGs.
 
@@ -182,6 +186,10 @@ Once you've drawn a DAG for your study, you can compare it to the canonical DAGs
 
 Randomised clinical trials provide some additional guarantees about the nature of the missing data process which observational studies do not: the exposure is completely observed and known to be unrelated to baseline covariates. @sullivan_should_2018 considers several methods for dealing with missing data in randomised trials.
 
-The papers above provide examples of situations where multiple imputation is not necessarily better than simpler methods, as well as situations where multiple imputation is required.
+The papers above provide examples of situations where multiple imputation is not necessarily better than simpler methods, as well as situations where multiple imputation is required. The situations where particular missing data methods work do not neatly align with the definitions of MCAR/MAR/MNAR but by drawing a DAG and considering the results in the papers above you should be able to determine which popular methods are applicable for your data and research question.
+
+::: {style="font-size:80%"}
+Thanks to Lachlan Cribb for providing feedback which improved this blog post.
+:::
 
 ## References
