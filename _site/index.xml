@@ -10,7 +10,726 @@
 <atom:link href="https://cameronpatrick.com/index.xml" rel="self" type="application/rss+xml"/>
 <description></description>
 <generator>quarto-1.3.302</generator>
-<lastBuildDate>Wed, 07 Jun 2023 14:00:00 GMT</lastBuildDate>
+<lastBuildDate>Tue, 27 Jun 2023 14:00:00 GMT</lastBuildDate>
+<item>
+  <title>Untangling missing data mechanisms using causal DAGs</title>
+  <dc:creator>Cameron Patrick</dc:creator>
+  <link>https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>Missing data refers to data which was intended to have been collected but was not, and is a common scenario in biomedical and social science research. Correctly analysing datasets that have missing data requires extra care and consideration to produce correct results.</p>
+<p>The best method for dealing with missing data depends on the underlying process causing the missingness. There is no single approach that is always the best, and the terminology commonly used to describe missingness doesn’t directly relate to what analysis methods perform best. In this blog post I’ll explain how to describe missing data processes using causal diagrams (DAGs) and provide some references to help choose an analysis based on that.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/dont_fight_a_cat_MI.jpeg" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">(original image via <a href="https://twitter.com/marginoferror/status/935937659888836609">@marginoferror on Twitter</a>, adapted by me for missing data purposes.)</figcaption><p></p>
+</figure>
+</div>
+<section id="mcar-mar-mnar-or-nah" class="level2">
+<h2 class="anchored" data-anchor-id="mcar-mar-mnar-or-nah">MCAR, MAR, MNAR or nah?</h2>
+<p>The most common classification for missing data mechanisms is as either Missing Completely at Random (MCAR), Missing at Random (MAR), or Missing Not at Random (MNAR). This classification is based on concepts first introduced in <span class="citation" data-cites="rubin_inference_1976">Rubin (1976)</span>. These terms are widespread, but can be confusing when first encountered because they do not mean quite what you might expect them to mean.</p>
+<p>Data is considered to be <strong>Missing Completely at Random (MCAR)</strong> if the probability of being missing does not depend on the values of any of the variables in the data, whether those values are missing or observed <span class="citation" data-cites="little_statistical_2014">(Little &amp; Rubin, 2014, p. 12)</span>. In other words, the missingness cannot be related to the research question of interest <span class="citation" data-cites="lee_framework_2021">(Lee et al., 2021)</span>.</p>
+<p>Data is <strong>Missing at Random (MAR)</strong> if the probability of being missing depends only on data that was observed <span class="citation" data-cites="little_statistical_2014">(Little &amp; Rubin, 2014, p. 12)</span>. This term is misleading if encountered without context, as a plain-language interpretation suggests it may mean something more like MCAR. However, MCAR is a stricter condition than MAR. In other words, if data is MCAR, it is also considered MAR. There are a few subtly different ways of defining this concept mathematically; <span class="citation" data-cites="seaman_what_2013">Seaman et al. (2013)</span> goes into the detail for those who are interested.</p>
+<p>Data is <strong>Missing Not at Random (MNAR)</strong> if it’s not Missing at Random <span class="citation" data-cites="little_statistical_2014">(Little &amp; Rubin, 2014, p. 12)</span>. At least that’s relatively straightforward. In other words, the probability of data being missing is related to what the missing values would have been, had we observed them. It is often implied that MNAR data is a lost cause for statistical analysis, but later in this post we will see specific examples of MNAR where common statistical procedures produce valid results for common questions.</p>
+<p>Whether data is classified as MAR or MNAR depends on more than just the variables with missing data. It also depends on the availability of additional variables in the dataset which may be able to explain the probability of missingness.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Historical aside
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><span class="citation" data-cites="rubin_inference_1976">Rubin (1976)</span> is often cited as the source of this classification system, but didn’t actually introduce the terms Missing Completely at Random or Missing Not at Random, only Missing at Random. Rubin originally defined an additional condition, Observed at Random. Data which is both Missing at Random and Observed at Random is what we would now commonly refer to as Missing Completely at Random. The term Missing Completely at Random came later, in <span class="citation" data-cites="marini_maximum-likelihood_1980">Marini et al. (1980)</span>. This history is given in <span class="citation" data-cites="little_missing_2021">Little (2021)</span> and was also confirmed <a href="https://twitter.com/rnishimura/status/1668824406766878721">in a Tweet by Raphael Nishimura</a>: ‘I was curious about that too and did some digging with the authors. Rod said that “Rubin’s 1976 Biometrika paper defines MAR and OAR (observed at random) but he may not have put the two together.” Don confirmed it and added that “MCAR was first formally defined in a joint paper with Marini and Olsen, I think in 1980, in a more applied paper.”’</p>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Ignorable and non-ignorable missingness
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Sometimes you may hear missing data described as “ignorable” or “non-ignorable”. These terms are also potentially misleading. “Ignorable” missing data doesn’t mean that you can just ignore the fact that you have missing data when doing an analysis. This term was defined in <span class="citation" data-cites="rubin_inference_1976">Rubin (1976)</span> to mean that (1) the data is MAR; (2) the likelihood can be factorised into a part relating to the missingness probability and a part relating to the distribution of the underlying data. These provide a sufficient condition for missing data to be dealt with using likelihood-based methods.</p>
+</div>
+</div>
+<section id="how-do-i-know-what-kind-of-missing-data-mechanism-i-have" class="level3">
+<h3 class="anchored" data-anchor-id="how-do-i-know-what-kind-of-missing-data-mechanism-i-have">How do I know what kind of missing data mechanism I have?</h3>
+<p>Unfortunately, there’s no way to determine the missing data mechanism purely by looking at the data — you need to think about the process generating the data and why some of it is missing. A causal DAG is a good way to reason about the relationship between the variables and their reasons for being missing and can help you decide what analysis to use. I’ll have examples of this later in this blog.</p>
+</section>
+<section id="if-i-know-my-missing-data-mechanism-what-analysis-do-i-do" class="level3">
+<h3 class="anchored" data-anchor-id="if-i-know-my-missing-data-mechanism-what-analysis-do-i-do">If I know my missing data mechanism, what analysis do I do?</h3>
+<p>It depends! (I’m statistician, you should have known I would say that.)</p>
+<p>Complete cases analysis is unbiased if the data is MCAR. This is a sufficient condition, not a necessary condition <span class="citation" data-cites="little_missing_2021">(Little, 2021)</span>: there are situations where complete cases may be valid, or at least provide a valid estimate of a particular quantity of interest, under MAR or MNAR. Depending on the amount of missing data, complete cases analysis may be inefficient (i.e., have lower power than other methods) because only cases where no variables have missing values are used in the analysis.</p>
+<p>Multiple imputation, likelihood-based methods and full Bayesian methods are unbiased if the data is MAR or MCAR <span class="citation" data-cites="little_missing_2021">(Little, 2021)</span>. Multiple imputation is approximately equivalent to a maximum-likelihood method if the underlying model is the same <span class="citation" data-cites="collins_comparison_2001">(Collins et al., 2001)</span>.</p>
+<p>In some specific MNAR situations, either or both of the above methods may still be valid, depending on what you’re trying to estimate <span class="citation" data-cites="white_bias_2010">(White &amp; Carlin, 2010)</span>.</p>
+</section>
+</section>
+<section id="making-the-missing-data-process-explicit-using-causal-diagrams-dags" class="level2">
+<h2 class="anchored" data-anchor-id="making-the-missing-data-process-explicit-using-causal-diagrams-dags">Making the missing data process explicit using causal diagrams (DAGs)</h2>
+<p>Causal diagrams are used to represent causal relationships between variables in a study <span class="citation" data-cites="pearl_causal_1995">(Pearl, 1995)</span>. These relationships are shown visually using a directed acyclic graph (DAG), which is a mathematical term for a bunch of circles with arrows between them. The circles (nodes) represent variables and arrows (edges) between them represent direct causal pathways. The direction of the arrows represents the direction of causation, and a valid DAG never has a path leading from a particular point back to that same point (a “cycle” in mathematician-speak). If there is no path following the arrows between two variables in a DAG, there is no causal connection between them.</p>
+<p>The structure of the DAG behind your data cannot be inferred just from looking at the data. It needs to come from substantive expertise about the underlying variables in the data, their relationship to each other, and how the data was collected.</p>
+<p>The idea of using a DAG to represent missing data assumptions was first introduced in <span class="citation" data-cites="mohan_graphical_2014">Mohan &amp; Pearl (2014)</span>. To provide more practical advice for specific scenarios, <span class="citation" data-cites="moreno-betancur_canonical_2018">Moreno-Betancur et al. (2018)</span> introduces “canonical” causal diagrams for missing data in the setting where we want to estimate the relationship between an outcome <em>Y</em> and an exposure <em>X</em> (that’s epidemiologist-speak for the main predictor of interest), adjusting for some confounding variables which may influence both the outcome and the exposure. The confounding variables may be either completely observed (<em>Z1</em>) or have some missing data (<em>Z2</em>). There may also be some unknown, unmeasured factors <em>U</em> which affect the exposure and the confounders.</p>
+<p>The code below plots the DAG corresponding to the scenario above using the R packages <a href="http://www.dagitty.net/"><em>dagitty</em></a> <span class="citation" data-cites="textor_robust_2017">(Textor et al., 2017)</span> and <a href="https://CRAN.R-project.org/package=ggdag"><em>ggdag</em></a>. You don’t need to understand the R code to use and apply DAGs but it is provided as an example for those who may want to make causal diagrams for their own studies. The first part of the code describes the underlying relationships between the variables, using the same syntax used to describe regression models in R. The second part of the code sets up the visual coordinates used for plotting the DAG — an aesthetic consideration only.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1">dag_nomiss <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dagify</span>(</span>
+<span id="cb1-2">  Y <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2,</span>
+<span id="cb1-3">  X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> U,</span>
+<span id="cb1-4">  Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> U,</span>
+<span id="cb1-5">  Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> U,</span>
+<span id="cb1-6">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">coords =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">list</span>(</span>
+<span id="cb1-7">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">U =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z1 =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z2 =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">X =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Y =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>),</span>
+<span id="cb1-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">U =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z1 =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z2 =</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">X =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Y =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>)</span>
+<span id="cb1-9">  )</span>
+<span id="cb1-10">)</span>
+<span id="cb1-11"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggdag</span>(dag_nomiss) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_dag</span>()</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index_files/figure-html/dag-nomiss-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+<p>This DAG is called a complete-data DAG, or <em>c-DAG</em>. It represents the causal relationships between the variables if all of them had been completely observed.</p>
+<p>To represent possible causes of missing data, we can introduce three new variables in the DAG: <em>MX</em>, <em>MY</em> and <em>MZ2</em>, representing whether or not the exposure (<em>X</em>), outcome (<em>Y</em>), or partially-observed confounders (<em>Z2</em>) are missing. Adding these variables produces a missingness DAG, or <em>m-DAG</em>. <span class="citation" data-cites="moreno-betancur_canonical_2018">Moreno-Betancur et al. (2018)</span> also considers unmeasured causes of missingness (<em>W</em>) which are not related to any of the substantive variables in the study but do affect the probability of missingness.</p>
+<p>If we turn the c-DAG above into an m-DAG by adding nodes for <em>MX</em>, <em>MY</em>, and <em>MZ2</em> but no additional arrows, the absence of arrows to <em>MX</em>, <em>MY</em> and <em>MZ2</em> would mean that there is no causal relationship between any of the variables and their missingness. In other words, the c-DAG is the m-DAG for MCAR. This scenario would be quite unusual in most real studies, unless the missing data was deliberately planned.</p>
+<p>Figure 2 in <span class="citation" data-cites="moreno-betancur_canonical_2018">Moreno-Betancur et al. (2018)</span> provides 10 examples of m-DAGs, with different combinations of the following features:</p>
+<ul>
+<li>incomplete confounders and exposure related to missingness of other variables;</li>
+<li>incomplete confounders and exposure related to their own missingness;</li>
+<li>outcome related to missingness of other variables; and</li>
+<li>outcome related to its own missingness.</li>
+</ul>
+<p>The first of these canonical DAGs, m-DAG A, is an example of a MAR process, where the missingness is only related to completely-observed confounders (<em>Z1</em>) and unmeasured variables unrelated to other variables in the study (<em>W</em>). We can visualise that DAG using the code below:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1">dag_a <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dagify</span>(</span>
+<span id="cb2-2">  Y <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2,</span>
+<span id="cb2-3">  X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> U,</span>
+<span id="cb2-4">  Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> U,</span>
+<span id="cb2-5">  Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> U,</span>
+<span id="cb2-6">  MX <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> W,</span>
+<span id="cb2-7">  MY <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> W,</span>
+<span id="cb2-8">  MZ2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> W,</span>
+<span id="cb2-9">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">coords =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">list</span>(</span>
+<span id="cb2-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">U =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z1 =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z2 =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">X =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Y =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>,</span>
+<span id="cb2-11">          <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MX =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.5</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MY =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MZ2 =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">W =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>),</span>
+<span id="cb2-12">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">U =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z1 =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z2 =</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">X =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Y =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,</span>
+<span id="cb2-13">          <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MX =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MY =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MZ2 =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">W =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>)</span>
+<span id="cb2-14">  )</span>
+<span id="cb2-15">)</span>
+<span id="cb2-16"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggdag</span>(dag_a) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_dag</span>()</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index_files/figure-html/dag-a-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+<p>In this DAG, so long as the model’s adjustment for confounders is correctly specified (a big “if”!), both complete cases analysis and multiple imputation provide valid estimates of not just the relationship between the exposure and the outcome, but also the complete distribution of the outcome. This isn’t something that should be obvious just from looking at the DAG — there’s a derivation in the supplementary materials for <span class="citation" data-cites="moreno-betancur_canonical_2018">Moreno-Betancur et al. (2018)</span> for this and the other DAGs, with the results summarised in Tables 1 and 2 of that paper. Those who are familiar with causal DAGs may want to know that when there is missing data, this derivation is more complex than rules like “d-separation” and cannot be done algorithmically.</p>
+<p>In other missing data situations, it may be possible to obtain the effect of the exposure but not, for example, the population mean of the outcome. In some situations, it may not be possible to obtain a valid estimate of either.</p>
+<p>The figure below shows m-DAG E, which is an example of a MNAR process. The probability of missingness in all variables is affected by both the exposure <em>X</em> (which may itself have missing values) and partially-observed confounders <em>Z2</em>. Perhaps surprisingly, even though this missingness process is MNAR, it is possible to obtain a valid estimate of the relationship between the exposure and the outcome using either complete cases analysis or multiple imputation. However, it is not possible to recover the overall mean of the outcome.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1">dag_e <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dagify</span>(</span>
+<span id="cb3-2">  Y <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2,</span>
+<span id="cb3-3">  X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> U,</span>
+<span id="cb3-4">  Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> U,</span>
+<span id="cb3-5">  Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> U,</span>
+<span id="cb3-6">  MX <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> W,</span>
+<span id="cb3-7">  MY <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> W,</span>
+<span id="cb3-8">  MZ2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> W,</span>
+<span id="cb3-9">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">coords =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">list</span>(</span>
+<span id="cb3-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">U =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z1 =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z2 =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">X =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Y =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>,</span>
+<span id="cb3-11">          <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MX =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.5</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MY =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MZ2 =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">W =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>),</span>
+<span id="cb3-12">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">U =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z1 =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z2 =</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">X =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Y =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,</span>
+<span id="cb3-13">          <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MX =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MY =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MZ2 =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">W =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>)</span>
+<span id="cb3-14">  )</span>
+<span id="cb3-15">)</span>
+<span id="cb3-16"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggdag</span>(dag_e) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_dag</span>()</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index_files/figure-html/dag-e-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+<p>The final example in this blog is m-DAG J, which is another MNAR process. In this example, missingness is also affected by the value of the outcome <em>Y</em>. For this m-DAG, it is not possible to recover the relationship between the outcome and the exposure.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">dag_j <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dagify</span>(</span>
+<span id="cb4-2">  Y <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2,</span>
+<span id="cb4-3">  X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> U,</span>
+<span id="cb4-4">  Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> U,</span>
+<span id="cb4-5">  Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> U,</span>
+<span id="cb4-6">  MX <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Y <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> W,</span>
+<span id="cb4-7">  MY <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Y <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> W,</span>
+<span id="cb4-8">  MZ2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> Z1 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Z2 <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> X <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> Y <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> W,</span>
+<span id="cb4-9">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">coords =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">list</span>(</span>
+<span id="cb4-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">U =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z1 =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z2 =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">X =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Y =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>,</span>
+<span id="cb4-11">          <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MX =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.5</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MY =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MZ2 =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">W =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>),</span>
+<span id="cb4-12">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">U =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z1 =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Z2 =</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">X =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">Y =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>,</span>
+<span id="cb4-13">          <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MX =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MY =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">MZ2 =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.75</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">W =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>)</span>
+<span id="cb4-14">  )</span>
+<span id="cb4-15">)</span>
+<span id="cb4-16"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggdag</span>(dag_j) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_dag</span>()</span></code></pre></div>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index_files/figure-html/dag-j-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+<p>If you have an m-DAG where a quantity of interest cannot be recovered, you can consider doing a sensitivity analysis using a <img src="https://latex.codecogs.com/png.latex?%5Cdelta">-adjustment. This process is described in popular texts on missing data, e.g. <span class="citation" data-cites="van_buuren_flexible_2018">van Buuren (2018)</span> sec 9.2 (also <a href="https://stefvanbuuren.name/fimd/sec-sensitivity.html">available online</a>) or <span class="citation" data-cites="molenberghs_handbook_2015">Molenberghs et al. (2015)</span>.</p>
+</section>
+<section id="tell-me-again-what-method-should-i-use" class="level2">
+<h2 class="anchored" data-anchor-id="tell-me-again-what-method-should-i-use">Tell me again, what method should I use?</h2>
+<p>The first place is start is to draw a DAG representing the causal relationships between your variables and their possible reasons for being missing. This will require some thinking about which arrows are plausible and which are not, based on your understanding of the real-world system.</p>
+<p>Once you’ve drawn a DAG for your study, you can compare it to the canonical DAGs in <span class="citation" data-cites="moreno-betancur_canonical_2018">Moreno-Betancur et al. (2018)</span>. For canonical DAGs A, B, D and E, complete cases analysis was shown to provide a valid estimate of the relationship between the outcome and the exposure. For canonical DAGs A, B, C, D and E, multiple imputation was shown to provide a valid estimate of the relationship between the outcome and the exposure. <span class="citation" data-cites="lee_assumptions_2023">Lee et al. (2023)</span> provides further practical guidance for data analysis using missingness DAGs.</p>
+<p><span class="citation" data-cites="white_bias_2010">White &amp; Carlin (2010)</span> considers some scenarios where covariates are missing and compares complete cases and multiple imputation. In some scenarios, complete cases analysis was unbiased while multiple imputation was not; in other scenarios, the reverse was true.</p>
+<p>Randomised clinical trials provide some additional guarantees about the nature of the missing data process which observational studies do not: the exposure is completely observed and known to be unrelated to baseline covariates. <span class="citation" data-cites="sullivan_should_2018">Sullivan et al. (2018)</span> considers several methods for dealing with missing data in randomised trials.</p>
+<p>The papers above provide examples of situations where multiple imputation is not necessarily better than simpler methods, as well as situations where multiple imputation is required. The situations where particular missing data methods work do not neatly align with the definitions of MCAR/MAR/MNAR but by drawing a DAG and considering the results in the papers above you should be able to determine which popular methods are applicable for your data and research question.</p>
+<div style="font-size:80%">
+<p>Thanks to Lachlan Cribb for providing feedback which improved this blog post.</p>
+</div>
+</section>
+<section id="references" class="level2">
+
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-line-spacing="2">
+<div id="ref-collins_comparison_2001" class="csl-entry">
+Collins, L. M., Schafer, J. L., &amp; Kam, C.-M. (2001). A comparison of inclusive and restrictive strategies in modern missing data procedures. <em>Psychological Methods</em>, <em>6</em>(4), 330–351. <a href="https://doi.org/10.1037/1082-989X.6.4.330">https://doi.org/10.1037/1082-989X.6.4.330</a>
+</div>
+<div id="ref-lee_assumptions_2023" class="csl-entry">
+Lee, K. J., Carlin, J. B., Simpson, J. A., &amp; Moreno-Betancur, M. (2023). Assumptions and analysis planning in studies with missing data in multiple variables: Moving beyond the <span>MCAR</span>/<span>MAR</span>/<span>MNAR</span> classification. <em>International Journal of Epidemiology</em>, dyad008. <a href="https://doi.org/10.1093/ije/dyad008">https://doi.org/10.1093/ije/dyad008</a>
+</div>
+<div id="ref-lee_framework_2021" class="csl-entry">
+Lee, K. J., Tilling, K. M., Cornish, R. P., Little, R. J. A., Bell, M. L., Goetghebeur, E., Hogan, J. W., &amp; Carpenter, J. R. (2021). Framework for the treatment and reporting of missing data in observational studies: <span>The</span> <span>Treatment</span> <span>And</span> <span>Reporting</span> of <span>Missing</span> data in <span>Observational</span> <span>Studies</span> framework. <em>Journal of Clinical Epidemiology</em>, <em>134</em>, 79–88. <a href="https://doi.org/10.1016/j.jclinepi.2021.01.008">https://doi.org/10.1016/j.jclinepi.2021.01.008</a>
+</div>
+<div id="ref-little_missing_2021" class="csl-entry">
+Little, R. J. A. (2021). Missing <span>Data</span> <span>Assumptions</span>. <em>Annual Review of Statistics and Its Application</em>, <em>8</em>(1), 89–107. <a href="https://doi.org/10.1146/annurev-statistics-040720-031104">https://doi.org/10.1146/annurev-statistics-040720-031104</a>
+</div>
+<div id="ref-little_statistical_2014" class="csl-entry">
+Little, R. J. A., &amp; Rubin, D. B. (2014). <em>Statistical analysis with missing data</em> (Second edition). John Wiley &amp; Sons.
+</div>
+<div id="ref-marini_maximum-likelihood_1980" class="csl-entry">
+Marini, M. M., Olsen, A. R., &amp; Rubin, D. B. (1980). Maximum-<span>Likelihood</span> <span>Estimation</span> in <span>Panel</span> <span>Studies</span> with <span>Missing</span> <span>Data</span>. <em>Sociological Methodology</em>, <em>11</em>, 314. <a href="https://doi.org/10.2307/270868">https://doi.org/10.2307/270868</a>
+</div>
+<div id="ref-mohan_graphical_2014" class="csl-entry">
+Mohan, K., &amp; Pearl, J. (2014). Graphical <span>Models</span> for <span>Recovering</span> <span>Probabilistic</span> and <span>Causal</span> <span>Queries</span> from <span>Missing</span> <span>Data</span>. <em>Proceedings of the 27th <span>International</span> <span>Conference</span> on <span>Neural</span> <span>Information</span> <span>Processing</span> <span>Systems</span> - <span>Volume</span> 1</em>, 1520–1528.
+</div>
+<div id="ref-molenberghs_handbook_2015" class="csl-entry">
+Molenberghs, G., Fitzmaurice, G. M., Kenward, M. G., Tsiatis, A. A., &amp; Verbeke, G. (Eds.). (2015). <em>Handbook of missing data methodology</em>. CRC Press, Taylor &amp; Francis Group.
+</div>
+<div id="ref-moreno-betancur_canonical_2018" class="csl-entry">
+Moreno-Betancur, M., Lee, K. J., Leacy, F. P., White, I. R., Simpson, J. A., &amp; Carlin, J. B. (2018). Canonical <span>Causal</span> <span>Diagrams</span> to <span>Guide</span> the <span>Treatment</span> of <span>Missing</span> <span>Data</span> in <span>Epidemiologic</span> <span>Studies</span>. <em>American Journal of Epidemiology</em>, <em>187</em>(12), 2705–2715. <a href="https://doi.org/10.1093/aje/kwy173">https://doi.org/10.1093/aje/kwy173</a>
+</div>
+<div id="ref-pearl_causal_1995" class="csl-entry">
+Pearl, J. (1995). Causal diagrams for empirical research. <em>Biometrika</em>, <em>82</em>(4), 669–688. <a href="https://doi.org/10.1093/biomet/82.4.669">https://doi.org/10.1093/biomet/82.4.669</a>
+</div>
+<div id="ref-rubin_inference_1976" class="csl-entry">
+Rubin, D. B. (1976). Inference and missing data. <em>Biometrika</em>, <em>63</em>(3), 581–592. <a href="https://doi.org/10.1093/biomet/63.3.581">https://doi.org/10.1093/biomet/63.3.581</a>
+</div>
+<div id="ref-seaman_what_2013" class="csl-entry">
+Seaman, S., Galati, J., Jackson, D., &amp; Carlin, J. (2013). What <span>Is</span> <span>Meant</span> by <span>“<span>Missing</span> at <span>Random</span>”</span>? <em>Statistical Science</em>, <em>28</em>(2). <a href="https://doi.org/10.1214/13-STS415">https://doi.org/10.1214/13-STS415</a>
+</div>
+<div id="ref-sullivan_should_2018" class="csl-entry">
+Sullivan, T. R., White, I. R., Salter, A. B., Ryan, P., &amp; Lee, K. J. (2018). Should multiple imputation be the method of choice for handling missing data in randomized trials? <em>Statistical Methods in Medical Research</em>, <em>27</em>(9), 2610–2626. <a href="https://doi.org/10.1177/0962280216683570">https://doi.org/10.1177/0962280216683570</a>
+</div>
+<div id="ref-textor_robust_2017" class="csl-entry">
+Textor, J., Van Der Zander, B., Gilthorpe, M. S., Liśkiewicz, M., &amp; Ellison, G. T. H. (2017). Robust causal inference using directed acyclic graphs: The <span>R</span> package <span>“dagitty.”</span> <em>International Journal of Epidemiology</em>, dyw341. <a href="https://doi.org/10.1093/ije/dyw341">https://doi.org/10.1093/ije/dyw341</a>
+</div>
+<div id="ref-van_buuren_flexible_2018" class="csl-entry">
+van Buuren, S. (2018). <em>Flexible imputation of missing data</em> (Second edition). CRC Press, Taylor; Francis Group.
+</div>
+<div id="ref-white_bias_2010" class="csl-entry">
+White, I. R., &amp; Carlin, J. B. (2010). Bias and efficiency of multiple imputation compared with complete-case analysis for missing covariate values. <em>Statistics in Medicine</em>, <em>29</em>(28), 2920–2931. <a href="https://doi.org/10.1002/sim.3944">https://doi.org/10.1002/sim.3944</a>
+</div>
+</div></section></div> ]]></description>
+  <category>missing-data</category>
+  <category>statistics</category>
+  <guid>https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index.html</guid>
+  <pubDate>Tue, 27 Jun 2023 14:00:00 GMT</pubDate>
+</item>
 <item>
   <title>Fitting many statistical models at once using dplyr</title>
   <dc:creator>Cameron Patrick</dc:creator>
