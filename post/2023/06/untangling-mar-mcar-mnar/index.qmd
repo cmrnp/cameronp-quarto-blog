@@ -11,6 +11,7 @@ categories: [missing-data, statistics]
 format:
   html:
     toc: true
+    code-fold: true
 ---
 
 ```{r setup, include = FALSE}
@@ -25,21 +26,25 @@ knitr::opts_chunk$set(
 
 Missing data refers to data which was intended to have been collected but was not, and is a common scenario in biomedical and social science research. Correctly analysing datasets that have missing data requires extra care and consideration to produce correct results.
 
-The best method for dealing with missing data depends on the underlying process causing the missingness. There is no single approach that is always the best, and the terminology commonly used to describe missingness doesn't directly relate to what analysis methods perform best. In this blog post I'll explain how to describe missing data processes using causal diagrams (DAGs) and provide some references to help choose an analysis based on that.
+The best method for dealing with missing data depends on the underlying process causing the missingness. There is no single approach that is always the best, and the terminology commonly used to describe missingness doesn't directly relate to what analysis methods perform best. In this blog post I'll begin by defining the commonly used but unhelpful classifications for missing data mechanisms (you'll see them everywhere, so you might as well know what they mean) and then explain how to describe missing data processes using causal diagrams (DAGs) and provide some references to help choose an analysis based on that.
 
 ![(original image via [\@marginoferror on Twitter](https://twitter.com/marginoferror/status/935937659888836609), adapted by me for missing data purposes.)](dont_fight_a_cat_MI.jpeg)
 
 ## MCAR, MAR, MNAR or nah?
 
-The most common classification for missing data mechanisms is as either Missing Completely at Random (MCAR), Missing at Random (MAR), or Missing Not at Random (MNAR). This classification is based on concepts first introduced in @rubin_inference_1976. These terms are widespread, but can be confusing when first encountered because they do not mean quite what you might expect them to mean.
+The most common classification for missing data mechanisms is as either Missing Completely at Random (MCAR), Missing at Random (MAR), or Missing Not at Random (MNAR). This classification is based on concepts first introduced in @rubin_inference_1976. These terms are widespread, but can be confusing when first encountered because they do not mean quite what you might expect them to mean. I'll define them briefly here, but the goal is to not have to focus specifically about which of these mechanisms apply to your data, or use this classification to guide your analytical choices.
 
 Data is considered to be **Missing Completely at Random (MCAR)** if the probability of being missing does not depend on the values of any of the variables in the data, whether those values are missing or observed [@little_statistical_2014, p. 12]. In other words, the missingness cannot be related to the research question of interest [@lee_framework_2021].
 
-Data is  **Missing at Random (MAR)** if the probability of being missing depends only on data that was observed [@little_statistical_2014, p. 12]. This term is misleading if encountered without context, as a plain-language interpretation suggests it may mean something more like MCAR. However, MCAR is a stricter condition than MAR. In other words, if data is MCAR, it is also considered MAR. There are a few subtly different ways of defining this concept mathematically; @seaman_what_2013 goes into the detail for those who are interested.
+Data is **Missing at Random (MAR)** if the probability of being missing depends only on data that was observed [@little_statistical_2014, p. 12]. Most commonly this refers to a situation where a variable with incomplete data has probability of being missing which relates to completely-observed variables, but there are other possibilities which fit this definition too[^mardef]. This term is misleading if encountered without context, as a plain-language interpretation suggests it may mean something more like MCAR. However, MCAR is a stricter requirement than MAR. If data is MCAR, it is also considered MAR.
 
-Data is **Missing Not at Random (MNAR)** if it's not Missing at Random  [@little_statistical_2014, p. 12]. At least that's relatively straightforward. In other words, the probability of data being missing is related to what the missing values would have been, had we observed them. It is often implied that MNAR data is a lost cause for statistical analysis, but later in this post we will see specific examples of MNAR where common statistical procedures produce valid results for common questions.
+[^mardef]: There are a few subtly different ways of defining this concept mathematically; @seaman_what_2013 goes into the detail for those who are interested.
 
-Whether data is classified as MAR or MNAR depends on more than just the variables with missing data. It also depends on the availability of additional variables in the dataset which may be able to explain the probability of missingness.
+Data is **Missing Not at Random (MNAR)** if it's not Missing at Random  [@little_statistical_2014, p. 12]. At least that's relatively straightforward. In other words, the probability of data being missing may be related to what the missing values would have been, had we observed them. It is sometimes implied that MNAR data is a lost cause for statistical analysis, but later in this post we will see specific examples of MNAR mechanisms where common statistical procedures produce valid results for common questions.
+
+Strictly speaking, these classifications refer to the entire dataset collectively, usually consisting of many variables, some of which may have missing values and some of which may not. When there are multiple variables with missing values --- a common situation in real datasets --- these classifications are sometimes informally applied to specific variables with missing data, but doing so doesn't relate to any of the mathematical guarantees about which analysis methods are applicable.
+
+These missing data classifications depend on the set of available variables. For example, if additional variables (sometimes called auxiliary variables) which relate to probability of partially-observed variables having missing values are added to the dataset, the missing data mechanism may change from being MNAR to being MAR.
 
 ::: {.callout-note}
 ## Historical aside
@@ -53,11 +58,11 @@ Sometimes you may hear missing data described as "ignorable" or "non-ignorable".
 
 ### How do I know what kind of missing data mechanism I have?
 
-Unfortunately, there's no way to determine the missing data mechanism purely by looking at the data --- you need to think about the process generating the data and why some of it is missing. A causal DAG is a good way to reason about the relationship between the variables and their reasons for being missing and can help you decide what analysis to use. I'll have examples of this later in this blog.
+Unfortunately, there's no way to determine the missing data mechanism purely by looking at the data --- you need to think about the process generating the data and why some of it is missing. A causal DAG is a good way to reason about the relationship between the variables and their reasons for being missing and can help you decide what analysis to use. Rather than using the DAG to determine whether your data is MCAR, MAR, or MNAR, and then use those classifications to choose an analysis, you can use the DAG directly to guide your choice of analysis method. I'll have examples of this later in this blog.
 
 ### If I know my missing data mechanism, what analysis should I do?
 
-It depends! (I'm statistician, you should have known I would say that.)
+It depends! (I'm statistician, you should have known I would say that.) These are the standard results about what missing data methods are appropriate under different processes:
 
 Complete cases analysis is unbiased if the data is MCAR. This is a sufficient condition, not a necessary condition [@little_missing_2021]: there are situations where complete cases may be valid, or at least provide a valid estimate of a particular quantity of interest, under MAR or MNAR. Depending on the amount of missing data, complete cases analysis may be inefficient (i.e., have lower power than other methods) because only cases where no variables have missing values are used in the analysis.
 
@@ -65,20 +70,49 @@ Multiple imputation, likelihood-based methods and full Bayesian methods are unbi
 
 In some specific MNAR situations, either or both of the above methods may still be valid, depending on what you're trying to estimate [@white_bias_2010].
 
+## Some examples of missing data mechanisms
+
+To make these definitions more concrete, here are some examples of missing data mechanisms that may occur in real studies.
+
+### Example 1: Planned missing data
+
+Sometimes missing data arises from a study design where some data is not collected on some participants. For example, consider a psychometric instrument with a large number of items. The items could be split up into sets which are asked at different times; for example, half at baseline and half a follow-up. Ideally this process would be randomised so each participant receives a different random split. The items which were not asked at a particular time point are missing values, and because the missingness was deliberately introduced by the experimenter using randomisation, we know that the probability of a particular item being missing is unrelated to any other variable in the study.
+
+This is one of the few cases where we can be sure the data is MCAR.
+
+### Example 2: Missingness related to confounders only
+
+Consider a longitudinal study where participants need to regularly travel to a site, for example a hospital, in order for their data to be recorded. Participants living in rural or remote areas may find the travel more inconvenient if they need to visit a city to participate in the study, and thus be more likely to have missing values in many variables.
+
+If we know the location of all of the participants, or the missingness in the participant location is unrelated to any other study variable, this missingness mechanism would be MAR.
+
+### Example 3: Missingness related to confounders and exposure
+
+This example is drawn from @moreno-betancur_canonical_2018. Suppose we want to investigate the relationship between childhood maternal mental illness (the exposure, in epidemiologist-speak) and child behaviour in subsequent years (the outcome). In order to provide a causal estimate of the effect of this exposure, we must control for confounding variables, such as maternal alcohol consumption, smoking, and other variables relating to the child's health. 
+
+It was considered likely that missingness in all variables was related to both maternal mental illness and the counfounding variables. Since child behaviour was measured at a later time than the exposure and confounding variables, it was considered unlikely to have affected missingness in the confounders or exposure. 
+
+It was uncertain whether missingness in child behaviour could be related to the child behaviour itself --- so there are two plausible missing data mechanisms to consider in this example. Both of those plausible mechanisms are MNAR, but we will see later than one possibility is amenable for analysis and the other is not.
+
 ## Making the missing data process explicit using causal diagrams (DAGs)
 
-Causal diagrams are used to represent causal relationships between variables in a study [@pearl_causal_1995]. These relationships are shown visually using a directed acyclic graph (DAG), which is a mathematical term for a bunch of circles with arrows between them. The circles (nodes) represent variables and arrows (edges) between them represent direct causal pathways. The direction of the arrows represents the direction of causation, and a valid DAG never has a path leading from a particular point back to that same point (a "cycle" in mathematician-speak). If there is no path following the arrows between two variables in a DAG, there is no causal connection between them.
+Causal diagrams are used to represent causal relationships between variables in a study [@pearl_causal_1995]. These relationships are shown visually using a directed acyclic graph (DAG), which is a mathematical term for a bunch of circles with arrows between them. The circles (nodes) represent variables and arrows (edges) between them represent direct causal pathways. The direction of the arrows represents the direction of causation, and a valid DAG never has a path leading from a particular point back to that same point[^cycle]. If there is no path following the arrows between two variables in a DAG, there is no causal connection between them.
+
+[^cycle]: A "cycle" in mathematician-speak. Hence, directed (arrows have a direction) acyclic (can never get back to where you started) graph (set of nodes and edges).
 
 The structure of the DAG behind your data cannot be inferred just from looking at the data. It needs to come from substantive expertise about the underlying variables in the data, their relationship to each other, and how the data was collected.
 
-The idea of using a DAG to represent missing data assumptions was first introduced in @mohan_graphical_2014. To provide more practical advice for specific scenarios, @moreno-betancur_canonical_2018 introduces "canonical" causal diagrams for missing data in the setting where we want to estimate the relationship between an outcome *Y* and an exposure *X* (that's epidemiologist-speak for the main predictor of interest), adjusting for some confounding variables which may influence both the outcome and the exposure. The confounding variables may be either completely observed (*Z1*) or have some missing data (*Z2*). There may also be some unknown, unmeasured factors *U* which affect the exposure and the confounders.
+The idea of using a DAG to represent missing data assumptions was first introduced in @mohan_graphical_2014. To provide more practical advice for specific scenarios, @moreno-betancur_canonical_2018 introduces "canonical" causal diagrams for missing data in the setting where we want to estimate the relationship between an outcome *Y* and an exposure *X*[^exp], adjusting for some confounding variables which may influence both the outcome and the exposure. The confounding variables may be either completely observed (*Z1*) or have some missing data (*Z2*). There may also be some unknown, unmeasured factors *U* which affect the exposure and the confounders.
+
+[^exp]: That's epidemiologist-speak for the main predictor of interest.
 
 ```{r pkgs, include = FALSE}
+library(tidyverse)
 library(dagitty)
 library(ggdag)
 ```
 
-The code below plots the DAG corresponding to the scenario above using the R packages [*dagitty*](http://www.dagitty.net/) [@textor_robust_2017] and [*ggdag*](https://CRAN.R-project.org/package=ggdag). You don't need to understand the R code to use and apply DAGs but it is provided as an example for those who may want to make causal diagrams for their own studies. The first part of the code describes the underlying relationships between the variables, using the same syntax used to describe regression models in R. The second part of the code sets up the visual coordinates used for plotting the DAG --- an aesthetic consideration only.
+The DAG corresponding to the scenario above is shown below. If you click the "Code" button you can see how it was produced in R, using the packages [*dagitty*](http://www.dagitty.net/) [@textor_robust_2017] and [*ggdag*](https://CRAN.R-project.org/package=ggdag). You don't need to understand R code to use and apply DAGs but it is provided as an example for those who may want to make causal diagrams for their own studies. The first part of the code describes the underlying relationships between the variables, using the same syntax used to describe regression models in R. The second part of the code sets up the visual coordinates used for plotting the DAG --- an aesthetic consideration only.
 
 ```{r dag-nomiss, fig.width = 6, fig.height = 3.25}
 dag_nomiss <- dagify(
@@ -87,7 +121,7 @@ dag_nomiss <- dagify(
   Z1 ~ U,
   Z2 ~ U,
   coords = list(
-    x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3),
+    x = c(U = 0.75, Z1 = 1, Z2 = 1, X = 2, Y = 3),
     y = c(U = 0, Z1 = 1, Z2 = -1, X = 0, Y = 0)
   )
 )
@@ -96,9 +130,49 @@ ggdag(dag_nomiss) + theme_dag()
 
 This DAG is called a complete-data DAG, or *c-DAG*. It represents the causal relationships between the variables if all of them had been completely observed.
 
-To represent possible causes of missing data, we can introduce three new variables in the DAG: *MX*, *MY* and *MZ2*, representing whether or not the exposure (*X*), outcome (*Y*), or partially-observed confounders (*Z2*) are missing. Adding these variables produces a missingness DAG, or *m-DAG*. @moreno-betancur_canonical_2018 also considers unmeasured causes of missingness (*W*) which are not related to any of the substantive variables in the study but do affect the probability of missingness.
+To represent possible causes of missing data, we can introduce three new variables in the DAG: *MX*, *MY* and *MZ2*, representing whether or not the exposure (*X*), outcome (*Y*), or partially-observed confounders (*Z2*) are missing. Think of them as binary indicator variables, where for example *MX* = 1 means that *X* wasn't observed (for a particular case/participant/observation) and *MX* = 0 means that *X* was observed. Adding these variables produces a missingness DAG, or *m-DAG*. @moreno-betancur_canonical_2018 also considers unmeasured causes of missingness (*W*) which are not related to any of the substantive variables in the study but do affect the probability of missingness.
 
-If we turn the c-DAG above into an m-DAG by adding nodes for *MX*, *MY*, and *MZ2* but no additional arrows, the absence of arrows to *MX*, *MY* and *MZ2* would mean that there is no causal relationship between any of the variables and their missingness. In other words, the c-DAG is the m-DAG for MCAR. This scenario would be quite unusual in most real studies, unless the missing data was deliberately planned.
+The variables in the DAG which aren't prefixed with *M* still refer to values of the variables as if they had been completely observed --- which we no longer have full access to in our real data since we only get to see the variables after the missingness mechanism has occurred. This ensures that the causal mechanism in the c-DAG still applies to the m-DAG, so the m-DAG can be produced by adding additional nodes and arrows to the c-DAG without changing any of the arrows between existing nodes.
+
+If we turn the c-DAG above into an m-DAG by adding nodes for *MX*, *MY*, and *MZ2* but no additional arrows, the absence of arrows to *MX*, *MY* and *MZ2* would mean that there is no causal relationship between any of the variables and their missingness --- in other words, the MCAR missingness mechanism. This scenario would be quite unusual in most real studies, unless the missing data was deliberately planned like our first example in the previous section.
+
+This m-DAG is shown below, with an additional variable *W* representing unmeasured variables which affect the missing data process but are not related to any of the variables in the study. The new variables representing the missing data mechanism are shown in blue. In that MCAR scenario, the blue nodes (missing data mechanism) are completely disconnected from black nodes (relating to the main research question).
+
+```{r dag-mcar, fig.width = 6, fig.height = 4}
+dag_mcar <- dagify(
+  Y ~ X + Z1 + Z2,
+  X ~ Z1 + Z2 + U,
+  Z1 ~ U,
+  Z2 ~ U,
+  MX ~ W,
+  MY ~ W,
+  MZ2 ~ W,
+  coords = list(
+    x = c(U = 0.75, Z1 = 1, Z2 = 1, X = 2, Y = 3,
+          MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
+    y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
+          MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
+  )
+)
+dag_mcar %>%
+  tidy_dagitty() %>%
+  mutate(
+    node_colour = case_when(
+      str_starts(name, "M") | name == "W" ~ "dodgerblue3",
+      .default = "black"
+    ),
+    edge_colour = case_when(
+      str_starts(to, "M") ~ "dodgerblue3",
+      .default = "black"
+    )
+  ) %>%
+  ggplot(aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_dag_edges(aes(edge_colour = edge_colour)) +
+  geom_dag_point(size = 16, aes(colour = node_colour)) +
+  geom_dag_text(colour = "white", size = 3.88) +
+  theme_dag() +
+  scale_colour_identity()
+```
 
 Figure 2 in @moreno-betancur_canonical_2018 provides 10 examples of m-DAGs, with different combinations of the following features:
 
@@ -107,7 +181,7 @@ Figure 2 in @moreno-betancur_canonical_2018 provides 10 examples of m-DAGs, with
 - outcome related to missingness of other variables; and
 - outcome related to its own missingness.
 
-The first of these canonical DAGs, m-DAG A, is an example of a MAR process, where the missingness is only related to completely-observed confounders (*Z1*) and unmeasured variables unrelated to other variables in the study (*W*). We can visualise that DAG using the code below:
+The first of these canonical DAGs, m-DAG A, is an example of a MAR process, where the missingness is only related to completely-observed confounders (*Z1*) and unmeasured variables unrelated to other variables in the study (*W*). This DAG describes Example 2 in the previous section, with participant location (part of *Z1*) causing missingness in other variables (*MX*, *MY*, *MZ2*). This DAG is reproduced below, with the nodes and arrows related to the missing data mechanism shown in blue:
 
 ```{r dag-a, fig.width = 6, fig.height = 4}
 dag_a <- dagify(
@@ -119,20 +193,37 @@ dag_a <- dagify(
   MY ~ Z1 + W,
   MZ2 ~ Z1 + W,
   coords = list(
-    x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3,
+    x = c(U = 0.75, Z1 = 1, Z2 = 1, X = 2, Y = 3,
           MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
     y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
           MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
   )
 )
-ggdag(dag_a) + theme_dag()
+dag_a %>%
+  tidy_dagitty() %>%
+  mutate(
+    node_colour = case_when(
+      str_starts(name, "M") | name == "W" ~ "dodgerblue3",
+      .default = "black"
+    ),
+    edge_colour = case_when(
+      str_starts(to, "M") ~ "dodgerblue3",
+      .default = "black"
+    )
+  ) %>%
+  ggplot(aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_dag_edges(aes(edge_colour = edge_colour)) +
+  geom_dag_point(size = 16, aes(colour = node_colour)) +
+  geom_dag_text(colour = "white", size = 3.88) +
+  theme_dag() +
+  scale_colour_identity()
 ```
 
 In this DAG, so long as the model's adjustment for confounders is correctly specified (a big "if"!), both complete cases analysis and multiple imputation provide valid estimates of not just the relationship between the exposure and the outcome, but also the complete distribution of the outcome. This isn't something that should be obvious just from looking at the DAG --- there's a derivation in the supplementary materials for @moreno-betancur_canonical_2018 for this and the other DAGs, with the results summarised in Tables 1 and 2 of that paper. Those who are familiar with causal DAGs may want to know that when there is missing data, this derivation is more complex than rules like "d-separation" and cannot be done algorithmically.
 
-In other missing data situations, it may be possible to obtain the effect of the exposure but not, for example, the population mean of the outcome. In some situations, it may not be possible to obtain a valid estimate of either.
+In other missing data situations, it may be possible to obtain a valid estimate of the effect of the exposure but not, for example, the population mean of the outcome. In some situations, it may not be possible to obtain a valid estimate of either.
 
-The figure below shows m-DAG E, which is an example of a MNAR process. The probability of missingness in all variables is affected by both the exposure *X* (which may itself have missing values) and partially-observed confounders *Z2*. Perhaps surprisingly, even though this missingness process is MNAR, it is possible to obtain a valid estimate of the relationship between the exposure and the outcome using either complete cases analysis or multiple imputation. However, it is not possible to recover the overall mean of the outcome.
+The figure below shows m-DAG E, which is an example of an MNAR process. The arrows new to this DAG which weren't in m-DAG A are shown in red. The probability of missingness in all variables is affected by both the exposure *X* (which may itself have missing values) and partially-observed confounders *Z2*. This DAG corresponds to Example 3 in the previous section, if we believe that missingness in child behaviour is not related to the missing values of child behaviour. Perhaps surprisingly, even though this missingness process is MNAR, it is possible to obtain a valid estimate of the relationship between the exposure and the outcome using either complete cases analysis or multiple imputation. However, it is not possible to recover the overall population mean of the outcome.
 
 ```{r dag-e, fig.width = 6, fig.height = 4}
 dag_e <- dagify(
@@ -144,16 +235,34 @@ dag_e <- dagify(
   MY ~ Z1 + Z2 + X + W,
   MZ2 ~ Z1 + Z2 + X + W,
   coords = list(
-    x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3,
+    x = c(U = 0.75, Z1 = 1, Z2 = 1, X = 2, Y = 3,
           MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
     y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
           MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
   )
 )
-ggdag(dag_e) + theme_dag()
+dag_e %>%
+  tidy_dagitty() %>%
+  mutate(
+    node_colour = case_when(
+      str_starts(name, "M") | name == "W" ~ "dodgerblue3",
+      .default = "black"
+    ),
+    edge_colour = case_when(
+      str_starts(to, "M") & name %in% c("X", "Z2") ~ "firebrick3",
+      str_starts(to, "M") ~ "dodgerblue3",
+      .default = "black"
+    )
+  ) %>%
+  ggplot(aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_dag_edges(aes(edge_colour = edge_colour)) +
+  geom_dag_point(size = 16, aes(colour = node_colour)) +
+  geom_dag_text(colour = "white", size = 3.88) +
+  theme_dag() +
+  scale_colour_identity()
 ```
 
-The final example in this blog is m-DAG J, which is another MNAR process. In this example, missingness is also affected by the value of the outcome *Y*. For this m-DAG, it is not possible to recover the relationship between the outcome and the exposure.
+The final example in this blog is m-DAG J, which is another MNAR process. The arrows new to this DAG are shown in purple. In this example, missingness is also affected by the value of the outcome *Y*. This DAG is similar to the one for Example 3 in the previous section, if we believe that missingness in the outcome (child behaviour) is related to its own unobserved values. For this m-DAG, it is not possible to recover the relationship between the outcome and the exposure.
 
 ```{r dag-j, fig.width = 6, fig.height = 4}
 dag_j <- dagify(
@@ -165,31 +274,56 @@ dag_j <- dagify(
   MY ~ Z1 + Z2 + X + Y + W,
   MZ2 ~ Z1 + Z2 + X + Y + W,
   coords = list(
-    x = c(U = 0, Z1 = 1, Z2 = 1, X = 2, Y = 3,
+    x = c(U = 0.75, Z1 = 1, Z2 = 1, X = 2, Y = 3,
           MX = 1.5, MY = 2, MZ2 = 2.5, W = 2),
     y = c(U = 0, Z1 = 0.75, Z2 = -0.75, X = 0, Y = 0,
           MX = 1.75, MY = 1.75, MZ2 = 1.75, W = 2.5)
   )
 )
-ggdag(dag_j) + theme_dag()
+dag_j %>%
+  tidy_dagitty() %>%
+  mutate(
+    node_colour = case_when(
+      str_starts(name, "M") | name == "W" ~ "dodgerblue3",
+      .default = "black"
+    ),
+    edge_colour = case_when(
+      str_starts(to, "M") & name == "Y" ~ "darkorchid3",
+      str_starts(to, "M") & name %in% c("X", "Z2") ~ "firebrick3",
+      str_starts(to, "M") ~ "dodgerblue3",
+      .default = "black"
+    )
+  ) %>%
+  ggplot(aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_dag_edges(aes(edge_colour = edge_colour)) +
+  geom_dag_point(size = 16, aes(colour = node_colour)) +
+  geom_dag_text(colour = "white", size = 3.88) +
+  theme_dag() +
+  scale_colour_identity()
 ```
 
 If you have an m-DAG where a quantity of interest cannot be recovered, you can consider doing a sensitivity analysis using a $\delta$-adjustment. This process is described in popular texts on missing data, e.g. @van_buuren_flexible_2018 sec 9.2 (also [available online](https://stefvanbuuren.name/fimd/sec-sensitivity.html)) or @molenberghs_handbook_2015.
 
 ## Applying DAGs to real missing data problems
 
-Start by drawing a DAG representing the causal relationships between your variables and their possible reasons for being missing. This will require some thinking about which arrows are plausible and which are not, based on your understanding of the real-world relationships between variables and the way the data has been collected.
+This section draws heavily from @lee_assumptions_2023 --- especially Figure 1 of that paper --- which provides practical guidance for data analysis using missingness DAGs.
 
-Once you've drawn a DAG for your study, you can compare it to the canonical DAGs in @moreno-betancur_canonical_2018. For canonical DAGs A, B, D and E, complete cases analysis was shown to provide a valid estimate of the relationship between the outcome and the exposure. For canonical DAGs A, B, C, D and E, multiple imputation was shown to provide a valid estimate of the relationship between the outcome and the exposure. @lee_assumptions_2023 provides further practical guidance for data analysis using missingness DAGs.
+Start by determining the estimand of interest: the scientific quantity you would like to estimate, if you had access to the complete data.
 
-@white_bias_2010 considers some scenarios where covariates are missing and compares complete cases and multiple imputation. In some scenarios, complete cases analysis was unbiased while multiple imputation was not; in other scenarios, the reverse was true.
+Next, draw a DAG representing the causal relationships between your variables and their possible reasons for being missing. This will require some thinking about which arrows are plausible and which are not, based on your understanding of the real-world relationships between variables and the way the data has been collected.
 
-Randomised clinical trials provide some additional guarantees about the nature of the missing data process which observational studies do not: the exposure is completely observed and known to be unrelated to baseline covariates. @sullivan_should_2018 considers several methods for dealing with missing data in randomised trials.
+Before deciding on an analysis method, you must first determine whether the estimand is recoverable, i.e. whether it is possible to estimate it from the data[^ident]. One possibility is to compare your DAG to the canonical DAGs in @moreno-betancur_canonical_2018 and the recoverability results in Table 1 of that paper.
 
-The papers above provide examples of situations where multiple imputation is not necessarily better than simpler methods, as well as situations where multiple imputation is required. The situations where particular missing data methods work do not neatly align with the definitions of MCAR/MAR/MNAR but by drawing a DAG and considering the results in the papers above you should be able to determine which popular methods are applicable for your data and research question.
+[^ident]: This step is analogous to determining identifiability in causal inference.
+
+If your estimand is recoverable, you can proceed to deciding on an analysis method to handle the missing data. Again, the canonical DAGs are useful for this. For canonical DAGs A, B, D and E, complete cases analysis was shown to provide a valid estimate of the relationship between the outcome and the exposure. For canonical DAGs A, B, C, D and E, multiple imputation was shown to provide a valid estimate of the relationship between the outcome and the exposure.
+
+Randomised clinical trials provide some additional guarantees about the nature of the missing data process which observational studies do not: the assigned intervention is completely observed and known to be unrelated to baseline covariates. While it doesn't use the m-DAG framework, @sullivan_should_2018 considers several methods for dealing with missing data in randomised trials that may be useful for those working in that setting.
+
+The papers above provide examples of situations where multiple imputation is not necessarily better than simpler methods, as well as situations where multiple imputation is required. The situations where particular missing data methods work do not neatly align with the definitions of MCAR/MAR/MNAR but by drawing a DAG and considering the results in the papers above you should be able to determine which popular methods are applicable to your data and research question.
 
 ::: {style="font-size:80%"}
-Thanks to Lachlan Cribb for providing feedback which improved this blog post.
+Thanks to Isabella Ghement and Lachlan Cribb for providing valuable feedback which greatly improved this blog post. Last updated: 29 June 2023.
 :::
 
 ## References
