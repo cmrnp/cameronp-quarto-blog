@@ -1,6 +1,6 @@
 [
   {
-    "listing": "/blog.html",
+    "listing": "/index.html",
     "items": [
       "/post/2023/06/untangling-mar-mcar-mnar/index.html",
       "/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html",
@@ -11,7 +11,7 @@
     ]
   },
   {
-    "listing": "/index.html",
+    "listing": "/blog.html",
     "items": [
       "/post/2023/06/untangling-mar-mcar-mnar/index.html",
       "/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html",

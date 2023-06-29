@@ -5,6 +5,9 @@ website:
   title: "Cameron Patrick"
   site-url: https://cameronpatrick.com/
   favicon: Cam_headshot_small.jpg
+  twitter-card:
+    creator: "@camjpatrick"
+  open-graph: true
   navbar:
     right:
       - blog.qmd
