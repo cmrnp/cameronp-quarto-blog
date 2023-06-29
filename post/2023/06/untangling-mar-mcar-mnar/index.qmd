@@ -1,5 +1,5 @@
 ---
-title: "Untangling missing data mechanisms using causal DAGs"
+title: "Understanding missing data mechanisms using causal DAGs"
 author: "Cameron Patrick"
 date: "2023-06-28"
 draft: false
