@@ -13,8 +13,11 @@ website:
       - blog.qmd
       - icon: twitter
         href: https://twitter.com/camjpatrick
+      - icon: mastodon
+        href: "https://fosstodon.org/%40cameronpat"
       - icon: github
         href: https://github.com/cmrnp
+
 format:
   html:
     theme: simplex
