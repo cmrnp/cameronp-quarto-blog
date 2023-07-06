@@ -24,15 +24,15 @@ knitr::opts_chunk$set(
 )
 ```
 
-Missing data refers to data which was intended to have been collected but was not, and is a common scenario in biomedical and social science research. Correctly analysing datasets that have missing data requires extra care and consideration to produce correct results.
+Missing data refers to data which was intended to have been collected but was not, and is a common scenario in biomedical and social science research. Analysing datasets that have missing data requires extra care and consideration to produce correct results.
 
-The best method for dealing with missing data depends on the underlying process causing the missingness. There is no single approach that is always the best, and the terminology commonly used to describe missingness doesn't directly relate to what analysis methods perform best. In this blog post I'll begin by defining the commonly used but unhelpful classifications for missing data mechanisms (you'll see them everywhere, so you might as well know what they mean) and then explain how to describe missing data processes using causal diagrams (DAGs) and provide some references to help choose an analysis based on that.
+The best method for dealing with missing data depends on the underlying process causing the missingness. There is no single approach that is always the best, and the terminology commonly used to describe missingness doesn't directly relate to what analysis methods perform best. In this blog post I'll begin by defining the commonly used but sometimes unhelpful classifications for missing data mechanisms (you'll see them everywhere, so you might as well know what they mean) and then explain how to describe missing data processes using causal diagrams (DAGs) and provide some references to help choose an analysis based on that.
 
 ![(original image via [\@marginoferror on Twitter](https://twitter.com/marginoferror/status/935937659888836609), adapted by me for missing data purposes.)](dont_fight_a_cat_MI.jpeg)
 
 ## MCAR, MAR, MNAR or nah?
 
-The most common classification for missing data mechanisms is as either Missing Completely at Random (MCAR), Missing at Random (MAR), or Missing Not at Random (MNAR). This classification is based on concepts first introduced in @rubin_inference_1976. These terms are widespread, but can be confusing when first encountered because they do not mean quite what you might expect them to mean. I'll define them briefly here, but the goal is to not have to focus specifically about which of these mechanisms apply to your data, or use this classification to guide your analytical choices.
+The most common classification for missing data mechanisms is that data is either Missing Completely at Random (MCAR), Missing at Random (MAR), or Missing Not at Random (MNAR). This classification is based on concepts first introduced in @rubin_inference_1976. These terms are widespread, but can be confusing when first encountered because they do not mean quite what you might expect them to mean. I'll define them briefly here, but the goal is to not have to focus specifically about which of these mechanisms apply to your data, or use this classification to guide your analytical choices.
 
 Data is considered to be **Missing Completely at Random (MCAR)** if the probability of being missing does not depend on the values of any of the variables in the data, whether those values are missing or observed [@little_statistical_2014, p. 12]. In other words, the missingness cannot be related to the research question of interest [@lee_framework_2021].
 
@@ -40,11 +40,11 @@ Data is **Missing at Random (MAR)** if the probability of being missing depends 
 
 [^mardef]: There are a few subtly different ways of defining this concept mathematically; @seaman_what_2013 goes into the detail for those who are interested.
 
-Data is **Missing Not at Random (MNAR)** if it's not Missing at Random  [@little_statistical_2014, p. 12]. At least that's relatively straightforward. In other words, the probability of data being missing may be related to what the missing values would have been, had we observed them. It is sometimes implied that MNAR data is a lost cause for statistical analysis, but later in this post we will see specific examples of MNAR mechanisms where common statistical procedures produce valid results for common questions.
+Data is **Missing Not at Random (MNAR)** if it's not Missing at Random  [@little_statistical_2014, p. 12]. At least that's relatively straightforward. In other words, the probability of data being missing is related to what the missing values would have been, had we observed them. It is sometimes implied that MNAR data is a lost cause for statistical analysis, but later in this post we will see specific examples of MNAR mechanisms where common statistical procedures produce valid results for common questions.
 
 Strictly speaking, these classifications refer to the entire dataset collectively, usually consisting of many variables, some of which may have missing values and some of which may not. When there are multiple variables with missing values --- a common situation in real datasets --- these classifications are sometimes informally applied to specific variables with missing data, but doing so doesn't relate to any of the mathematical guarantees about which analysis methods are applicable.
 
-These missing data classifications depend on the set of available variables. For example, if additional variables (sometimes called auxiliary variables) which relate to probability of partially-observed variables having missing values are added to the dataset, the missing data mechanism may change from being MNAR to being MAR.
+These missing data classifications depend on the type of analysis and set of available variables. For example, if additional variables (sometimes called auxiliary variables) which relate to probability of partially-observed variables having missing values are added to the dataset, the missing data mechanism may change from being MNAR to being MAR.
 
 ::: {.callout-note}
 ## Historical aside
@@ -58,17 +58,17 @@ Sometimes you may hear missing data described as "ignorable" or "non-ignorable".
 
 ### How do I know what kind of missing data mechanism I have?
 
-Unfortunately, there's no way to determine the missing data mechanism purely by looking at the data --- you need to think about the process generating the data and why some of it is missing. A causal DAG is a good way to reason about the relationship between the variables and their reasons for being missing and can help you decide what analysis to use. Rather than using the DAG to determine whether your data is MCAR, MAR, or MNAR, and then use those classifications to choose an analysis, you can use the DAG directly to guide your choice of analysis method. I'll have examples of this later in this blog.
+Unfortunately, there's no way to determine the missing data mechanism purely by looking at the data --- you need to think about the process generating the data and why some of it is missing. Often there will be different reasons for missing data in the same variable. A causal DAG is a good way to reason about the relationship between the variables and their reasons for being missing and can help you decide what analysis to use. Rather than using the DAG to determine whether your data is MCAR, MAR, or MNAR, and then use those classifications to choose an analysis, you can use the DAG directly to guide your choice of analysis method. I'll have examples of this later in this blog.
 
 ### If I know my missing data mechanism, what analysis should I do?
 
-It depends! (I'm statistician, you should have known I would say that.) These are the standard results about what missing data methods are appropriate under different processes:
+It depends! (I'm a statistician, you should have known I would say that.) These are the standard results about what missing data methods are appropriate under different processes:
 
-Complete cases analysis is unbiased if the data is MCAR. This is a sufficient condition, not a necessary condition [@little_missing_2021]: there are situations where complete cases may be valid, or at least provide a valid estimate of a particular quantity of interest, under MAR or MNAR. Depending on the amount of missing data, complete cases analysis may be inefficient (i.e., have lower power than other methods) because only cases where no variables have missing values are used in the analysis.
+Complete case analysis is unbiased if the data is MCAR. This is a sufficient condition, not a necessary condition [@little_missing_2021]: there are situations where complete case analysis may be valid, or at least provide a valid estimate of a particular quantity of interest, under MAR or MNAR. Depending on the amount of missing data, complete case analysis may be inefficient (i.e., have lower power than other methods) because only cases where no variables have missing values are used in the analysis.
 
-Multiple imputation, likelihood-based methods and full Bayesian methods are unbiased if the data is MAR or MCAR [@little_missing_2021]. Multiple imputation is approximately equivalent to a maximum-likelihood method if the underlying model is the same [@collins_comparison_2001].
+Multiple imputation, inverse probability weighting, likelihood-based methods and full Bayesian methods are unbiased if the data is MAR or MCAR [@little_missing_2021]. Multiple imputation is approximately equivalent to a maximum-likelihood method if the underlying model is the same [@collins_comparison_2001].
 
-In some specific MNAR situations, either or both of the above methods may still be valid, depending on what you're trying to estimate [@white_bias_2010].
+In some specific MNAR situations, some of the above methods may still be valid, depending on what you're trying to estimate [@white_bias_2010].
 
 ## Some examples of missing data mechanisms
 
@@ -84,13 +84,13 @@ This is one of the few cases where we can be sure the data is MCAR.
 
 Consider a longitudinal study where participants need to regularly travel to a site, for example a hospital, in order for their data to be recorded. Participants living in rural or remote areas may find the travel more inconvenient if they need to visit a city to participate in the study, and thus be more likely to have missing values in many variables.
 
-If we know the location of all of the participants, or the missingness in the participant location is unrelated to any other study variable, this missingness mechanism would be MAR.
+If we know the location of all of the participants, this missingness mechanism would be MAR.
 
 ### Example 3: Missingness related to confounders and exposure
 
-This example is drawn from @moreno-betancur_canonical_2018. Suppose we want to investigate the relationship between childhood maternal mental illness (the exposure, in epidemiologist-speak) and child behaviour in subsequent years (the outcome). In order to provide a causal estimate of the effect of this exposure, we must control for confounding variables, such as maternal alcohol consumption, smoking, and other variables relating to the child's health. 
+This example is drawn from @moreno-betancur_canonical_2018. Suppose we want to investigate the relationship between childhood maternal mental illness (the exposure, in epidemiologist-speak) and child behaviour in subsequent years (the outcome). In order to provide a causal estimate of the effect of this exposure, we must control for confounding variables, such as maternal alcohol consumption, smoking, and other variables relating to the child's behaviour. 
 
-It was considered likely that missingness in all variables was related to both maternal mental illness and the counfounding variables. Since child behaviour was measured at a later time than the exposure and confounding variables, it was considered unlikely to have affected missingness in the confounders or exposure. 
+It was considered likely that missingness in all variables was related to both maternal mental illness and the confounding variables. Since child behaviour was measured at a later time than the exposure and confounding variables, it was considered unlikely to have affected missingness in the confounders or exposure. 
 
 It was uncertain whether missingness in child behaviour could be related to the child behaviour itself --- so there are two plausible missing data mechanisms to consider in this example. Both of those plausible mechanisms are MNAR, but we will see later than one possibility is amenable for analysis and the other is not.
 
@@ -320,10 +320,10 @@ If your estimand is recoverable, you can proceed to deciding on an analysis meth
 
 Randomised clinical trials provide some additional guarantees about the nature of the missing data process which observational studies do not: the assigned intervention is completely observed and known to be unrelated to baseline covariates. While it doesn't use the m-DAG framework, @sullivan_should_2018 considers several methods for dealing with missing data in randomised trials that may be useful for those working in that setting.
 
-The papers above provide examples of situations where multiple imputation is not necessarily better than simpler methods, as well as situations where multiple imputation is required. The situations where particular missing data methods work do not neatly align with the definitions of MCAR/MAR/MNAR but by drawing a DAG and considering the results in the papers above you should be able to determine which popular methods are applicable to your data and research question.
+The papers above provide examples of situations where multiple imputation is not necessarily better than simpler methods, as well as situations where complete case analysis does not produce valid inference. The situations where particular missing data methods work do not neatly align with the definitions of MCAR/MAR/MNAR but by drawing a DAG and considering the results in the papers above you should be able to determine which popular methods are applicable to your data and research question.
 
-::: {style="font-size:80%"}
-Thanks to Isabella Ghement and Lachlan Cribb for providing valuable feedback which greatly improved this blog post. Last updated: 29 June 2023.
-:::
+## Acknowledgements
+
+Thanks to Isabella Ghement, Lachlan Cribb, and Tom Sullivan for providing valuable feedback which greatly improved this blog post. Last updated: 6 July 2023.
 
 ## References
