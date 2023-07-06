@@ -1,0 +1,59 @@
+---
+title: "You are what you ATE: Estimating risk differences and relative risks from logistic regression"
+author: "Cameron Patrick"
+date: "2023-07-06"
+draft: true
+categories: [r, statistics]
+format:
+  html:
+    toc: true
+    code-fold: show
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.width = 6,
+  fig.height = 3.5,
+  fig.retina = 2,
+  dpi = 195
+)
+```
+
+A lot of noise has been made, especially in the last few years, about the noncollapsibility of odds ratios and why an odds ratio may not be a desirable summary for a population-level effect **REFERENCE - Jonathan Bartlett?**. Beyond the well-known issue that normal humans are unable to interpret an odds ratio at all **REFERENCE**, there is an additional mathematical problem to worry about: the marginal odds ratio (population-level odds ratio) is not any kind of average of conditional odds ratios (individual-level odds ratio) **REFERENCE**. This means that the odds ratio is not a valid average treatment effect (ATE) **REFERENCE**. Risk differences[^riskdiff] (the difference in probability attributable to a particular treatment) and relative risks (the ratio of probabilities due to a particular treatment) avoid this problem. Personally, I'm a fan of risk differences both for assessing the effect of an intervention on a population and for communicating potential risks to an individual **REFERENCE**.
+
+[^riskdiff]: "Risk difference" would more commonly be described as "difference in proportion" in a generalist statistical setting.
+
+Directly estimating a risk difference or relative risk from the data gets more complicated in the presence of covariates you may want to control. Adjusting for covariates requires specifying some kind of model, and the mathematical form of covariate adjustment will depend on whether you are modelling log-odds (logistic regression, corresponding to an odds ratio), probability (linear probability model, corresponding to risk difference) or log-probability (quasi-Poisson or log-link binomial, corresponding to relative risk). When modelling probability, it's generally desirable to enforce that the model-predicted probability is, in fact, a probability: in other words, a number between zero and one **REFERENCES PLS**. Unfortunately, only models whose direct outputs are essentially uninterpretable (such as logistic regression) are able to do this. There are also compelling arguments that despite the difficulty in interpreting odds ratios, they are more likely to be transportable between different levels of baseline risk than risk differences or relative risks, and so make a better choice for statistical modelling **REFERENCE - Harrell and/or Senn**.
+
+Thus we have a dilemma: people understand risk differences and relative risks, but they can be problematic to estimate with covariate adjustment; nobody understands odds ratios[^interpor], but logistic regression is probably a better model for the underlying effects. One way out is to model the data using logistic regression, and then use the logistic regression model to produce the quantities of interest **REFERENCE - Permutt?**.
+
+[^interpor]: If you can intuitively interpret odds ratios, that's great for you, although I'm not sure I believe you.
+
+In this post I'll show how to do that using R and some common packages **WHICH ONES FIXME LATER**.
+
+## An example
+
+## Fitting a logistic regression model
+
+### Adding a covariate
+
+### Adding an interaction
+
+## Calculating risk difference and relative risk
+
+### Using emmeans
+
+### Using marginaleffects
+
+### Beyond the delta method: better inference using the bootstrap (which package?)
+
+## Being Bayesian
+
+maybe?? this is getting long already.
+
+## Comparing to direct estimates
+
+### Linear probability models for risk difference
+
+### Quasi-Poisson models for relative risk
