@@ -7,9 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Cameron Patrick">
-<meta name="dcterms.date" content="2019-11-26">
+<meta name="dcterms.date" content="2023-07-06">
 
-<title>Cameron Patrick - Plotting multiple variables at once using ggplot2 and tidyr</title>
+<title>Cameron Patrick - You are what you ATE: Estimating risk differences and relative risks from logistic regression</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -21,40 +21,6 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
-}
-/* CSS for syntax highlighting */
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -98,22 +64,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <link rel="stylesheet" href="../../../../styles.css">
-<meta property="og:title" content="Cameron Patrick - Plotting multiple variables at once using ggplot2 and tidyr">
+<meta property="og:title" content="Cameron Patrick - You are what you ATE: Estimating risk differences and relative risks from logistic regression">
 <meta property="og:description" content="">
-<meta property="og:image" content="https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index_files/figure-html/panel-plot-1.png">
 <meta property="og:site-name" content="Cameron Patrick">
-<meta property="og:image:height" content="864">
-<meta property="og:image:width" content="1440">
-<meta name="twitter:title" content="Cameron Patrick - Plotting multiple variables at once using ggplot2 and tidyr">
+<meta name="twitter:title" content="Cameron Patrick - You are what you ATE: Estimating risk differences and relative risks from logistic regression">
 <meta name="twitter:description" content="">
-<meta name="twitter:image" content="https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index_files/figure-html/panel-plot-1.png">
 <meta name="twitter:creator" content="@camjpatrick">
-<meta name="twitter:image-height" content="864">
-<meta name="twitter:image-width" content="1440">
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:card" content="summary">
 </head>
 
-<body class="nav-fixed fullcontent">
+<body class="nav-fixed">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -160,10 +120,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">Plotting multiple variables at once using ggplot2 and tidyr</h1>
+      <h1 class="title">You are what you ATE: Estimating risk differences and relative risks from logistic regression</h1>
                                 <div class="quarto-categories">
                 <div class="quarto-category">r</div>
-                <div class="quarto-category">ggplot</div>
+                <div class="quarto-category">statistics</div>
               </div>
                   </div>
   </div>
@@ -181,7 +141,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">November 26, 2019</p>
+        <p class="date">July 6, 2023</p>
       </div>
     </div>
     
@@ -192,103 +152,90 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#an-example" id="toc-an-example" class="nav-link active" data-scroll-target="#an-example">An example</a></li>
+  <li><a href="#fitting-a-logistic-regression-model" id="toc-fitting-a-logistic-regression-model" class="nav-link" data-scroll-target="#fitting-a-logistic-regression-model">Fitting a logistic regression model</a>
+  <ul class="collapse">
+  <li><a href="#adding-a-covariate" id="toc-adding-a-covariate" class="nav-link" data-scroll-target="#adding-a-covariate">Adding a covariate</a></li>
+  <li><a href="#adding-an-interaction" id="toc-adding-an-interaction" class="nav-link" data-scroll-target="#adding-an-interaction">Adding an interaction</a></li>
+  </ul></li>
+  <li><a href="#calculating-risk-difference-and-relative-risk" id="toc-calculating-risk-difference-and-relative-risk" class="nav-link" data-scroll-target="#calculating-risk-difference-and-relative-risk">Calculating risk difference and relative risk</a>
+  <ul class="collapse">
+  <li><a href="#using-emmeans" id="toc-using-emmeans" class="nav-link" data-scroll-target="#using-emmeans">Using emmeans</a></li>
+  <li><a href="#using-marginaleffects" id="toc-using-marginaleffects" class="nav-link" data-scroll-target="#using-marginaleffects">Using marginaleffects</a></li>
+  <li><a href="#beyond-the-delta-method-better-inference-using-the-bootstrap-which-package" id="toc-beyond-the-delta-method-better-inference-using-the-bootstrap-which-package" class="nav-link" data-scroll-target="#beyond-the-delta-method-better-inference-using-the-bootstrap-which-package">Beyond the delta method: better inference using the bootstrap (which package?)</a></li>
+  </ul></li>
+  <li><a href="#being-bayesian" id="toc-being-bayesian" class="nav-link" data-scroll-target="#being-bayesian">Being Bayesian</a></li>
+  <li><a href="#comparing-to-direct-estimates" id="toc-comparing-to-direct-estimates" class="nav-link" data-scroll-target="#comparing-to-direct-estimates">Comparing to direct estimates</a>
+  <ul class="collapse">
+  <li><a href="#linear-probability-models-for-risk-difference" id="toc-linear-probability-models-for-risk-difference" class="nav-link" data-scroll-target="#linear-probability-models-for-risk-difference">Linear probability models for risk difference</a></li>
+  <li><a href="#quasi-poisson-models-for-relative-risk" id="toc-quasi-poisson-models-for-relative-risk" class="nav-link" data-scroll-target="#quasi-poisson-models-for-relative-risk">Quasi-Poisson models for relative risk</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
 <!-- main -->
 <main class="content quarto-banner-title-block" id="quarto-document-content">
 
 
 
 
-<p>In exploratory data analysis, it’s common to want to make similar plots of a number of variables at once. For example, a randomised trial may look at several outcomes, or a survey may have a large number of questions. Here is a way to achieve to plot them efficiently using R and <code>ggplot2</code>.</p>
-<section id="pivoting-longer-turning-your-variables-into-rows" class="level2">
-<h2 class="anchored" data-anchor-id="pivoting-longer-turning-your-variables-into-rows">Pivoting longer: turning your variables into rows</h2>
-<p><code>ggplot2</code> doesn’t provide an easy facility to plot multiple variables at once because this is usually a sign that <a href="https://r4ds.had.co.nz/tidy-data.html">your data is not “tidy”</a>. For example, in situations where you want to plot two columns on a graph as points with different colours, the two columns often really represent the same variable, and there is a hidden grouping factor which distinguishes the data points you want to colour differently. The usual answer in this scenario is that you should restructure your data before plotting it. As a bonus, it will probably be easier to analyse your data in that form too.</p>
-<p>Likewise, if you want to split a plot into panels (or facets, in <code>ggplot2</code>-speak), you must plot a single response variable, with a grouping variable to indicate which panel the data should be plotted in. The best structure for your data depends on what you’re trying to do with it, and in this situation, even if your data is in the right form for analysis, it may not be right for some of the plots you want to make.</p>
-<p>Fortunately, restructuring your data into the right form is straightforward using the <code>tidyr</code> package and the <code>pivot_longer()</code> function. In this example, I’m going to look at some mocked-up survey data, with six questions stored in variables <code>Q1</code> through <code>Q6</code>. The original data frame looks like this:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(survey_data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 300 × 7
-   group    Q1    Q2    Q3    Q4    Q5    Q6
-   &lt;fct&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt;
- 1 B         4     1     4     1     2     3
- 2 B         5     2     5     4     3     3
- 3 B         5     4     4     2     2     3
- 4 B         5     1     5     2     4     3
- 5 A         5     2     5     1     1     2
- 6 A         5     3     5     3     2     2
- 7 A         4     3     5     1     4     1
- 8 B         4     3     5     1     2     1
- 9 B         4     4     4     1     3     2
-10 B         4     4     5     2     5     4
-# ℹ 290 more rows</code></pre>
-</div>
-</div>
-<p>You can convert this into a longer data frame where the question number is stored in one column and the response is stored in a separate column:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>longer_data <span class="ot">&lt;-</span> survey_data <span class="sc">%&gt;%</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(Q1<span class="sc">:</span>Q6, <span class="at">names_to =</span> <span class="st">"question"</span>, <span class="at">values_to =</span> <span class="st">"response"</span>)</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(longer_data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 1,800 × 3
-   group question response
-   &lt;fct&gt; &lt;chr&gt;       &lt;int&gt;
- 1 B     Q1              4
- 2 B     Q2              1
- 3 B     Q3              4
- 4 B     Q4              1
- 5 B     Q5              2
- 6 B     Q6              3
- 7 B     Q1              5
- 8 B     Q2              2
- 9 B     Q3              5
-10 B     Q4              4
-# ℹ 1,790 more rows</code></pre>
-</div>
-</div>
-<p>You don’t even need to store the ‘long form’ data as a separate variable. If you’re not going to use the data in this form for anything else, it’s simpler to pipe the data straight into <code>ggplot2</code>. Here I use the <code>facet_wrap()</code> function to plot each question in a separate panel, so we can see the distribution of all of the questions at once:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>survey_data <span class="sc">%&gt;%</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(Q1<span class="sc">:</span>Q6, <span class="at">names_to =</span> <span class="st">"question"</span>, <span class="at">values_to =</span> <span class="st">"response"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> response)) <span class="sc">+</span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>() <span class="sc">+</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="fu">vars</span>(question), <span class="at">ncol =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Response (on a 1 to 5 scale)"</span>, <span class="at">y =</span> <span class="st">"Number of respondents"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="index_files/figure-html/panel-plot-1.png" class="img-fluid" width="720"></p>
-</div>
-</div>
-<p>You can use <code>question</code> as a factor anywhere else you would use a categorical variable with ggplot. For example, you can make some box plots:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>survey_data <span class="sc">%&gt;%</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(Q1<span class="sc">:</span>Q6, <span class="at">names_to =</span> <span class="st">"question"</span>, <span class="at">values_to =</span> <span class="st">"response"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">y =</span> response, <span class="at">x =</span> question)) <span class="sc">+</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>() <span class="sc">+</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Question"</span>, <span class="at">y =</span> <span class="st">"Response (on a 1 to 5 scale)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="index_files/figure-html/box-plot-1.png" class="img-fluid" width="720"></p>
-</div>
-</div>
-<p>This is also a nice demonstration of how box plots are rarely the best way to present Likert scale data.</p>
-<p>Any other variables are retained after you call <code>pivot_longer()</code>, so you can e.g.&nbsp;compare the responses to survey questions based on a demographic variable:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>survey_data <span class="sc">%&gt;%</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(Q1<span class="sc">:</span>Q6, <span class="at">names_to =</span> <span class="st">"question"</span>, <span class="at">values_to =</span> <span class="st">"response"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> response, <span class="at">colour =</span> group)) <span class="sc">+</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="fu">vars</span>(question), <span class="at">ncol =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">stat =</span> <span class="st">"count"</span>) <span class="sc">+</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">stat =</span> <span class="st">"count"</span>) <span class="sc">+</span></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Response (on a 1 to 5 scale)"</span>, <span class="at">y =</span> <span class="st">"Number of respondents"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="index_files/figure-html/line-plot-1.png" class="img-fluid" width="720"></p>
-</div>
-</div>
-<p>By default, R will sort the levels of factors alphabetically. This isn’t always what you want in this situation—often the order of the variables in your data frame has some meaning to it. The <code>fct_inorder()</code> function allows you to reorder levels of a factor in the order of first appearance in the file. If you use that with the column produced by <code>pivot_longer()</code>, the factor will be ordered by the order of the columns in the original data frame.</p>
+<p>A lot of noise has been made, especially in the last few years, about the noncollapsibility of odds ratios and why an odds ratio may not be a desirable summary for a population-level effect <strong>REFERENCE - Jonathan Bartlett?</strong>. Beyond the well-known issue that normal humans are unable to interpret an odds ratio at all <strong>REFERENCE</strong>, there is an additional mathematical problem to worry about: the marginal odds ratio (population-level odds ratio) is not any kind of average of conditional odds ratios (individual-level odds ratio) <strong>REFERENCE</strong>. This means that the odds ratio is not a valid average treatment effect (ATE) <strong>REFERENCE</strong>. Risk differences<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> (the difference in probability attributable to a particular treatment) and relative risks (the ratio of probabilities due to a particular treatment) avoid this problem. Personally, I’m a fan of risk differences both for assessing the effect of an intervention on a population and for communicating potential risks to an individual <strong>REFERENCE</strong>.</p>
+<p>Directly estimating a risk difference or relative risk from the data gets more complicated in the presence of covariates you may want to control. Adjusting for covariates requires specifying some kind of model, and the mathematical form of covariate adjustment will depend on whether you are modelling log-odds (logistic regression, corresponding to an odds ratio), probability (linear probability model, corresponding to risk difference) or log-probability (quasi-Poisson or log-link binomial, corresponding to relative risk). When modelling probability, it’s generally desirable to enforce that the model-predicted probability is, in fact, a probability: in other words, a number between zero and one <strong>REFERENCES PLS</strong>. Unfortunately, only models whose direct outputs are essentially uninterpretable (such as logistic regression) are able to do this. There are also compelling arguments that despite the difficulty in interpreting odds ratios, they are more likely to be transportable between different levels of baseline risk than risk differences or relative risks, and so make a better choice for statistical modelling <strong>REFERENCE - Harrell and/or Senn</strong>.</p>
+<p>Thus we have a dilemma: people understand risk differences and relative risks, but they can be problematic to estimate with covariate adjustment; nobody understands odds ratios<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>, but logistic regression is probably a better model for the underlying effects. One way out is to model the data using logistic regression, and then use the logistic regression model to produce the quantities of interest <strong>REFERENCE - Permutt?</strong>.</p>
+<p>In this post I’ll show how to do that using R and some common packages <strong>WHICH ONES FIXME LATER</strong>.</p>
+<section id="an-example" class="level2">
+<h2 class="anchored" data-anchor-id="an-example">An example</h2>
+</section>
+<section id="fitting-a-logistic-regression-model" class="level2">
+<h2 class="anchored" data-anchor-id="fitting-a-logistic-regression-model">Fitting a logistic regression model</h2>
+<section id="adding-a-covariate" class="level3">
+<h3 class="anchored" data-anchor-id="adding-a-covariate">Adding a covariate</h3>
+</section>
+<section id="adding-an-interaction" class="level3">
+<h3 class="anchored" data-anchor-id="adding-an-interaction">Adding an interaction</h3>
+</section>
+</section>
+<section id="calculating-risk-difference-and-relative-risk" class="level2">
+<h2 class="anchored" data-anchor-id="calculating-risk-difference-and-relative-risk">Calculating risk difference and relative risk</h2>
+<section id="using-emmeans" class="level3">
+<h3 class="anchored" data-anchor-id="using-emmeans">Using emmeans</h3>
+</section>
+<section id="using-marginaleffects" class="level3">
+<h3 class="anchored" data-anchor-id="using-marginaleffects">Using marginaleffects</h3>
+</section>
+<section id="beyond-the-delta-method-better-inference-using-the-bootstrap-which-package" class="level3">
+<h3 class="anchored" data-anchor-id="beyond-the-delta-method-better-inference-using-the-bootstrap-which-package">Beyond the delta method: better inference using the bootstrap (which package?)</h3>
+</section>
+</section>
+<section id="being-bayesian" class="level2">
+<h2 class="anchored" data-anchor-id="being-bayesian">Being Bayesian</h2>
+<p>maybe?? this is getting long already.</p>
+</section>
+<section id="comparing-to-direct-estimates" class="level2">
+<h2 class="anchored" data-anchor-id="comparing-to-direct-estimates">Comparing to direct estimates</h2>
+<section id="linear-probability-models-for-risk-difference" class="level3">
+<h3 class="anchored" data-anchor-id="linear-probability-models-for-risk-difference">Linear probability models for risk difference</h3>
+</section>
+<section id="quasi-poisson-models-for-relative-risk" class="level3">
+<h3 class="anchored" data-anchor-id="quasi-poisson-models-for-relative-risk">Quasi-Poisson models for relative risk</h3>
 
 
 </section>
+</section>
 
-</main> <!-- /main -->
+
+<div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>“Risk difference” would more commonly be described as “difference in proportion” in a generalist statistical setting.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>If you can intuitively interpret odds ratios, that’s great for you, although I’m not sure I believe you.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
