@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Cameron Patrick">
-<meta name="dcterms.date" content="2023-07-06">
+<meta name="dcterms.date" content="2023-07-12">
 
 <title>Cameron Patrick - You are what you ATE: Estimating risk differences and relative risks from logistic regression</title>
 <style>
@@ -22,7 +22,60 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-</style>
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
 
 
 <script src="../../../../site_libs/quarto-nav/quarto-nav.js"></script>
@@ -62,15 +115,19 @@ ul.task-list li input[type="checkbox"] {
   }
 }</script>
 
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 <link rel="stylesheet" href="../../../../styles.css">
 <meta property="og:title" content="Cameron Patrick - You are what you ATE: Estimating risk differences and relative risks from logistic regression">
-<meta property="og:description" content="">
+<meta property="og:description" content="| Wherein I try to make sense of ongoing debates in the statistical community about how to analyse and report trials targeting binary outcomes, and then write some R code to practice what I hesitantly preach.">
+<meta property="og:image" content="https://cameronpatrick.com/post/2023/07/logit-rd-rr/building-collapse.jpg">
 <meta property="og:site-name" content="Cameron Patrick">
 <meta name="twitter:title" content="Cameron Patrick - You are what you ATE: Estimating risk differences and relative risks from logistic regression">
-<meta name="twitter:description" content="">
+<meta name="twitter:description" content="| Wherein I try to make sense of ongoing debates in the statistical community about how to analyse and report trials targeting binary outcomes, and then write some R code to practice what I hesitantly preach.">
+<meta name="twitter:image" content="https://cameronpatrick.com/post/2023/07/logit-rd-rr/building-collapse.jpg">
 <meta name="twitter:creator" content="@camjpatrick">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 
 <body class="nav-fixed">
@@ -81,7 +138,7 @@ ul.task-list li input[type="checkbox"] {
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container">
     <a class="navbar-brand" href="../../../../index.html">
-    <span class="navbar-title">Cameron Patrick</span>
+    <span class="navbar-title">Posting completely at random</span>
     </a>
   </div>
             <div id="quarto-search" class="" title="Search"></div>
@@ -141,13 +198,19 @@ ul.task-list li input[type="checkbox"] {
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">July 6, 2023</p>
+        <p class="date">July 12, 2023</p>
       </div>
     </div>
     
       
     </div>
     
+  <div>
+    <div class="abstract">
+      <div class="abstract-title">Abstract</div>
+      <p>Wherein I try to make sense of ongoing debates in the statistical community about how to analyse and report trials targeting binary outcomes, and then write some R code to practice what I hesitantly preach.</p>
+    </div>
+  </div>
   
   </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
@@ -157,24 +220,42 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#an-example" id="toc-an-example" class="nav-link active" data-scroll-target="#an-example">An example</a></li>
+  <li><a href="#the-great-odds-ratio-debate-with-memes" id="toc-the-great-odds-ratio-debate-with-memes" class="nav-link active" data-scroll-target="#the-great-odds-ratio-debate-with-memes">The great odds ratio debate (with memes)</a></li>
+  <li><a href="#an-example" id="toc-an-example" class="nav-link" data-scroll-target="#an-example">An example</a>
+  <ul class="collapse">
+  <li><a href="#getting-the-data-ready-in-r" id="toc-getting-the-data-ready-in-r" class="nav-link" data-scroll-target="#getting-the-data-ready-in-r">Getting the data ready in R</a></li>
+  </ul></li>
   <li><a href="#fitting-a-logistic-regression-model" id="toc-fitting-a-logistic-regression-model" class="nav-link" data-scroll-target="#fitting-a-logistic-regression-model">Fitting a logistic regression model</a>
   <ul class="collapse">
-  <li><a href="#adding-a-covariate" id="toc-adding-a-covariate" class="nav-link" data-scroll-target="#adding-a-covariate">Adding a covariate</a></li>
-  <li><a href="#adding-an-interaction" id="toc-adding-an-interaction" class="nav-link" data-scroll-target="#adding-an-interaction">Adding an interaction</a></li>
+  <li><a href="#adding-covariates" id="toc-adding-covariates" class="nav-link" data-scroll-target="#adding-covariates">Adding covariates</a></li>
   </ul></li>
-  <li><a href="#calculating-risk-difference-and-relative-risk" id="toc-calculating-risk-difference-and-relative-risk" class="nav-link" data-scroll-target="#calculating-risk-difference-and-relative-risk">Calculating risk difference and relative risk</a>
+  <li><a href="#calculating-risk-difference-and-relative-risk-from-logistic-regression-models" id="toc-calculating-risk-difference-and-relative-risk-from-logistic-regression-models" class="nav-link" data-scroll-target="#calculating-risk-difference-and-relative-risk-from-logistic-regression-models">Calculating risk difference and relative risk from logistic regression models</a>
   <ul class="collapse">
-  <li><a href="#using-emmeans" id="toc-using-emmeans" class="nav-link" data-scroll-target="#using-emmeans">Using emmeans</a></li>
-  <li><a href="#using-marginaleffects" id="toc-using-marginaleffects" class="nav-link" data-scroll-target="#using-marginaleffects">Using marginaleffects</a></li>
-  <li><a href="#beyond-the-delta-method-better-inference-using-the-bootstrap-which-package" id="toc-beyond-the-delta-method-better-inference-using-the-bootstrap-which-package" class="nav-link" data-scroll-target="#beyond-the-delta-method-better-inference-using-the-bootstrap-which-package">Beyond the delta method: better inference using the bootstrap (which package?)</a></li>
+  <li><a href="#absolute-risks" id="toc-absolute-risks" class="nav-link" data-scroll-target="#absolute-risks">Absolute risks</a></li>
+  <li><a href="#risk-difference" id="toc-risk-difference" class="nav-link" data-scroll-target="#risk-difference">Risk difference</a></li>
+  <li><a href="#relative-risk" id="toc-relative-risk" class="nav-link" data-scroll-target="#relative-risk">Relative risk</a></li>
   </ul></li>
-  <li><a href="#being-bayesian" id="toc-being-bayesian" class="nav-link" data-scroll-target="#being-bayesian">Being Bayesian</a></li>
-  <li><a href="#comparing-to-direct-estimates" id="toc-comparing-to-direct-estimates" class="nav-link" data-scroll-target="#comparing-to-direct-estimates">Comparing to direct estimates</a>
+  <li><a href="#direct-estimates-of-risk-difference-and-relative-risk" id="toc-direct-estimates-of-risk-difference-and-relative-risk" class="nav-link" data-scroll-target="#direct-estimates-of-risk-difference-and-relative-risk">Direct estimates of risk difference and relative risk</a>
   <ul class="collapse">
   <li><a href="#linear-probability-models-for-risk-difference" id="toc-linear-probability-models-for-risk-difference" class="nav-link" data-scroll-target="#linear-probability-models-for-risk-difference">Linear probability models for risk difference</a></li>
   <li><a href="#quasi-poisson-models-for-relative-risk" id="toc-quasi-poisson-models-for-relative-risk" class="nav-link" data-scroll-target="#quasi-poisson-models-for-relative-risk">Quasi-Poisson models for relative risk</a></li>
   </ul></li>
+  <li><a href="#being-bayesian" id="toc-being-bayesian" class="nav-link" data-scroll-target="#being-bayesian">Being Bayesian</a>
+  <ul class="collapse">
+  <li><a href="#unadjusted-model" id="toc-unadjusted-model" class="nav-link" data-scroll-target="#unadjusted-model">Unadjusted model</a></li>
+  <li><a href="#covariate-adjusted-model" id="toc-covariate-adjusted-model" class="nav-link" data-scroll-target="#covariate-adjusted-model">Covariate-adjusted model</a></li>
+  <li><a href="#getting-a-wiggle-on-splines-for-continuous-covariates" id="toc-getting-a-wiggle-on-splines-for-continuous-covariates" class="nav-link" data-scroll-target="#getting-a-wiggle-on-splines-for-continuous-covariates">Getting a wiggle on: splines for continuous covariates</a></li>
+  <li><a href="#the-kitchen-sink-model-splines-and-interaction-terms" id="toc-the-kitchen-sink-model-splines-and-interaction-terms" class="nav-link" data-scroll-target="#the-kitchen-sink-model-splines-and-interaction-terms">The kitchen sink model: splines and interaction terms</a></li>
+  </ul></li>
+  <li><a href="#did-any-of-this-make-a-difference-in-the-end" id="toc-did-any-of-this-make-a-difference-in-the-end" class="nav-link" data-scroll-target="#did-any-of-this-make-a-difference-in-the-end">Did any of this make a difference, in the end?</a></li>
+  <li><a href="#treatment-effects-as-a-function-of-covariates" id="toc-treatment-effects-as-a-function-of-covariates" class="nav-link" data-scroll-target="#treatment-effects-as-a-function-of-covariates">Treatment effects as a function of covariates</a>
+  <ul class="collapse">
+  <li><a href="#age" id="toc-age" class="nav-link" data-scroll-target="#age">Age</a></li>
+  <li><a href="#number-of-partners" id="toc-number-of-partners" class="nav-link" data-scroll-target="#number-of-partners">Number of partners</a></li>
+  </ul></li>
+  <li><a href="#distribution-of-treatment-effects" id="toc-distribution-of-treatment-effects" class="nav-link" data-scroll-target="#distribution-of-treatment-effects">Distribution of treatment effects</a></li>
+  <li><a href="#coda" id="toc-coda" class="nav-link" data-scroll-target="#coda">Coda</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
 </nav>
     </div>
@@ -184,56 +265,2037 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<p>A lot of noise has been made, especially in the last few years, about the noncollapsibility of odds ratios and why an odds ratio may not be a desirable summary for a population-level effect <strong>REFERENCE - Jonathan Bartlett?</strong>. Beyond the well-known issue that normal humans are unable to interpret an odds ratio at all <strong>REFERENCE</strong>, there is an additional mathematical problem to worry about: the marginal odds ratio (population-level odds ratio) is not any kind of average of conditional odds ratios (individual-level odds ratio) <strong>REFERENCE</strong>. This means that the odds ratio is not a valid average treatment effect (ATE) <strong>REFERENCE</strong>. Risk differences<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> (the difference in probability attributable to a particular treatment) and relative risks (the ratio of probabilities due to a particular treatment) avoid this problem. Personally, I’m a fan of risk differences both for assessing the effect of an intervention on a population and for communicating potential risks to an individual <strong>REFERENCE</strong>.</p>
-<p>Directly estimating a risk difference or relative risk from the data gets more complicated in the presence of covariates you may want to control. Adjusting for covariates requires specifying some kind of model, and the mathematical form of covariate adjustment will depend on whether you are modelling log-odds (logistic regression, corresponding to an odds ratio), probability (linear probability model, corresponding to risk difference) or log-probability (quasi-Poisson or log-link binomial, corresponding to relative risk). When modelling probability, it’s generally desirable to enforce that the model-predicted probability is, in fact, a probability: in other words, a number between zero and one <strong>REFERENCES PLS</strong>. Unfortunately, only models whose direct outputs are essentially uninterpretable (such as logistic regression) are able to do this. There are also compelling arguments that despite the difficulty in interpreting odds ratios, they are more likely to be transportable between different levels of baseline risk than risk differences or relative risks, and so make a better choice for statistical modelling <strong>REFERENCE - Harrell and/or Senn</strong>.</p>
-<p>Thus we have a dilemma: people understand risk differences and relative risks, but they can be problematic to estimate with covariate adjustment; nobody understands odds ratios<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>, but logistic regression is probably a better model for the underlying effects. One way out is to model the data using logistic regression, and then use the logistic regression model to produce the quantities of interest <strong>REFERENCE - Permutt?</strong>.</p>
-<p>In this post I’ll show how to do that using R and some common packages <strong>WHICH ONES FIXME LATER</strong>.</p>
+<section id="the-great-odds-ratio-debate-with-memes" class="level2">
+<h2 class="anchored" data-anchor-id="the-great-odds-ratio-debate-with-memes">The great odds ratio debate (with memes)</h2>
+<p>A lot of noise has been made about why an odds ratio may not be a desirable summary for a treatment effect on a binary variable<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>. There is that pesky problem that normal humans are unable to correctly interpret an odds ratio <span class="citation" data-cites="altman1998oddsratiosshould">(<a href="#ref-altman1998oddsratiosshould" role="doc-biblioref">Altman et al., 1998</a>)</span>. In recent years, people<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> have become more aware of the mathematical fact of noncollapsibility <span class="citation" data-cites="greenland1999confoundingcollapsibilitycausal daniel2021makingapplesoranges morris2022planningmethodcovariate">(<a href="#ref-daniel2021makingapplesoranges" role="doc-biblioref">Daniel et al., 2021</a>; <a href="#ref-greenland1999confoundingcollapsibilitycausal" role="doc-biblioref">Greenland et al., 1999</a>; <a href="#ref-morris2022planningmethodcovariate" role="doc-biblioref">Morris et al., 2022</a>)</span>: the marginal<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> odds ratio (population-level odds ratio) is not any kind of average of conditional odds ratios (individual-level odds ratios). The <a href="https://database.ich.org/sites/default/files/E9-R1_Step4_Guideline_2019_1203.pdf">ICH E9(R1) estimand framework for clinical trials</a> requires a “population-level summary”. In the language of causal inference, that’s describing an Average Treatment Effect (ATE), and the odds ratio isn’t one<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a>.</p>
+<p>Risk differences (the difference in probability attributable to a particular treatment) and relative risks (the ratio of probabilities due to a particular treatment) avoid these problems of odds ratios. However, statisticians are usually taught to analyse binary outcomes using logistic regression, the direct output<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a> of which is odds ratios. Someone on Stats Twitter rediscovers all of this every few months and starts a heated argument where nobody goes away happy.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="building-collapse.jpg" class="img-fluid figure-img" alt="Picture of a collapsing building with the caption &quot;I'll take the non-collapsible one&quot;"></p>
+<p></p><figcaption class="figure-caption">Surprisingly, in statistics, we usually prefer collapsibility.</figcaption><p></p>
+</figure>
+</div>
+<p>Personally, I’m a fan of risk differences for communicating potential risks to an individual, ideally presented alongside the baseline level of risk. There’s some evidence that patients and clinicians find these measures easier to interpret than relative measures <span class="citation" data-cites="zipkin2014evidencebasedriskcommunication">(<a href="#ref-zipkin2014evidencebasedriskcommunication" role="doc-biblioref">Zipkin et al., 2014</a>)</span>, especially when presented in the form of a natural frequency, like “6 in 1000 people” rather than “0.6%”.</p>
+<p>Statistical analyses are often adjusted for covariates, either to reduce confounding (in observational studies) or improve power (in randomised trials). There are some technical challenges when doing this with risk differences and relative risks. Adjusting for covariates requires specifying some kind of model, and the natural mathematical form of covariate adjustment will depend on whether you are modelling log-odds (logistic regression model, corresponding to an odds ratio), probability (linear probability model, corresponding to risk difference) or log-probability (quasi-Poisson or log-link binomial model, corresponding to relative risk). When modelling risk differences or relative risks directly, it’s possible to end up with impossible predicted probabilities: “probabilities” which are less than zero or greater than one. Using logistic regression avoids this problem, because any real number on the log-odds scale translates to a probability between zero and one. Any odds ratio can be applied to any level of baseline risk without making mathematicians sad<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>.</p>
+<p>There are also compelling — but not universally accepted — arguments that despite the difficulty in interpreting odds ratios, they are more likely to be transportable between different levels of baseline risk than risk differences or relative risks <span class="citation" data-cites="doi2022controversydebatequestionable senn2011uneasereasonsmistrusting">(<a href="#ref-doi2022controversydebatequestionable" role="doc-biblioref">Doi et al., 2022</a>; <a href="#ref-senn2011uneasereasonsmistrusting" role="doc-biblioref">Senn, 2011</a>)</span>. This is another reason to prefer odds ratios for statistical modelling because it reduces the need for interaction terms, which can only be estimated well in large samples. In the context of clinical trials and other randomised experiments, logistic regression is able to produce correct adjusted estimates of the treatment effects even if the exact form of the covariate adjustment is misspecified — for example, if there are omitted interaction terms or nonlinear effects <span class="citation" data-cites="white2021covariateadjustmentrandomised">(<a href="#ref-white2021covariateadjustmentrandomised" role="doc-biblioref">White et al., 2021</a>)</span>.</p>
+<p>Thus we have a dilemma: people understand risk differences and (to a lesser extent) relative risks, but they can be problematic to estimate with covariate adjustment; nobody understands odds ratios<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a>, but logistic regression is probably a better model, operating closer to a scale on which the underlying effects are additive. One way out is to model the data using logistic regression, and then use that model to produce other quantities of interest. This approach is described in <span class="citation" data-cites="permutt2020covariateschangeestimand">Permutt (<a href="#ref-permutt2020covariateschangeestimand" role="doc-biblioref">2020</a>)</span>, which has some of the best writing I’ve encountered in a statistics paper — being written in the form of a dialogue between a randomiser (the “causal inference” perspective) and a parameteriser (the “statistical modelling” perspective) walking through the Garden of Eden, planning to conduct and analyse a clinical trial.</p>
+<p><span class="citation" data-cites="permutt2020covariateschangeestimand">Permutt (<a href="#ref-permutt2020covariateschangeestimand" role="doc-biblioref">2020</a>)</span> also considered what information different audiences might want from the results of a clinical trial: regulator, patient, and scientist. There’s a fourth audience which I think is worth considering, very briefly mentioned by Permutt: the meta-analyst, trying to aggregate information from multiple trials.</p>
+<p>Permutt argues in favour of the ATE being the main quantity of regulatory interest:</p>
+<blockquote class="blockquote">
+<p>The average treatment effect should be of regulatory interest, however. The primary analysis of outcome should be of a variable that is reasonably linear in utility to the patient. Then, if and only if the average effect is positive, the ensemble of patients can be said to be better off under the test condition than under the control. This is perhaps the weakest imaginable statistical condition for approval of a drug product, but it is surely a necessary condition.</p>
+</blockquote>
+<p>Permutt notes that studies designed to be able to detect average treatment effects are unlikely to be adequate for patient-specific decision making or providing a more detailed scientific understanding.</p>
+<p>The most clearly expressed counter-argument to this comes from <a href="https://www.fharrell.com/post/rdist/">a blog post by Frank Harrell arguing against single-number summaries for treatment effects on binary outcomes</a>:</p>
+<blockquote class="blockquote">
+<p>Marginal adjusted estimates may be robust, but may not accurately estimate RD for either any patient in the RCT or for the clinical population to which RCT results are to be applied, because in effect they assume that the RCT sample is a random sample from the clinical population, something not required and never realized for RCTs.</p>
+</blockquote>
+<p>I am a coward and not (yet?) willing to take a strong position in this fight, but am always sympathetic to the idea that a single number is rarely sufficient to describe scientific evidence (see also: p-values). Harrell’s other writing on this topic is also worth reading:</p>
+<ul>
+<li><a href="https://www.fharrell.com/post/robcov/">Incorrect Covariate Adjustment May Be More Correct than Adjusted Marginal Estimates</a> makes a similar point to <span class="citation" data-cites="white2021covariateadjustmentrandomised">White et al. (<a href="#ref-white2021covariateadjustmentrandomised" role="doc-biblioref">2021</a>)</span> with a detailed simulated example;</li>
+<li><a href="https://www.fharrell.com/post/varyor/">Assessing Heterogeneity of Treatment Effect, Estimating Patient-Specific Efficacy, and Studying Variation in Odds ratios, Risk Ratios, and Risk Differences</a> argues in favour of the use of odds ratios for modelling, and points out the extreme difficulty in identifying heterogeneous treatment effects even in very large studies; and</li>
+<li><a href="https://discourse.datamethods.org/t/should-one-derive-risk-difference-from-the-odds-ratio/4403/1">“Should one derive risk difference from the odds ratio” thread on Data Methods Discourse</a> featuring valuable input from Sander Greenland and Frank Harrell.</li>
+</ul>
+<p>One issue which I remain unclear about is whether randomised trials powered to detect main treatment effects are likely to reasonably estimate patient-specific baseline risk — a simpler task than patient-specific treatment effects, but still outside of the usual design remit for an efficacy trial. Common analytical approaches for clinical trials have good properties for estimating average treatment effects when the covariates are regarded as nuisance parameters, but are not guaranteed to perform so well if the effects of the covariates are themselves of interest.</p>
+<p>Finally, there is the meta-analytic perspective to consider. An effect size which is less heterogeneous between studies is once again desirable. If arguments about the transportability of odds ratios by the Harrell, Senn, Doi, and others are to be believed, we should report odds ratios, as those are likely to be the most useful for meta-analysts. There is some merit in reporting all commonly-used effect size measures: risk difference, relative risk, and odds ratio. This provides the most flexibility for future meta-analysts.</p>
+<p>If all of that was a bit much to take in, maybe this will help:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="american-chopper-argument.jpeg" class="img-fluid figure-img" alt="American Chopper argument meme: risk differences aren't transportable / nobody understands odds ratios / clinical trials aren't random samples from the population / marginal odds ratios aren't the average of conditional odds ratios / conditional odds ratios still tell us if an intervention works"></p>
+<p></p><figcaption class="figure-caption">True facts on both sides.</figcaption><p></p>
+</figure>
+</div>
+<p>In the rest of this post I’ll show how to calculate risk differences and relative risks from logistic regression models using R and the <code>marginaleffects</code> package, using an example in which it makes no meaningful difference which method you use (oops?).</p>
+</section>
 <section id="an-example" class="level2">
 <h2 class="anchored" data-anchor-id="an-example">An example</h2>
+<p>For this post, I’m going to look at the same trial <a href="https://solomonkurz.netlify.app/blog/2023-04-24-causal-inference-with-logistic-regression/">Solomon Kurz re-analysed in his blog post about causal inference with logistic regression</a>: <span class="citation" data-cites="wilson2017internetaccessedsexuallytransmitted">Wilson et al. (<a href="#ref-wilson2017internetaccessedsexuallytransmitted" role="doc-biblioref">2017</a>)</span>, a randomised trial comparing an internet-accessed sexually transmitted infection (STI) testing service to a clinic-based service. The methods I use will be similar to Solomon Kurz’s post, but the emphasis and details will be different.</p>
+<p>The original trial has some nice features. For example, the randomisation method balanced gender, age, number of sexual partners and sexual orientation between the two study arms. This means that we should expect very little difference in the point estimate from covariate adjustment.</p>
+<p>The original analysis used multiple imputation, a sophisticated approach for dealing with missing outcome data. For this blog post I will do a complete case analysis, excluding participants who didn’t have outcome data from the analysis. The only covariate with missing data was sexual orientation. Following the original analysis, I will treat ‘missing’ as an explicit category for sexual orientation.</p>
+<p>The trial measured several outcomes, but this post will only consider one of the co-primary outcomes: completion of an STI test at 6 weeks. An increase in this outcome would be considered favourable. The original paper reported the treatment effect as a relative risk with associated 95% confidence interval.</p>
+<section id="getting-the-data-ready-in-r" class="level3">
+<h3 class="anchored" data-anchor-id="getting-the-data-ready-in-r">Getting the data ready in R</h3>
+<p>We’re going to use a bunch of R packages in the code that follows: <code>tidyverse</code> for general data wrangling, <code>readxl</code> to read Excel files, <code>cowplot</code> to get a nicer theme for plots, <code>gt</code> and <code>gtsummary</code> to make tables, <code>broom</code> to extract coefficient estimates, <code>ggdist</code> for plotting distributions, and most importantly <code>marginaleffects</code> to obtain the estimates of risk difference and relative risk.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(readxl)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(cowplot)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gt)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gtsummary)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(broom)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggdist)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(marginaleffects)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Set up a default plot theme:</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_cowplot</span>(<span class="at">font_size =</span> <span class="dv">11</span>, <span class="at">rel_small =</span> <span class="dv">9</span><span class="sc">/</span><span class="dv">11</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">rel_tiny =</span> <span class="dv">8</span><span class="sc">/</span><span class="dv">11</span>, <span class="at">rel_large =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">plot.title.position =</span> <span class="st">"plot"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>The original data file was <a href="https://doi.org/10.1371/journal.pmed.1002479.s001">an Excel spreadsheet which can be downloaded from the journal article as electronic supplementary material</a>. Note that I name data frames that I read in from a file with the suffix <code>_orig</code>, to distinguish them from cleaned or modified versions. This helps with interactive data cleaning, because I always have a copy of the original data on hand in R’s memory.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>wilson2017_orig <span class="ot">&lt;-</span> <span class="fu">read_xls</span>(<span class="st">"pmed.1002479.s001.xls"</span>, <span class="at">sheet =</span> <span class="st">"data"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>This spreadsheet was already set up nicely for analysis, so only mild data cleaning is required. I created a new variable <code>tx</code> to store the treatment group, because the variable name <code>group</code> causes problems for the <code>marginaleffects</code> package, and explicitly ensure that “Control” is the reference category. The other level of the treatment factor is <code>SH:24</code>, the name of new intervention being trialled. I converted the other categorical variables into factors, sorted in sensible ways: gender, sexual orientation (<code>msm</code>) and ethnic group from most to least frequent category; number of partners in ascending numeric order. The <code>msm</code> variable had a category of “not known” stored as the number 99. This could be treated as a missing value, but I have chosen to analyse it as a distinct category.</p>
+<p>The <code>partners</code> variable was censored at 10 partners in the original data (i.e., instead of “10”, “11”, etc there is “10+”) and treated as a categorical variable for analysis purposes. For secret reasons, I have also created a numeric version of this variable (<code>partners_numeric</code>).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>wilson2017 <span class="ot">&lt;-</span> wilson2017_orig <span class="sc">%&gt;%</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">tx =</span> <span class="fu">fct_relevel</span>(group, <span class="st">"Control"</span>, <span class="st">"SH:24"</span>),</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">gender =</span> <span class="fu">fct_infreq</span>(gender),</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">partners_numeric =</span> partners <span class="sc">%&gt;%</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>      <span class="fu">str_replace</span>(r<span class="st">"(\+$)"</span>, <span class="st">""</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.numeric</span>(),</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">partners =</span> <span class="fu">fct_inseq</span>(partners),</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">msm =</span> msm <span class="sc">%&gt;%</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">fct_recode</span>(<span class="st">"not known"</span> <span class="ot">=</span> <span class="st">"99"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">fct_infreq</span>(),</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">ethnicgrp =</span> <span class="fu">fct_infreq</span>(ethnicgrp)</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>A summary table showing demographics and the outcome variable is shown below, produced using the <code>gtsummary</code> package. You can see that there is almost perfect balance in all variables except for ethnic group. The outcome (<code>anytest</code>) is more likely to be missing in the control group.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl_summary</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  wilson2017,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">include =</span> <span class="fu">c</span>(age, gender, msm, ethnicgrp, partners, anytest),</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">by =</span> tx</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_overall</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+
+<div id="wrheioceyd" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#wrheioceyd table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#wrheioceyd thead, #wrheioceyd tbody, #wrheioceyd tfoot, #wrheioceyd tr, #wrheioceyd td, #wrheioceyd th {
+  border-style: none;
+}
+
+#wrheioceyd p {
+  margin: 0;
+  padding: 0;
+}
+
+#wrheioceyd .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#wrheioceyd .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#wrheioceyd .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#wrheioceyd .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#wrheioceyd .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#wrheioceyd .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#wrheioceyd .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#wrheioceyd .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#wrheioceyd .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#wrheioceyd .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#wrheioceyd .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#wrheioceyd .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#wrheioceyd .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#wrheioceyd .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#wrheioceyd .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#wrheioceyd .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#wrheioceyd .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#wrheioceyd .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#wrheioceyd .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#wrheioceyd .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#wrheioceyd .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#wrheioceyd .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#wrheioceyd .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#wrheioceyd .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#wrheioceyd .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#wrheioceyd .gt_left {
+  text-align: left;
+}
+
+#wrheioceyd .gt_center {
+  text-align: center;
+}
+
+#wrheioceyd .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#wrheioceyd .gt_font_normal {
+  font-weight: normal;
+}
+
+#wrheioceyd .gt_font_bold {
+  font-weight: bold;
+}
+
+#wrheioceyd .gt_font_italic {
+  font-style: italic;
+}
+
+#wrheioceyd .gt_super {
+  font-size: 65%;
+}
+
+#wrheioceyd .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#wrheioceyd .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#wrheioceyd .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#wrheioceyd .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#wrheioceyd .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#wrheioceyd .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#wrheioceyd .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="<strong>Characteristic</strong>"><strong>Characteristic</strong></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="<strong>Overall</strong>, N = 2,063<span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;><sup>1</sup></span>"><strong>Overall</strong>, N = 2,063<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="<strong>Control</strong>, N = 1,032<span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;><sup>1</sup></span>"><strong>Control</strong>, N = 1,032<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="<strong>SH:24</strong>, N = 1,031<span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;><sup>1</sup></span>"><strong>SH:24</strong>, N = 1,031<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="label" class="gt_row gt_left">age</td>
+<td headers="stat_0" class="gt_row gt_center">23.0 (20.0, 26.0)</td>
+<td headers="stat_1" class="gt_row gt_center">23.0 (20.0, 26.0)</td>
+<td headers="stat_2" class="gt_row gt_center">23.0 (20.0, 26.0)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">gender</td>
+<td headers="stat_0" class="gt_row gt_center"></td>
+<td headers="stat_1" class="gt_row gt_center"></td>
+<td headers="stat_2" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Female</td>
+<td headers="stat_0" class="gt_row gt_center">1,213 (59%)</td>
+<td headers="stat_1" class="gt_row gt_center">609 (59%)</td>
+<td headers="stat_2" class="gt_row gt_center">604 (59%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Male</td>
+<td headers="stat_0" class="gt_row gt_center">846 (41%)</td>
+<td headers="stat_1" class="gt_row gt_center">422 (41%)</td>
+<td headers="stat_2" class="gt_row gt_center">424 (41%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Transgender</td>
+<td headers="stat_0" class="gt_row gt_center">4 (0.2%)</td>
+<td headers="stat_1" class="gt_row gt_center">1 (&lt;0.1%)</td>
+<td headers="stat_2" class="gt_row gt_center">3 (0.3%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">msm</td>
+<td headers="stat_0" class="gt_row gt_center"></td>
+<td headers="stat_1" class="gt_row gt_center"></td>
+<td headers="stat_2" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;other</td>
+<td headers="stat_0" class="gt_row gt_center">1,778 (86%)</td>
+<td headers="stat_1" class="gt_row gt_center">888 (86%)</td>
+<td headers="stat_2" class="gt_row gt_center">890 (86%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;msm</td>
+<td headers="stat_0" class="gt_row gt_center">262 (13%)</td>
+<td headers="stat_1" class="gt_row gt_center">133 (13%)</td>
+<td headers="stat_2" class="gt_row gt_center">129 (13%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;not known</td>
+<td headers="stat_0" class="gt_row gt_center">23 (1.1%)</td>
+<td headers="stat_1" class="gt_row gt_center">11 (1.1%)</td>
+<td headers="stat_2" class="gt_row gt_center">12 (1.2%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">ethnicgrp</td>
+<td headers="stat_0" class="gt_row gt_center"></td>
+<td headers="stat_1" class="gt_row gt_center"></td>
+<td headers="stat_2" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;White/ White British</td>
+<td headers="stat_0" class="gt_row gt_center">1,528 (74%)</td>
+<td headers="stat_1" class="gt_row gt_center">749 (73%)</td>
+<td headers="stat_2" class="gt_row gt_center">779 (76%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Black/ Black British</td>
+<td headers="stat_0" class="gt_row gt_center">191 (9.3%)</td>
+<td headers="stat_1" class="gt_row gt_center">110 (11%)</td>
+<td headers="stat_2" class="gt_row gt_center">81 (7.9%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Mixed/ Multiple ethnicity</td>
+<td headers="stat_0" class="gt_row gt_center">188 (9.1%)</td>
+<td headers="stat_1" class="gt_row gt_center">99 (9.6%)</td>
+<td headers="stat_2" class="gt_row gt_center">89 (8.6%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Asian/ Asian British</td>
+<td headers="stat_0" class="gt_row gt_center">127 (6.2%)</td>
+<td headers="stat_1" class="gt_row gt_center">57 (5.5%)</td>
+<td headers="stat_2" class="gt_row gt_center">70 (6.8%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Other</td>
+<td headers="stat_0" class="gt_row gt_center">29 (1.4%)</td>
+<td headers="stat_1" class="gt_row gt_center">17 (1.6%)</td>
+<td headers="stat_2" class="gt_row gt_center">12 (1.2%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">partners</td>
+<td headers="stat_0" class="gt_row gt_center"></td>
+<td headers="stat_1" class="gt_row gt_center"></td>
+<td headers="stat_2" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;1</td>
+<td headers="stat_0" class="gt_row gt_center">606 (29%)</td>
+<td headers="stat_1" class="gt_row gt_center">304 (29%)</td>
+<td headers="stat_2" class="gt_row gt_center">302 (29%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;2</td>
+<td headers="stat_0" class="gt_row gt_center">365 (18%)</td>
+<td headers="stat_1" class="gt_row gt_center">187 (18%)</td>
+<td headers="stat_2" class="gt_row gt_center">178 (17%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;3</td>
+<td headers="stat_0" class="gt_row gt_center">285 (14%)</td>
+<td headers="stat_1" class="gt_row gt_center">132 (13%)</td>
+<td headers="stat_2" class="gt_row gt_center">153 (15%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;4</td>
+<td headers="stat_0" class="gt_row gt_center">215 (10%)</td>
+<td headers="stat_1" class="gt_row gt_center">104 (10%)</td>
+<td headers="stat_2" class="gt_row gt_center">111 (11%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;5</td>
+<td headers="stat_0" class="gt_row gt_center">176 (8.5%)</td>
+<td headers="stat_1" class="gt_row gt_center">91 (8.8%)</td>
+<td headers="stat_2" class="gt_row gt_center">85 (8.2%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;6</td>
+<td headers="stat_0" class="gt_row gt_center">113 (5.5%)</td>
+<td headers="stat_1" class="gt_row gt_center">53 (5.1%)</td>
+<td headers="stat_2" class="gt_row gt_center">60 (5.8%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;7</td>
+<td headers="stat_0" class="gt_row gt_center">60 (2.9%)</td>
+<td headers="stat_1" class="gt_row gt_center">33 (3.2%)</td>
+<td headers="stat_2" class="gt_row gt_center">27 (2.6%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;8</td>
+<td headers="stat_0" class="gt_row gt_center">40 (1.9%)</td>
+<td headers="stat_1" class="gt_row gt_center">19 (1.8%)</td>
+<td headers="stat_2" class="gt_row gt_center">21 (2.0%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;9</td>
+<td headers="stat_0" class="gt_row gt_center">22 (1.1%)</td>
+<td headers="stat_1" class="gt_row gt_center">12 (1.2%)</td>
+<td headers="stat_2" class="gt_row gt_center">10 (1.0%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;10+</td>
+<td headers="stat_0" class="gt_row gt_center">181 (8.8%)</td>
+<td headers="stat_1" class="gt_row gt_center">97 (9.4%)</td>
+<td headers="stat_2" class="gt_row gt_center">84 (8.1%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">anytest</td>
+<td headers="stat_0" class="gt_row gt_center">612 (35%)</td>
+<td headers="stat_1" class="gt_row gt_center">173 (21%)</td>
+<td headers="stat_2" class="gt_row gt_center">439 (48%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Unknown</td>
+<td headers="stat_0" class="gt_row gt_center">324</td>
+<td headers="stat_1" class="gt_row gt_center">214</td>
+<td headers="stat_2" class="gt_row gt_center">110</td></tr>
+  </tbody>
+  
+  <tfoot class="gt_footnotes">
+    <tr>
+      <td class="gt_footnote" colspan="4"><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span> Median (IQR); n (%)</td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+</div>
+</div>
+</section>
 </section>
 <section id="fitting-a-logistic-regression-model" class="level2">
 <h2 class="anchored" data-anchor-id="fitting-a-logistic-regression-model">Fitting a logistic regression model</h2>
-<section id="adding-a-covariate" class="level3">
-<h3 class="anchored" data-anchor-id="adding-a-covariate">Adding a covariate</h3>
+<p>Let’s begin by doing some logistic regressions and getting some odds ratios. We’ll start with an unadjusted model, where the outcome <code>anytest</code> only has one predictor: <code>tx</code>, the assigned treatment.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>lrm_anytest_unadj <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  anytest <span class="sc">~</span> tx,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> binomial,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> wilson2017</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>We can obtain an unadjusted (or “crude”) odds ratio for the treatment effect by exponentiating the model parameter for <code>tx</code>. The <code>tidy()</code> function does this, returning the results in an R data frame. The second row of the table (<code>txSH:24</code>) tells us what we want: the odds ratio (<code>estimate</code>) is 3.40, with a 95% confidence interval of 2.75 to 4.20 (the <code>conf.low</code> and <code>conf.high</code> columns).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tidy</span>(lrm_anytest_unadj, <span class="at">conf.int =</span> <span class="cn">TRUE</span>, <span class="at">exponentiate =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 7
+  term        estimate std.error statistic  p.value conf.low conf.high
+  &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+1 (Intercept)    0.268    0.0856     -15.4 2.61e-53    0.226     0.316
+2 txSH:24        3.40     0.108       11.3 1.17e-29    2.75      4.20 </code></pre>
+</div>
+</div>
+<section id="adding-covariates" class="level3">
+<h3 class="anchored" data-anchor-id="adding-covariates">Adding covariates</h3>
+<p>Adding covariates to the model usually increases statistical power, even in a clinical trial where the unadjusted model still gives “correct” (unbiased) results. In the case of an ANCOVA for a continuous variable, the increase in power comes from decreased residual variance and hence decreased standard errors, but in logistic regression there is no residual variance to decrease. The only way for the increase in power to manifest itself is from an increase in the estimated effect size (odds ratios).</p>
+<p>Let’s add age, gender, orientation, ethnic group and number of partners to our model. Age will be modelled as a continuous variable, the rest as categorical; R figures this out based on the column types, which aren’t shown here.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>lrm_anytest_adj <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  anytest <span class="sc">~</span> tx <span class="sc">+</span> age <span class="sc">+</span> gender <span class="sc">+</span> msm <span class="sc">+</span> ethnicgrp <span class="sc">+</span> partners,</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> binomial,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> wilson2017</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>This model has a lot of parameters, but the only one of interest right now is the treatment effect. The adjusted odds ratio is only slightly different from the unadjusted odds ratio (3.52 vs 3.40), and there has been barely any change to the power of the test (<em>z</em>-statistic is 11.3, same as before).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tidy</span>(lrm_anytest_adj, <span class="at">conf.int =</span> <span class="cn">TRUE</span>, <span class="at">exponentiate =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(term <span class="sc">==</span> <span class="st">"txSH:24"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 7
+  term    estimate std.error statistic  p.value conf.low conf.high
+  &lt;chr&gt;      &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+1 txSH:24     3.52     0.111      11.3 1.46e-29     2.83      4.39</code></pre>
+</div>
+</div>
 </section>
-<section id="adding-an-interaction" class="level3">
-<h3 class="anchored" data-anchor-id="adding-an-interaction">Adding an interaction</h3>
+</section>
+<section id="calculating-risk-difference-and-relative-risk-from-logistic-regression-models" class="level2">
+<h2 class="anchored" data-anchor-id="calculating-risk-difference-and-relative-risk-from-logistic-regression-models">Calculating risk difference and relative risk from logistic regression models</h2>
+<p>The <code>marginaleffects</code> package makes it easy to calculate the risk difference and other summary measures from a logistic regression model.</p>
+<section id="absolute-risks" class="level3">
+<h3 class="anchored" data-anchor-id="absolute-risks">Absolute risks</h3>
+<p>We can get the estimated proportion of participants completing an STI test in each treatment group using the <code>avg_predictions()</code> function. This function provides its outcome in the response scale (i.e.&nbsp;probability, not log-odds) by default. The new treatment increased proportion of participants completing an STI test from 21% (95% CI: 18%, 24%) to 48% (95% CI: 44%, 51%).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_predictions</span>(lrm_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+      tx Estimate Pr(&gt;|z|)     S 2.5 % 97.5 %
+ SH:24      0.477    0.157   2.7 0.445  0.509
+ Control    0.211   &lt;0.001 174.7 0.185  0.241
+
+Columns: tx, estimate, p.value, s.value, conf.low, conf.high </code></pre>
+</div>
+</div>
+<p>The results are almost identical in the adjusted model.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_predictions</span>(lrm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+      tx Estimate Pr(&gt;|z|)     S 2.5 % 97.5 %
+ SH:24      0.472    0.103   3.3 0.439  0.506
+ Control    0.203   &lt;0.001 177.4 0.176  0.232
+
+Columns: tx, estimate, p.value, s.value, conf.low, conf.high </code></pre>
+</div>
+</div>
+</section>
+<section id="risk-difference" class="level3">
+<h3 class="anchored" data-anchor-id="risk-difference">Risk difference</h3>
+<p>The <code>avg_comparisons()</code> function gives us comparisons between treatment groups. Once again, we get comparisons on the response scale (i.e.&nbsp;risk differences) by default. The new treatment increased the proportion of participants completing an STI test by 26% (95% CI: 22%, 31%).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_comparisons</span>(lrm_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Term        Contrast Estimate Std. Error    z Pr(&gt;|z|)     S 2.5 % 97.5 %
+   tx SH:24 - Control    0.265     0.0218 12.2   &lt;0.001 110.8 0.222  0.308
+
+Columns: term, contrast, estimate, std.error, statistic, p.value, s.value, conf.low, conf.high </code></pre>
+</div>
+</div>
+<p>The results from the adjusted model are very similar.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_comparisons</span>(lrm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Term        Contrast Estimate Std. Error    z Pr(&gt;|z|)     S 2.5 % 97.5 %
+   tx SH:24 - Control     0.26     0.0214 12.1   &lt;0.001 110.2 0.218  0.302
+
+Columns: term, contrast, estimate, std.error, statistic, p.value, s.value, conf.low, conf.high </code></pre>
+</div>
+</div>
+</section>
+<section id="relative-risk" class="level3">
+<h3 class="anchored" data-anchor-id="relative-risk">Relative risk</h3>
+<p>To get relative risks using <code>avg_comparisons()</code>, we need to ask for the average of the log of the ratio between treatment conditions (<code>lnratioavg</code> in the code below), and then exponentiate that. This provides an estimated relative risk of 2.25 (95% CI: 1.94, 2.61).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_comparisons</span>(lrm_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Term                        Contrast Estimate Pr(&gt;|z|)    S 2.5 % 97.5 %
+   tx ln(mean(SH:24) / mean(Control))     2.25   &lt;0.001 86.6  1.94   2.61
+
+Columns: term, contrast, estimate, p.value, s.value, conf.low, conf.high, predicted, predicted_hi, predicted_lo </code></pre>
+</div>
+</div>
+<p>And again, the results not meaningfully different using the adjusted model.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_comparisons</span>(lrm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Term                        Contrast Estimate Pr(&gt;|z|)    S 2.5 % 97.5 %
+   tx ln(mean(SH:24) / mean(Control))     2.22   &lt;0.001 86.4  1.92   2.56
+
+Columns: term, contrast, estimate, p.value, s.value, conf.low, conf.high, predicted, predicted_hi, predicted_lo </code></pre>
+</div>
+</div>
 </section>
 </section>
-<section id="calculating-risk-difference-and-relative-risk" class="level2">
-<h2 class="anchored" data-anchor-id="calculating-risk-difference-and-relative-risk">Calculating risk difference and relative risk</h2>
-<section id="using-emmeans" class="level3">
-<h3 class="anchored" data-anchor-id="using-emmeans">Using emmeans</h3>
+<section id="direct-estimates-of-risk-difference-and-relative-risk" class="level2">
+<h2 class="anchored" data-anchor-id="direct-estimates-of-risk-difference-and-relative-risk">Direct estimates of risk difference and relative risk</h2>
+<section id="linear-probability-models-for-risk-difference" class="level3">
+<h3 class="anchored" data-anchor-id="linear-probability-models-for-risk-difference">Linear probability models for risk difference</h3>
+<p>A linear probability model is just a fancy term for fitting a linear regression to a binary outcome. In the unadjusted case, where there are no additional variables, this is <a href="https://lindeloev.github.io/tests-as-linear/">equivalent to doing a t-test</a>. It is common to use heteroscedasticity-robust standard errors when fitting a linear probability model, but this is not necessary in the case of a clinical trial with equal numbers in each treatment arm.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>ols_anytest_unadj <span class="ot">&lt;-</span> <span class="fu">lm</span>(</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  anytest <span class="sc">~</span> tx,</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> wilson2017</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>The coefficient for <code>tx</code> in the linear model is the risk difference and the intercept is the average baseline risk. These are the same as the values calculated from the logistic regression.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tidy</span>(ols_anytest_unadj, <span class="at">conf.int =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 7
+  term        estimate std.error statistic  p.value conf.low conf.high
+  &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+1 (Intercept)    0.211    0.0161      13.2 7.53e-38    0.180     0.243
+2 txSH:24        0.265    0.0221      12.0 4.96e-32    0.222     0.308</code></pre>
+</div>
+</div>
+<p>Using <code>avg_comparisons()</code> is possible for the linear model, too, and gives the same results:</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_comparisons</span>(ols_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Term        Contrast Estimate Std. Error  z Pr(&gt;|z|)     S 2.5 % 97.5 %
+   tx SH:24 - Control    0.265     0.0221 12   &lt;0.001 108.2 0.222  0.308
+
+Columns: term, contrast, estimate, std.error, statistic, p.value, s.value, conf.low, conf.high </code></pre>
+</div>
+</div>
+<p>We can also fit an adjusted model, where we assume a constant risk difference against different levels of baseline risk depending on levels of the covariates. This approach is statistically valid, in the same of being robust to misspecification of the covariate adjustment model, for the same reason that ANCOVA is generally a valid way to analyse a clinical trial. The adjusted estimate is very slightly different from the adjusted estimated obtained from logistic regression, but not meaningfully so: the two methods are not mathematically identical but both are reasonable ways to try to estimate the same quantity.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>ols_anytest_adj <span class="ot">&lt;-</span> <span class="fu">lm</span>(</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  anytest <span class="sc">~</span> tx <span class="sc">+</span> age <span class="sc">+</span> gender <span class="sc">+</span> msm <span class="sc">+</span> ethnicgrp <span class="sc">+</span> partners,</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> wilson2017</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Once again the coefficient for <code>tx</code> is directly interpretable as a risk difference:</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tidy</span>(ols_anytest_adj, <span class="at">conf.int =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(term <span class="sc">==</span> <span class="st">"txSH:24"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 7
+  term    estimate std.error statistic  p.value conf.low conf.high
+  &lt;chr&gt;      &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+1 txSH:24    0.261    0.0217      12.0 6.97e-32    0.218     0.303</code></pre>
+</div>
+</div>
+<p>The output from <code>avg_comparisons()</code> is the same as the coefficient in this case:</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_comparisons</span>(ols_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Term        Contrast Estimate Std. Error  z Pr(&gt;|z|)     S 2.5 % 97.5 %
+   tx SH:24 - Control    0.261     0.0217 12   &lt;0.001 107.7 0.218  0.303
+
+Columns: term, contrast, estimate, std.error, statistic, p.value, s.value, conf.low, conf.high </code></pre>
+</div>
+</div>
 </section>
-<section id="using-marginaleffects" class="level3">
-<h3 class="anchored" data-anchor-id="using-marginaleffects">Using marginaleffects</h3>
-</section>
-<section id="beyond-the-delta-method-better-inference-using-the-bootstrap-which-package" class="level3">
-<h3 class="anchored" data-anchor-id="beyond-the-delta-method-better-inference-using-the-bootstrap-which-package">Beyond the delta method: better inference using the bootstrap (which package?)</h3>
+<section id="quasi-poisson-models-for-relative-risk" class="level3">
+<h3 class="anchored" data-anchor-id="quasi-poisson-models-for-relative-risk">Quasi-Poisson models for relative risk</h3>
+<p>Relative risks are often estimated directly using Poisson regression models with robust standard errors. In this example I’ve used a quasi-likelihood model as a way of providing the robust standard errors, mainly for simplicity because it’s built into base R.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>qp_anytest_unadj <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>  anytest <span class="sc">~</span> tx,</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> quasipoisson,</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> wilson2017</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>The exponentiated <code>tx</code> coefficient provides the relative risk estimate: 2.25 (95% CI: 1.96, 2.60).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tidy</span>(qp_anytest_unadj, <span class="at">conf.int =</span> <span class="cn">TRUE</span>, <span class="at">exponentiate =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 7
+  term        estimate std.error statistic   p.value conf.low conf.high
+  &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+1 (Intercept)    0.211    0.0612     -25.4 4.77e-121    0.187     0.238
+2 txSH:24        2.25     0.0723      11.2 2.44e- 28    1.96      2.60 </code></pre>
+</div>
+</div>
+<p>This exponentiated coefficient is exactly the same as the output from <code>avg_comparisons()</code>, as we’d hope.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_comparisons</span>(qp_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Term                        Contrast Estimate Pr(&gt;|z|)    S 2.5 % 97.5 %
+   tx ln(mean(SH:24) / mean(Control))     2.25   &lt;0.001 94.9  1.96    2.6
+
+Columns: term, contrast, estimate, p.value, s.value, conf.low, conf.high, predicted, predicted_hi, predicted_lo </code></pre>
+</div>
+</div>
+<p>It’s also possible to include covariates in this kind of model, as with others.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>qp_anytest_adj <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>  anytest <span class="sc">~</span> tx <span class="sc">+</span> age <span class="sc">+</span> gender <span class="sc">+</span> msm <span class="sc">+</span> ethnicgrp <span class="sc">+</span> partners,</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> quasipoisson,</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> wilson2017</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>In this case the adjusted relative risk (2.22; 95% CI: 1.92, 2.57) is almost identical to the one derived previously from the logistic regression model (2.22; 95% CI: 1.92, 2.56).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tidy</span>(qp_anytest_adj, <span class="at">conf.int =</span> <span class="cn">TRUE</span>, <span class="at">exponentiate =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(term <span class="sc">==</span> <span class="st">"txSH:24"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 7
+  term    estimate std.error statistic  p.value conf.low conf.high
+  &lt;chr&gt;      &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+1 txSH:24     2.22    0.0734      10.9 1.28e-26     1.92      2.57</code></pre>
+</div>
+</div>
+<p>And once again, <code>avg_comparisons()</code> provides exactly the same estimate and confidence interval as the exponentiated model coefficient.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_comparisons</span>(qp_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ Term                        Contrast Estimate Pr(&gt;|z|)    S 2.5 % 97.5 %
+   tx ln(mean(SH:24) / mean(Control))     2.22   &lt;0.001 88.9  1.92   2.56
+
+Columns: term, contrast, estimate, p.value, s.value, conf.low, conf.high, predicted, predicted_hi, predicted_lo </code></pre>
+</div>
+</div>
 </section>
 </section>
 <section id="being-bayesian" class="level2">
 <h2 class="anchored" data-anchor-id="being-bayesian">Being Bayesian</h2>
-<p>maybe?? this is getting long already.</p>
+<p>While we’re trying out lots of different models, why not look at a Bayesian approach to logistic regression? To do this we’re going to need a couple more R packages: <code>brms</code> for fitting Bayesian regression models with Stan and <code>bayestestR</code> for setting up contrasts for categorical variables where equal priors have a sensible interpretation.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(brms)</span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(bayestestR)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>I created a copy of the data, named <code>wilson2017_bayes</code>, and set up all of the categorical variables to use <code>contr.equalprior_deviations</code> for contrasts. Under this parameterisation, a one unit difference represents the average difference between a group mean and the grand mean. For example, a factor with two levels would be encoded as a dummy variable taking the values -1 and 1.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>wilson2017_bayes <span class="ot">&lt;-</span> wilson2017</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a><span class="fu">contrasts</span>(wilson2017_bayes<span class="sc">$</span>tx) <span class="ot">&lt;-</span> <span class="st">"contr.equalprior_deviations"</span></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a><span class="fu">contrasts</span>(wilson2017_bayes<span class="sc">$</span>gender) <span class="ot">&lt;-</span> <span class="st">"contr.equalprior_deviations"</span></span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a><span class="fu">contrasts</span>(wilson2017_bayes<span class="sc">$</span>msm) <span class="ot">&lt;-</span> <span class="st">"contr.equalprior_deviations"</span></span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a><span class="fu">contrasts</span>(wilson2017_bayes<span class="sc">$</span>ethnicgrp) <span class="ot">&lt;-</span> <span class="st">"contr.equalprior_deviations"</span></span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a><span class="fu">contrasts</span>(wilson2017_bayes<span class="sc">$</span>partners) <span class="ot">&lt;-</span> <span class="st">"contr.equalprior_deviations"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<section id="unadjusted-model" class="level3">
+<h3 class="anchored" data-anchor-id="unadjusted-model">Unadjusted model</h3>
+<p>The code below fits the unadjusted model using <code>brms</code>. It’s a little bit more complicated than before, partly due to the extra code that saves the model object to a file and preferentially loads that file if it exists. There are a few other extra things to consider in the Bayesian model:</p>
+<ul>
+<li>Specifying <code>family = bernoulli</code> instead of <code>family = binomial</code> when the outcome is the result of a single trial uses optimised code which fits the model a lot faster.</li>
+<li>We need to specify priors. In this case I’m using a Normal(0, 0.5) prior for the treatment effect, which can be interpreted as a 95% prior certainty that the odds ratio will be less than <span class="math inline">\(e^2 \approx 7.4\)</span>. I didn’t specify a prior for the intercept. The <code>brms</code> default is a fairly diffuse Student t distribution which should be fine here.</li>
+<li>The “cmdstanr” backend is more reliable than the default “rstan” backend, in my experience.</li>
+<li>We run four chains with 5,000 iterations each, using four CPU cores at once. By default, <code>brms</code> uses half of the iterations for warmup, so we will end up with a total of 10,000 draws from the posterior distribution (four times 2,500).</li>
+</ul>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(<span class="st">"brm_anytest_unadj.Rds"</span>)) {</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>  brm_anytest_unadj <span class="ot">&lt;-</span> <span class="fu">brm</span>(</span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>    anytest <span class="sc">~</span> tx,</span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> bernoulli,</span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">prior =</span> <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.5</span>), <span class="at">class =</span> b),</span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> wilson2017_bayes,</span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">backend =</span> <span class="st">"cmdstanr"</span>,</span>
+<span id="cb46-8"><a href="#cb46-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">cores =</span> <span class="dv">4</span>,</span>
+<span id="cb46-9"><a href="#cb46-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">chains =</span> <span class="dv">4</span>,</span>
+<span id="cb46-10"><a href="#cb46-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">iter =</span> <span class="dv">5000</span>,</span>
+<span id="cb46-11"><a href="#cb46-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">seed =</span> <span class="dv">12345</span></span>
+<span id="cb46-12"><a href="#cb46-12" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb46-13"><a href="#cb46-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">saveRDS</span>(brm_anytest_unadj, <span class="st">"brm_anytest_unadj.Rds"</span>)</span>
+<span id="cb46-14"><a href="#cb46-14" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb46-15"><a href="#cb46-15" aria-hidden="true" tabindex="-1"></a>  brm_anytest_unadj <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"brm_anytest_unadj.Rds"</span>)</span>
+<span id="cb46-16"><a href="#cb46-16" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>All of the <code>marginaleffects</code> functions we’ve seen before work for this model too. We can also directly access the posterior distribution of quantities we’re interested in. For example, the posterior distributions of the marginal means for each treatment are shown below.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_predictions</span>(brm_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">posterior_draws</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(draw, <span class="at">y =</span> tx, <span class="at">fill =</span> tx)) <span class="sc">+</span></span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stat_halfeye</span>() <span class="sc">+</span></span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"off"</span>) <span class="sc">+</span></span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="st">"Treatment"</span>, <span class="at">x =</span> <span class="st">"Proportion"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/posterior-predictions-1.png" class="img-fluid" width="780"></p>
+</div>
+</div>
+<p>We can access the posterior distribution of the average treatment effect in a similar way:</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="fu">avg_comparisons</span>(brm_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">posterior_draws</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(draw)) <span class="sc">+</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stat_halfeye</span>() <span class="sc">+</span></span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="cn">NULL</span>) <span class="sc">+</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">x =</span> <span class="st">"Risk difference"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/posterior-ate-1.png" class="img-fluid" width="780"></p>
+</div>
+</div>
 </section>
-<section id="comparing-to-direct-estimates" class="level2">
-<h2 class="anchored" data-anchor-id="comparing-to-direct-estimates">Comparing to direct estimates</h2>
-<section id="linear-probability-models-for-risk-difference" class="level3">
-<h3 class="anchored" data-anchor-id="linear-probability-models-for-risk-difference">Linear probability models for risk difference</h3>
+<section id="covariate-adjusted-model" class="level3">
+<h3 class="anchored" data-anchor-id="covariate-adjusted-model">Covariate-adjusted model</h3>
+<p>We can add covariates to this model in the same way as we did for the frequentist model. This model will be examined in more detail in the section “Treatment effects as a function of covariates”.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(<span class="st">"brm_anytest_adj.Rds"</span>)) {</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>  brm_anytest_adj <span class="ot">&lt;-</span> <span class="fu">brm</span>(</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>    anytest <span class="sc">~</span> tx <span class="sc">+</span> age <span class="sc">+</span> gender <span class="sc">+</span> msm <span class="sc">+</span> ethnicgrp <span class="sc">+</span> partners,</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> bernoulli,</span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">prior =</span> <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.5</span>), <span class="at">class =</span> b),</span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> wilson2017_bayes,</span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">backend =</span> <span class="st">"cmdstanr"</span>,</span>
+<span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">cores =</span> <span class="dv">4</span>,</span>
+<span id="cb49-9"><a href="#cb49-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">chains =</span> <span class="dv">4</span>,</span>
+<span id="cb49-10"><a href="#cb49-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">iter =</span> <span class="dv">5000</span>,</span>
+<span id="cb49-11"><a href="#cb49-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">seed =</span> <span class="dv">54321</span></span>
+<span id="cb49-12"><a href="#cb49-12" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb49-13"><a href="#cb49-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">saveRDS</span>(brm_anytest_adj, <span class="st">"brm_anytest_adj.Rds"</span>)</span>
+<span id="cb49-14"><a href="#cb49-14" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb49-15"><a href="#cb49-15" aria-hidden="true" tabindex="-1"></a>  brm_anytest_adj <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"brm_anytest_adj.Rds"</span>)</span>
+<span id="cb49-16"><a href="#cb49-16" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
 </section>
-<section id="quasi-poisson-models-for-relative-risk" class="level3">
-<h3 class="anchored" data-anchor-id="quasi-poisson-models-for-relative-risk">Quasi-Poisson models for relative risk</h3>
+<section id="getting-a-wiggle-on-splines-for-continuous-covariates" class="level3">
+<h3 class="anchored" data-anchor-id="getting-a-wiggle-on-splines-for-continuous-covariates">Getting a wiggle on: splines for continuous covariates</h3>
+<p>I can now reveal why I created a <code>partners_numeric</code> variable earlier, for previously-secret reasons. Until now, we’ve modelled the effect of age using a straight line on the log-odds scale, and number of partners using a separate category for each number (1 through “10+”). We can make the model for age more flexible and the model for number of partners more plausible by fitting a penalised spline instead. This is known as a Generalised Additive Model (GAM), and doesn’t have to be Bayesian, but in this case it is also Bayesian. Using <code>brms</code>, it can be as simple as specifying e.g.&nbsp;<code>s(age)</code> to fit a smooth curve relationship between age at the outcome. The wiggliness of the curve will be automatically adjusted based on the data. It’s like magic, but made out of fancy maths.</p>
+<p>Since this is a Bayesian model, we should also specify a prior for the smoothing term. This takes the form of a prior on the standard deviation of the smoothing parameters, since <a href="https://www.tjmahr.com/random-effects-penalized-splines-same-thing/">penalised splines and random effects are the same thing</a>. I’m not really sure what I’m doing here — and haven’t seen anything written about choosing priors for smooths — but have specified a Normal(0, 1.5) prior.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(<span class="st">"brm_anytest_gam.Rds"</span>)) {</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>  brm_anytest_gam <span class="ot">&lt;-</span> <span class="fu">brm</span>(</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>    anytest <span class="sc">~</span> tx <span class="sc">+</span> <span class="fu">s</span>(age) <span class="sc">+</span> gender <span class="sc">+</span> msm <span class="sc">+</span> ethnicgrp <span class="sc">+</span> <span class="fu">s</span>(partners_numeric),</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> bernoulli,</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">prior =</span> <span class="fu">c</span>(<span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.5</span>), <span class="at">class =</span> b),</span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>              <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">1.5</span>), <span class="at">class =</span> sds)),</span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> wilson2017_bayes,</span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">backend =</span> <span class="st">"cmdstanr"</span>,</span>
+<span id="cb50-9"><a href="#cb50-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">cores =</span> <span class="dv">4</span>,</span>
+<span id="cb50-10"><a href="#cb50-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">chains =</span> <span class="dv">4</span>,</span>
+<span id="cb50-11"><a href="#cb50-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">iter =</span> <span class="dv">5000</span>,</span>
+<span id="cb50-12"><a href="#cb50-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">seed =</span> <span class="dv">11117</span></span>
+<span id="cb50-13"><a href="#cb50-13" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb50-14"><a href="#cb50-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">saveRDS</span>(brm_anytest_gam, <span class="st">"brm_anytest_gam.Rds"</span>)</span>
+<span id="cb50-15"><a href="#cb50-15" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb50-16"><a href="#cb50-16" aria-hidden="true" tabindex="-1"></a>  brm_anytest_gam <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"brm_anytest_gam.Rds"</span>)</span>
+<span id="cb50-17"><a href="#cb50-17" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Plots comparing these smooth curves for age and number of partners to the original linear terms are shown later, in the “Treatment effects as a function of covariates” section.</p>
+</section>
+<section id="the-kitchen-sink-model-splines-and-interaction-terms" class="level3">
+<h3 class="anchored" data-anchor-id="the-kitchen-sink-model-splines-and-interaction-terms">The kitchen sink model: splines and interaction terms</h3>
+<p>Finally, I have fit a model including interaction terms, allowing the covariate effects to vary between the treatment and control groups. I’ve placed tighter priors on the interaction terms, Normal(0, 0.25) instead of Normal(0, 0.5), reflecting the idea that I am fairly certain the odds ratios involved in interactions should be less than <span class="math inline">\(e \approx 2.7\)</span>.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(<span class="st">"brm_anytest_gam_intxn.Rds"</span>)) {</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>  brm_anytest_gam_intxn <span class="ot">&lt;-</span> <span class="fu">brm</span>(</span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>    anytest <span class="sc">~</span> tx <span class="sc">+</span> <span class="fu">s</span>(age, <span class="at">by =</span> tx) <span class="sc">+</span> tx<span class="sc">*</span>gender <span class="sc">+</span> tx<span class="sc">*</span>msm <span class="sc">+</span></span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a>      tx<span class="sc">*</span>ethnicgrp <span class="sc">+</span> <span class="fu">s</span>(partners_numeric, <span class="at">by =</span> tx),</span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> bernoulli,</span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">prior =</span> <span class="fu">c</span>(</span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.5</span>), <span class="at">class =</span> b),</span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.25</span>), <span class="at">class =</span> b, <span class="at">coef =</span> <span class="st">"tx1:gender1"</span>),</span>
+<span id="cb51-9"><a href="#cb51-9" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.25</span>), <span class="at">class =</span> b, <span class="at">coef =</span> <span class="st">"tx1:gender2"</span>),</span>
+<span id="cb51-10"><a href="#cb51-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.25</span>), <span class="at">class =</span> b, <span class="at">coef =</span> <span class="st">"tx1:msm1"</span>),</span>
+<span id="cb51-11"><a href="#cb51-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.25</span>), <span class="at">class =</span> b, <span class="at">coef =</span> <span class="st">"tx1:msm2"</span>),</span>
+<span id="cb51-12"><a href="#cb51-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.25</span>), <span class="at">class =</span> b, <span class="at">coef =</span> <span class="st">"tx1:ethnicgrp1"</span>),</span>
+<span id="cb51-13"><a href="#cb51-13" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.25</span>), <span class="at">class =</span> b, <span class="at">coef =</span> <span class="st">"tx1:ethnicgrp2"</span>),</span>
+<span id="cb51-14"><a href="#cb51-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.25</span>), <span class="at">class =</span> b, <span class="at">coef =</span> <span class="st">"tx1:ethnicgrp3"</span>),</span>
+<span id="cb51-15"><a href="#cb51-15" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">0.25</span>), <span class="at">class =</span> b, <span class="at">coef =</span> <span class="st">"tx1:ethnicgrp4"</span>),</span>
+<span id="cb51-16"><a href="#cb51-16" aria-hidden="true" tabindex="-1"></a>      <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="fl">1.5</span>), <span class="at">class =</span> sds)</span>
+<span id="cb51-17"><a href="#cb51-17" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb51-18"><a href="#cb51-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> wilson2017_bayes,</span>
+<span id="cb51-19"><a href="#cb51-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">backend =</span> <span class="st">"cmdstanr"</span>,</span>
+<span id="cb51-20"><a href="#cb51-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">cores =</span> <span class="dv">4</span>,</span>
+<span id="cb51-21"><a href="#cb51-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">chains =</span> <span class="dv">4</span>,</span>
+<span id="cb51-22"><a href="#cb51-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">iter =</span> <span class="dv">5000</span>,</span>
+<span id="cb51-23"><a href="#cb51-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">seed =</span> <span class="dv">11113</span></span>
+<span id="cb51-24"><a href="#cb51-24" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb51-25"><a href="#cb51-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">saveRDS</span>(brm_anytest_gam_intxn, <span class="st">"brm_anytest_gam_intxn.Rds"</span>)</span>
+<span id="cb51-26"><a href="#cb51-26" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb51-27"><a href="#cb51-27" aria-hidden="true" tabindex="-1"></a>  brm_anytest_gam_intxn <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"brm_anytest_gam_intxn.Rds"</span>)</span>
+<span id="cb51-28"><a href="#cb51-28" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>We’ll examine the effect of these interaction terms in the “Treatment effects as a function of covariates” and “Distribution of treatment effects” sections.</p>
+</section>
+</section>
+<section id="did-any-of-this-make-a-difference-in-the-end" class="level2">
+<h2 class="anchored" data-anchor-id="did-any-of-this-make-a-difference-in-the-end">Did any of this make a difference, in the end?</h2>
+<p>Putting the code above together, we can make a big data frame containing all of our effect size estimates. Click the “Code” button below if you want to see exactly how the sausage is made, or keep reading to see a plot.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="co"># obtain an odds ratio from a brms coefficient estimate</span></span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>get_brms_or <span class="ot">&lt;-</span> <span class="cf">function</span>(model, term, <span class="at">scale =</span> <span class="dv">1</span>, <span class="at">exponentiate =</span> <span class="cn">TRUE</span>) {</span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fixef</span>(model)[term, , drop <span class="ot">=</span> <span class="cn">FALSE</span>] <span class="sc">%&gt;%</span></span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(<span class="at">estimate =</span> Estimate, <span class="at">conf.low =</span> Q2<span class="fl">.5</span>, <span class="at">conf.high =</span> Q97<span class="fl">.5</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb52-6"><a href="#cb52-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">everything</span>(), \(x) <span class="fu">exp</span>(x <span class="sc">*</span> scale)))</span>
+<span id="cb52-7"><a href="#cb52-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb52-8"><a href="#cb52-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-9"><a href="#cb52-9" aria-hidden="true" tabindex="-1"></a><span class="co"># odds ratio estimates</span></span>
+<span id="cb52-10"><a href="#cb52-10" aria-hidden="true" tabindex="-1"></a>anytest_or_estimates <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb52-11"><a href="#cb52-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Unadjusted logistic regression"</span> <span class="ot">=</span> </span>
+<span id="cb52-12"><a href="#cb52-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tidy</span>(lrm_anytest_unadj, <span class="at">conf.int =</span> <span class="cn">TRUE</span>, <span class="at">exponentiate =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb52-13"><a href="#cb52-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(term <span class="sc">==</span> <span class="st">"txSH:24"</span>),</span>
+<span id="cb52-14"><a href="#cb52-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Adjusted logistic regression"</span> <span class="ot">=</span> </span>
+<span id="cb52-15"><a href="#cb52-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tidy</span>(lrm_anytest_adj, <span class="at">conf.int =</span> <span class="cn">TRUE</span>, <span class="at">exponentiate =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb52-16"><a href="#cb52-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(term <span class="sc">==</span> <span class="st">"txSH:24"</span>),</span>
+<span id="cb52-17"><a href="#cb52-17" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Unadjusted Bayesian logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-18"><a href="#cb52-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">get_brms_or</span>(brm_anytest_unadj, <span class="st">"tx1"</span>, <span class="at">scale =</span> <span class="dv">2</span>),</span>
+<span id="cb52-19"><a href="#cb52-19" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Adjusted Bayesian logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-20"><a href="#cb52-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">get_brms_or</span>(brm_anytest_adj, <span class="st">"tx1"</span>, <span class="at">scale =</span> <span class="dv">2</span>),</span>
+<span id="cb52-21"><a href="#cb52-21" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Bayesian logistic regression with splines"</span> <span class="ot">=</span></span>
+<span id="cb52-22"><a href="#cb52-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">get_brms_or</span>(brm_anytest_gam, <span class="st">"tx1"</span>, <span class="at">scale =</span> <span class="dv">2</span>),</span>
+<span id="cb52-23"><a href="#cb52-23" aria-hidden="true" tabindex="-1"></a>  <span class="at">.id =</span> <span class="st">"model"</span></span>
+<span id="cb52-24"><a href="#cb52-24" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span></span>
+<span id="cb52-25"><a href="#cb52-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(model, estimate, conf.low, conf.high)</span>
+<span id="cb52-26"><a href="#cb52-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-27"><a href="#cb52-27" aria-hidden="true" tabindex="-1"></a><span class="co"># risk difference estimates</span></span>
+<span id="cb52-28"><a href="#cb52-28" aria-hidden="true" tabindex="-1"></a>anytest_rd_estimates <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb52-29"><a href="#cb52-29" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Unadjusted logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-30"><a href="#cb52-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(lrm_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb52-31"><a href="#cb52-31" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Adjusted logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-32"><a href="#cb52-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(lrm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb52-33"><a href="#cb52-33" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Unadjusted Bayesian logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-34"><a href="#cb52-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(brm_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb52-35"><a href="#cb52-35" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Adjusted Bayesian logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-36"><a href="#cb52-36" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(brm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb52-37"><a href="#cb52-37" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Bayesian logistic regression with splines"</span> <span class="ot">=</span></span>
+<span id="cb52-38"><a href="#cb52-38" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(brm_anytest_gam, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb52-39"><a href="#cb52-39" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Bayesian with splines and interactions"</span> <span class="ot">=</span></span>
+<span id="cb52-40"><a href="#cb52-40" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(brm_anytest_gam_intxn, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb52-41"><a href="#cb52-41" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Unadjusted linear model/OLS"</span> <span class="ot">=</span></span>
+<span id="cb52-42"><a href="#cb52-42" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(ols_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb52-43"><a href="#cb52-43" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Adjusted linear model/OLS"</span> <span class="ot">=</span></span>
+<span id="cb52-44"><a href="#cb52-44" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(ols_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb52-45"><a href="#cb52-45" aria-hidden="true" tabindex="-1"></a>  <span class="at">.id =</span> <span class="st">"model"</span></span>
+<span id="cb52-46"><a href="#cb52-46" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span></span>
+<span id="cb52-47"><a href="#cb52-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(model, estimate, conf.low, conf.high)</span>
+<span id="cb52-48"><a href="#cb52-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-49"><a href="#cb52-49" aria-hidden="true" tabindex="-1"></a><span class="co"># relative risk estimates</span></span>
+<span id="cb52-50"><a href="#cb52-50" aria-hidden="true" tabindex="-1"></a>anytest_rr_estimates <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb52-51"><a href="#cb52-51" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Unadjusted logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-52"><a href="#cb52-52" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(lrm_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb52-53"><a href="#cb52-53" aria-hidden="true" tabindex="-1"></a>                    <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>),</span>
+<span id="cb52-54"><a href="#cb52-54" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Adjusted logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-55"><a href="#cb52-55" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(lrm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb52-56"><a href="#cb52-56" aria-hidden="true" tabindex="-1"></a>                    <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>),</span>
+<span id="cb52-57"><a href="#cb52-57" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Unadjusted Bayesian logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-58"><a href="#cb52-58" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(brm_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb52-59"><a href="#cb52-59" aria-hidden="true" tabindex="-1"></a>                    <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>),</span>
+<span id="cb52-60"><a href="#cb52-60" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Adjusted Bayesian logistic regression"</span> <span class="ot">=</span></span>
+<span id="cb52-61"><a href="#cb52-61" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(brm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb52-62"><a href="#cb52-62" aria-hidden="true" tabindex="-1"></a>                    <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>),</span>
+<span id="cb52-63"><a href="#cb52-63" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Bayesian logistic regression with splines"</span> <span class="ot">=</span></span>
+<span id="cb52-64"><a href="#cb52-64" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(brm_anytest_gam, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb52-65"><a href="#cb52-65" aria-hidden="true" tabindex="-1"></a>                    <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>),</span>
+<span id="cb52-66"><a href="#cb52-66" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Bayesian with splines and interactions"</span> <span class="ot">=</span></span>
+<span id="cb52-67"><a href="#cb52-67" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(brm_anytest_gam_intxn, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb52-68"><a href="#cb52-68" aria-hidden="true" tabindex="-1"></a>                    <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>),</span>
+<span id="cb52-69"><a href="#cb52-69" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Unadjusted quasi-Poisson"</span> <span class="ot">=</span></span>
+<span id="cb52-70"><a href="#cb52-70" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(qp_anytest_unadj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb52-71"><a href="#cb52-71" aria-hidden="true" tabindex="-1"></a>                    <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>),</span>
+<span id="cb52-72"><a href="#cb52-72" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Adjusted quasi-Poisson"</span> <span class="ot">=</span></span>
+<span id="cb52-73"><a href="#cb52-73" aria-hidden="true" tabindex="-1"></a>    <span class="fu">avg_comparisons</span>(qp_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb52-74"><a href="#cb52-74" aria-hidden="true" tabindex="-1"></a>                    <span class="at">comparison =</span> <span class="st">"lnratioavg"</span>, <span class="at">transform =</span> <span class="st">"exp"</span>),</span>
+<span id="cb52-75"><a href="#cb52-75" aria-hidden="true" tabindex="-1"></a>  <span class="at">.id =</span> <span class="st">"model"</span></span>
+<span id="cb52-76"><a href="#cb52-76" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span></span>
+<span id="cb52-77"><a href="#cb52-77" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(model, estimate, conf.low, conf.high)</span>
+<span id="cb52-78"><a href="#cb52-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-79"><a href="#cb52-79" aria-hidden="true" tabindex="-1"></a>anytest_all_estimates <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb52-80"><a href="#cb52-80" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Odds ratio"</span> <span class="ot">=</span> anytest_or_estimates,</span>
+<span id="cb52-81"><a href="#cb52-81" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Risk difference"</span> <span class="ot">=</span> anytest_rd_estimates,</span>
+<span id="cb52-82"><a href="#cb52-82" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Relative risk"</span> <span class="ot">=</span> anytest_rr_estimates,</span>
+<span id="cb52-83"><a href="#cb52-83" aria-hidden="true" tabindex="-1"></a>  <span class="at">.id =</span> <span class="st">"estimand"</span></span>
+<span id="cb52-84"><a href="#cb52-84" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Plotting all of the estimates shows that if all you’re after is a risk difference or relative risk, there’s very little difference between methods, at least for this particular study. Part of the reason for this is that the intervention effect was much greater effect than differences in baseline risk between levels of covariates. I would not expect this observation to generalise: in other scenarios you may find a larger difference between adjusted and unadjusted methods, although the differences between methods for adjustment are still likely to be minor.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>anytest_all_estimates <span class="sc">%&gt;%</span></span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">model =</span> <span class="fu">fct_inorder</span>(model), <span class="at">estimand =</span> <span class="fu">fct_inorder</span>(estimand)) <span class="sc">%&gt;%</span></span>
+<span id="cb53-3"><a href="#cb53-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> estimate, <span class="at">xmin =</span> conf.low, <span class="at">xmax =</span> conf.high,</span>
+<span id="cb53-4"><a href="#cb53-4" aria-hidden="true" tabindex="-1"></a>             <span class="at">y =</span> model)) <span class="sc">+</span></span>
+<span id="cb53-5"><a href="#cb53-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_pointrange</span>() <span class="sc">+</span></span>
+<span id="cb53-6"><a href="#cb53-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_discrete</span>(<span class="at">limits =</span> rev) <span class="sc">+</span></span>
+<span id="cb53-7"><a href="#cb53-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="fu">vars</span>(estimand), <span class="at">nrow =</span> <span class="dv">1</span>, <span class="at">scales =</span> <span class="st">"free_x"</span>) <span class="sc">+</span></span>
+<span id="cb53-8"><a href="#cb53-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">panel_border</span>() <span class="sc">+</span></span>
+<span id="cb53-9"><a href="#cb53-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">x =</span> <span class="st">"Estimate (95% CI/CrI)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/plot-all-estimates-1.png" class="img-fluid" width="784"></p>
+</div>
+</div>
+<p>These estimates are shown in table form below.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>anytest_all_estimates <span class="sc">%&gt;%</span></span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(estimand) <span class="sc">%&gt;%</span></span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gt</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fmt_number</span>(<span class="at">columns =</span> <span class="fu">c</span>(estimate, conf.low, conf.high), <span class="at">n_sigfig =</span> <span class="dv">3</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_merge_range</span>(conf.low, conf.high, <span class="at">sep =</span> <span class="st">", "</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_label</span>(</span>
+<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">model =</span> <span class="st">"Model"</span>,</span>
+<span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> <span class="st">"Estimate"</span>,</span>
+<span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">conf.low =</span> <span class="st">"95% CI/CrI"</span></span>
+<span id="cb54-10"><a href="#cb54-10" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+
+<div id="vcsfehlply" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#vcsfehlply table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#vcsfehlply thead, #vcsfehlply tbody, #vcsfehlply tfoot, #vcsfehlply tr, #vcsfehlply td, #vcsfehlply th {
+  border-style: none;
+}
+
+#vcsfehlply p {
+  margin: 0;
+  padding: 0;
+}
+
+#vcsfehlply .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#vcsfehlply .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#vcsfehlply .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#vcsfehlply .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#vcsfehlply .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#vcsfehlply .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#vcsfehlply .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#vcsfehlply .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#vcsfehlply .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#vcsfehlply .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#vcsfehlply .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#vcsfehlply .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#vcsfehlply .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#vcsfehlply .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#vcsfehlply .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#vcsfehlply .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#vcsfehlply .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#vcsfehlply .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#vcsfehlply .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#vcsfehlply .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#vcsfehlply .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#vcsfehlply .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#vcsfehlply .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#vcsfehlply .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#vcsfehlply .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#vcsfehlply .gt_left {
+  text-align: left;
+}
+
+#vcsfehlply .gt_center {
+  text-align: center;
+}
+
+#vcsfehlply .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#vcsfehlply .gt_font_normal {
+  font-weight: normal;
+}
+
+#vcsfehlply .gt_font_bold {
+  font-weight: bold;
+}
+
+#vcsfehlply .gt_font_italic {
+  font-style: italic;
+}
+
+#vcsfehlply .gt_super {
+  font-size: 65%;
+}
+
+#vcsfehlply .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#vcsfehlply .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#vcsfehlply .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#vcsfehlply .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#vcsfehlply .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#vcsfehlply .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#vcsfehlply .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="Model">Model</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="Estimate">Estimate</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="95% CI/CrI">95% CI/CrI</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr class="gt_group_heading_row">
+      <th colspan="3" class="gt_group_heading" scope="colgroup" id="Odds ratio">Odds ratio</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Odds ratio  model" class="gt_row gt_left">Unadjusted logistic regression</td>
+<td headers="Odds ratio  estimate" class="gt_row gt_right">3.40</td>
+<td headers="Odds ratio  conf.low" class="gt_row gt_right">2.75, 4.20</td></tr>
+    <tr><td headers="Odds ratio  model" class="gt_row gt_left">Adjusted logistic regression</td>
+<td headers="Odds ratio  estimate" class="gt_row gt_right">3.52</td>
+<td headers="Odds ratio  conf.low" class="gt_row gt_right">2.83, 4.39</td></tr>
+    <tr><td headers="Odds ratio  model" class="gt_row gt_left">Unadjusted Bayesian logistic regression</td>
+<td headers="Odds ratio  estimate" class="gt_row gt_right">3.36</td>
+<td headers="Odds ratio  conf.low" class="gt_row gt_right">2.72, 4.13</td></tr>
+    <tr><td headers="Odds ratio  model" class="gt_row gt_left">Adjusted Bayesian logistic regression</td>
+<td headers="Odds ratio  estimate" class="gt_row gt_right">3.49</td>
+<td headers="Odds ratio  conf.low" class="gt_row gt_right">2.83, 4.33</td></tr>
+    <tr><td headers="Odds ratio  model" class="gt_row gt_left">Bayesian logistic regression with splines</td>
+<td headers="Odds ratio  estimate" class="gt_row gt_right">3.47</td>
+<td headers="Odds ratio  conf.low" class="gt_row gt_right">2.82, 4.29</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="3" class="gt_group_heading" scope="colgroup" id="Risk difference">Risk difference</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Risk difference  model" class="gt_row gt_left">Unadjusted logistic regression</td>
+<td headers="Risk difference  estimate" class="gt_row gt_right">0.265</td>
+<td headers="Risk difference  conf.low" class="gt_row gt_right">0.222, 0.308</td></tr>
+    <tr><td headers="Risk difference  model" class="gt_row gt_left">Adjusted logistic regression</td>
+<td headers="Risk difference  estimate" class="gt_row gt_right">0.260</td>
+<td headers="Risk difference  conf.low" class="gt_row gt_right">0.218, 0.302</td></tr>
+    <tr><td headers="Risk difference  model" class="gt_row gt_left">Unadjusted Bayesian logistic regression</td>
+<td headers="Risk difference  estimate" class="gt_row gt_right">0.262</td>
+<td headers="Risk difference  conf.low" class="gt_row gt_right">0.220, 0.304</td></tr>
+    <tr><td headers="Risk difference  model" class="gt_row gt_left">Adjusted Bayesian logistic regression</td>
+<td headers="Risk difference  estimate" class="gt_row gt_right">0.258</td>
+<td headers="Risk difference  conf.low" class="gt_row gt_right">0.217, 0.299</td></tr>
+    <tr><td headers="Risk difference  model" class="gt_row gt_left">Bayesian logistic regression with splines</td>
+<td headers="Risk difference  estimate" class="gt_row gt_right">0.258</td>
+<td headers="Risk difference  conf.low" class="gt_row gt_right">0.216, 0.298</td></tr>
+    <tr><td headers="Risk difference  model" class="gt_row gt_left">Bayesian with splines and interactions</td>
+<td headers="Risk difference  estimate" class="gt_row gt_right">0.259</td>
+<td headers="Risk difference  conf.low" class="gt_row gt_right">0.217, 0.300</td></tr>
+    <tr><td headers="Risk difference  model" class="gt_row gt_left">Unadjusted linear model/OLS</td>
+<td headers="Risk difference  estimate" class="gt_row gt_right">0.265</td>
+<td headers="Risk difference  conf.low" class="gt_row gt_right">0.222, 0.308</td></tr>
+    <tr><td headers="Risk difference  model" class="gt_row gt_left">Adjusted linear model/OLS</td>
+<td headers="Risk difference  estimate" class="gt_row gt_right">0.261</td>
+<td headers="Risk difference  conf.low" class="gt_row gt_right">0.218, 0.303</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="3" class="gt_group_heading" scope="colgroup" id="Relative risk">Relative risk</th>
+    </tr>
+    <tr class="gt_row_group_first"><td headers="Relative risk  model" class="gt_row gt_left">Unadjusted logistic regression</td>
+<td headers="Relative risk  estimate" class="gt_row gt_right">2.25</td>
+<td headers="Relative risk  conf.low" class="gt_row gt_right">1.94, 2.61</td></tr>
+    <tr><td headers="Relative risk  model" class="gt_row gt_left">Adjusted logistic regression</td>
+<td headers="Relative risk  estimate" class="gt_row gt_right">2.22</td>
+<td headers="Relative risk  conf.low" class="gt_row gt_right">1.92, 2.56</td></tr>
+    <tr><td headers="Relative risk  model" class="gt_row gt_left">Unadjusted Bayesian logistic regression</td>
+<td headers="Relative risk  estimate" class="gt_row gt_right">2.23</td>
+<td headers="Relative risk  conf.low" class="gt_row gt_right">1.93, 2.59</td></tr>
+    <tr><td headers="Relative risk  model" class="gt_row gt_left">Adjusted Bayesian logistic regression</td>
+<td headers="Relative risk  estimate" class="gt_row gt_right">2.20</td>
+<td headers="Relative risk  conf.low" class="gt_row gt_right">1.92, 2.56</td></tr>
+    <tr><td headers="Relative risk  model" class="gt_row gt_left">Bayesian logistic regression with splines</td>
+<td headers="Relative risk  estimate" class="gt_row gt_right">2.20</td>
+<td headers="Relative risk  conf.low" class="gt_row gt_right">1.91, 2.53</td></tr>
+    <tr><td headers="Relative risk  model" class="gt_row gt_left">Bayesian with splines and interactions</td>
+<td headers="Relative risk  estimate" class="gt_row gt_right">2.21</td>
+<td headers="Relative risk  conf.low" class="gt_row gt_right">1.92, 2.57</td></tr>
+    <tr><td headers="Relative risk  model" class="gt_row gt_left">Unadjusted quasi-Poisson</td>
+<td headers="Relative risk  estimate" class="gt_row gt_right">2.25</td>
+<td headers="Relative risk  conf.low" class="gt_row gt_right">1.96, 2.60</td></tr>
+    <tr><td headers="Relative risk  model" class="gt_row gt_left">Adjusted quasi-Poisson</td>
+<td headers="Relative risk  estimate" class="gt_row gt_right">2.22</td>
+<td headers="Relative risk  conf.low" class="gt_row gt_right">1.92, 2.56</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+</section>
+<section id="treatment-effects-as-a-function-of-covariates" class="level2">
+<h2 class="anchored" data-anchor-id="treatment-effects-as-a-function-of-covariates">Treatment effects as a function of covariates</h2>
+<p>In this section I will further examine three of the Bayesian models we made earlier:</p>
+<ul>
+<li>the “covariate adjusted” model, which had a linear relationship (on the log-odds scale) between age and outcome, and treated number of partners as a categorical variables;</li>
+<li>the “spline” model, which fit a smooth curve to the effect of age and number of partners, using the same curve for both treatment conditions; and</li>
+<li>the “spline and interaction” model, which fit a separate smooth curve for each treatment condition.</li>
+</ul>
+<section id="age" class="level3">
+<h3 class="anchored" data-anchor-id="age">Age</h3>
+<p>The plots below show the predicted relationship between age and probability of taking an STI test (remember — our outcome!), for each treatment condition. These are averaged over the sample distribution for all other covariates, so may be misleading if age is causally related to any of the other covariates. This is unlikely to be the case for gender, sexual orientation, or ethnic group, but may well be the case for number of partners.</p>
+<p>In this case, it seems plausible that there is a nonlinear relationship between age and the outcome, and that relationship may even be different in the treatment and control conditions (though this study is not powered to detect such a difference).</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_grid</span>(</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_predictions</span>(brm_anytest_adj, <span class="at">condition =</span> <span class="fu">c</span>(<span class="st">"age"</span>, <span class="st">"tx"</span>)) <span class="sc">+</span> </span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)) <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Linear log-odds"</span>),</span>
+<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_predictions</span>(brm_anytest_gam, <span class="at">condition =</span> <span class="fu">c</span>(<span class="st">"age"</span>, <span class="st">"tx"</span>)) <span class="sc">+</span> </span>
+<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)) <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Spline"</span>),</span>
+<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_predictions</span>(brm_anytest_gam_intxn, <span class="at">condition =</span> <span class="fu">c</span>(<span class="st">"age"</span>, <span class="st">"tx"</span>)) <span class="sc">+</span> </span>
+<span id="cb55-9"><a href="#cb55-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)) <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb55-10"><a href="#cb55-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Spline + interaction"</span>),</span>
+<span id="cb55-11"><a href="#cb55-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">nrow =</span> <span class="dv">1</span></span>
+<span id="cb55-12"><a href="#cb55-12" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/age-predictions-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+<p>We can also plot the difference between treatment conditions as a function of age using the <code>plot_comparisons()</code> function. In this case, all of the models seem consistent with a constant risk difference as function of age, although the “spline + interaction” model does suggest that the treatment effect may increase with age.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_grid</span>(</span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_comparisons</span>(brm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>, <span class="at">condition =</span> <span class="st">"age"</span>) <span class="sc">+</span> </span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.65</span>)) <span class="sc">+</span> <span class="fu">ggtitle</span>(<span class="st">"Linear log-odds"</span>),</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_comparisons</span>(brm_anytest_gam, <span class="at">variables =</span> <span class="st">"tx"</span>, <span class="at">condition =</span> <span class="st">"age"</span>) <span class="sc">+</span> </span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.65</span>)) <span class="sc">+</span> <span class="fu">ggtitle</span>(<span class="st">"Spline"</span>),</span>
+<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_comparisons</span>(brm_anytest_gam_intxn, <span class="at">variables =</span> <span class="st">"tx"</span>, <span class="at">condition =</span> <span class="st">"age"</span>) <span class="sc">+</span> </span>
+<span id="cb56-7"><a href="#cb56-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.65</span>)) <span class="sc">+</span> <span class="fu">ggtitle</span>(<span class="st">"Spline + interaction"</span>),</span>
+<span id="cb56-8"><a href="#cb56-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">nrow =</span> <span class="dv">1</span></span>
+<span id="cb56-9"><a href="#cb56-9" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/age-comparisons-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+</section>
+<section id="number-of-partners" class="level3">
+<h3 class="anchored" data-anchor-id="number-of-partners">Number of partners</h3>
+<p>We can examine the effect of number of partners in the same way. In this case, the spline looks more plausible than the categorical effects, and there is little to suggest that the effect of number of partners may be between treatment groups.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_grid</span>(</span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_predictions</span>(brm_anytest_adj, <span class="at">condition =</span> <span class="fu">c</span>(<span class="st">"partners"</span>, <span class="st">"tx"</span>)) <span class="sc">+</span> </span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)) <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Categorical"</span>),</span>
+<span id="cb57-5"><a href="#cb57-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_predictions</span>(brm_anytest_gam, <span class="at">condition =</span> <span class="fu">c</span>(<span class="st">"partners_numeric"</span>, <span class="st">"tx"</span>)) <span class="sc">+</span> </span>
+<span id="cb57-6"><a href="#cb57-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb57-7"><a href="#cb57-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)) <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb57-8"><a href="#cb57-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Spline"</span>),</span>
+<span id="cb57-9"><a href="#cb57-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_predictions</span>(brm_anytest_gam_intxn, </span>
+<span id="cb57-10"><a href="#cb57-10" aria-hidden="true" tabindex="-1"></a>                   <span class="at">condition =</span> <span class="fu">c</span>(<span class="st">"partners_numeric"</span>, <span class="st">"tx"</span>)) <span class="sc">+</span> </span>
+<span id="cb57-11"><a href="#cb57-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb57-12"><a href="#cb57-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>)) <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>) <span class="sc">+</span></span>
+<span id="cb57-13"><a href="#cb57-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggtitle</span>(<span class="st">"Spline + interaction"</span>),</span>
+<span id="cb57-14"><a href="#cb57-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">nrow =</span> <span class="dv">1</span></span>
+<span id="cb57-15"><a href="#cb57-15" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/partners-predictions-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+<p>The risk difference looks plausibly constant as a function of number of partners.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_grid</span>(</span>
+<span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_comparisons</span>(brm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>, </span>
+<span id="cb58-3"><a href="#cb58-3" aria-hidden="true" tabindex="-1"></a>                   <span class="at">condition =</span> <span class="st">"partners"</span>) <span class="sc">+</span> </span>
+<span id="cb58-4"><a href="#cb58-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.65</span>)) <span class="sc">+</span> <span class="fu">ggtitle</span>(<span class="st">"Categorical"</span>),</span>
+<span id="cb58-5"><a href="#cb58-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_comparisons</span>(brm_anytest_gam, <span class="at">variables =</span> <span class="st">"tx"</span>, </span>
+<span id="cb58-6"><a href="#cb58-6" aria-hidden="true" tabindex="-1"></a>                   <span class="at">condition =</span> <span class="st">"partners_numeric"</span>) <span class="sc">+</span> </span>
+<span id="cb58-7"><a href="#cb58-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb58-8"><a href="#cb58-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.65</span>)) <span class="sc">+</span> <span class="fu">ggtitle</span>(<span class="st">"Spline"</span>),</span>
+<span id="cb58-9"><a href="#cb58-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_comparisons</span>(brm_anytest_gam_intxn, <span class="at">variables =</span> <span class="st">"tx"</span>,</span>
+<span id="cb58-10"><a href="#cb58-10" aria-hidden="true" tabindex="-1"></a>                   <span class="at">condition =</span> <span class="st">"partners_numeric"</span>) <span class="sc">+</span> </span>
+<span id="cb58-11"><a href="#cb58-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb58-12"><a href="#cb58-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylim</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.65</span>)) <span class="sc">+</span> <span class="fu">ggtitle</span>(<span class="st">"Spline + interaction"</span>),</span>
+<span id="cb58-13"><a href="#cb58-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">nrow =</span> <span class="dv">1</span></span>
+<span id="cb58-14"><a href="#cb58-14" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/partners-comparisons-1.png" class="img-fluid" width="1170"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="distribution-of-treatment-effects" class="level2">
+<h2 class="anchored" data-anchor-id="distribution-of-treatment-effects">Distribution of treatment effects</h2>
+<p>This section uses ideas from <a href="https://www.fharrell.com/post/rdist/">Frank Harrell’s blog on effect distributions</a> and code adapted from <a href="https://vincentarelbundock.github.io/marginaleffects/articles/logit.html">the vignette by Arthur Albuquerque and Vincent Arel-Bundock</a>.</p>
+<p>The statistical models that we have fit so far can be used to estimate a probability under each treatment for each participant, and hence a participant-specific risk difference. We’ve already been using this behind the scenes to produce our average treatment effects, but it’s possible to examine them in more detail.</p>
+<p>The plot below shows the distribution of participant-level predicted risk differences from four different models.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>anytest_all_comparisons <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Frequentist adjusted"</span> <span class="ot">=</span> <span class="fu">comparisons</span>(lrm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Bayesian adjusted"</span> <span class="ot">=</span> <span class="fu">comparisons</span>(brm_anytest_adj, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Bayesian splines"</span> <span class="ot">=</span> <span class="fu">comparisons</span>(brm_anytest_gam, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Bayesian splines + interactions"</span> <span class="ot">=</span> </span>
+<span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">comparisons</span>(brm_anytest_gam_intxn, <span class="at">variables =</span> <span class="st">"tx"</span>),</span>
+<span id="cb59-7"><a href="#cb59-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">.id =</span> <span class="st">"model"</span></span>
+<span id="cb59-8"><a href="#cb59-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb59-9"><a href="#cb59-9" aria-hidden="true" tabindex="-1"></a>anytest_all_comparisons <span class="sc">%&gt;%</span></span>
+<span id="cb59-10"><a href="#cb59-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">model =</span> <span class="fu">fct_inorder</span>(model)) <span class="sc">%&gt;%</span></span>
+<span id="cb59-11"><a href="#cb59-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> estimate, <span class="at">y =</span> model)) <span class="sc">+</span></span>
+<span id="cb59-12"><a href="#cb59-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stat_dotsinterval</span>() <span class="sc">+</span></span>
+<span id="cb59-13"><a href="#cb59-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_discrete</span>(<span class="at">limits =</span> rev) <span class="sc">+</span></span>
+<span id="cb59-14"><a href="#cb59-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Conditional risk difference (treatment - control)"</span>,</span>
+<span id="cb59-15"><a href="#cb59-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="cn">NULL</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="index_files/figure-html/risk-difference-distribution-1.png" class="img-fluid" width="784"></p>
+</div>
+</div>
+<p>In this case we can see that the biggest difference in distribution of treatment effects comes from the choice of including treatment by covariate interaction terms in the model. However, those interaction terms are very hard to estimate, raising questions about how much we trust this result. Another concern I have about these plots is that they completely ignore any uncertainty in the individual-level predicted risk differences.</p>
+<p>Overall, I find these an intriguing curiosity, but am left uncertain as to the practical value. Recalling the different potential users of clinical trial results from the start of this blog post, do these plots help inform the regulator, the patient, the scientist, or the meta-analyst? I’m not sure how they do.</p>
+</section>
+<section id="coda" class="level2">
+<h2 class="anchored" data-anchor-id="coda">Coda</h2>
+<p>Feedback welcome, especially any corrections in cases where I may have misunderstood or misattributed arguments, or made clear factual errors.</p>
+</section>
+<section id="references" class="level2">
+
+
 
 
 </section>
-</section>
 
 
-<div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-line-spacing="2" role="list">
+<div id="ref-altman1998oddsratiosshould" class="csl-entry" role="listitem">
+Altman, D. G., Deeks, J. J., &amp; Sackett, D. L. (1998). Odds ratios should be avoided when events are common. <em>BMJ</em>, <em>317</em>(7168), 1318–1318. <a href="https://doi.org/10.1136/bmj.317.7168.1318">https://doi.org/10.1136/bmj.317.7168.1318</a>
+</div>
+<div id="ref-daniel2021makingapplesoranges" class="csl-entry" role="listitem">
+Daniel, R., Zhang, J., &amp; Farewell, D. (2021). Making apples from oranges: Comparing noncollapsible effect estimators and their standard errors after adjustment for different covariate sets. <em>Biometrical Journal</em>, <em>63</em>(3), 528–557. <a href="https://doi.org/10.1002/bimj.201900297">https://doi.org/10.1002/bimj.201900297</a>
+</div>
+<div id="ref-doi2022controversydebatequestionable" class="csl-entry" role="listitem">
+Doi, S. A., Furuya-Kanamori, L., Xu, C., Lin, L., Chivese, T., &amp; Thalib, L. (2022). Controversy and Debate: Questionable utility of the relative risk in clinical research: Paper 1: A call for change to practice. <em>Journal of Clinical Epidemiology</em>, <em>142</em>, 271–279. <a href="https://doi.org/10.1016/j.jclinepi.2020.08.019">https://doi.org/10.1016/j.jclinepi.2020.08.019</a>
+</div>
+<div id="ref-greenland1999confoundingcollapsibilitycausal" class="csl-entry" role="listitem">
+Greenland, S., Pearl, J., &amp; Robins, J. M. (1999). Confounding and Collapsibility in Causal Inference. <em>Statistical Science</em>, <em>14</em>(1). <a href="https://doi.org/10.1214/ss/1009211805">https://doi.org/10.1214/ss/1009211805</a>
+</div>
+<div id="ref-morris2022planningmethodcovariate" class="csl-entry" role="listitem">
+Morris, T. P., Walker, A. S., Williamson, E. J., &amp; White, I. R. (2022). Planning a method for covariate adjustment in individually randomised trials: a practical guide. <em>Trials</em>, <em>23</em>(1), 328. <a href="https://doi.org/10.1186/s13063-022-06097-z">https://doi.org/10.1186/s13063-022-06097-z</a>
+</div>
+<div id="ref-permutt2020covariateschangeestimand" class="csl-entry" role="listitem">
+Permutt, T. (2020). Do Covariates Change the Estimand? <em>Statistics in Biopharmaceutical Research</em>, <em>12</em>(1), 45–53. <a href="https://doi.org/10.1080/19466315.2019.1647874">https://doi.org/10.1080/19466315.2019.1647874</a>
+</div>
+<div id="ref-senn2011uneasereasonsmistrusting" class="csl-entry" role="listitem">
+Senn, S. (2011). U is for Unease: Reasons for Mistrusting Overlap Measures for Reporting Clinical Trials. <em>Statistics in Biopharmaceutical Research</em>, <em>3</em>(2), 302–309. <a href="https://doi.org/10.1198/sbr.2010.10024">https://doi.org/10.1198/sbr.2010.10024</a>
+</div>
+<div id="ref-white2021covariateadjustmentrandomised" class="csl-entry" role="listitem">
+White, I. R., Morris, T. P., &amp; Williamson, E. (2021). <em>Covariate adjustment in randomised trials: canonical link functions protect against model mis-specification</em>. <a href="https://doi.org/10.48550/ARXIV.2107.07278">https://doi.org/10.48550/ARXIV.2107.07278</a>
+</div>
+<div id="ref-wilson2017internetaccessedsexuallytransmitted" class="csl-entry" role="listitem">
+Wilson, E., Free, C., Morris, T. P., Syred, J., Ahamed, I., Menon-Johansson, A. S., Palmer, M. J., Barnard, S., Rezel, E., &amp; Baraitser, P. (2017). Internet-accessed sexually transmitted infection (e-STI) testing and results service: A randomised, single-blind, controlled trial. <em>PLOS Medicine</em>, <em>14</em>(12), e1002479. <a href="https://doi.org/10.1371/journal.pmed.1002479">https://doi.org/10.1371/journal.pmed.1002479</a>
+</div>
+<div id="ref-zipkin2014evidencebasedriskcommunication" class="csl-entry" role="listitem">
+Zipkin, D. A., Umscheid, C. A., Keating, N. L., Allen, E., Aung, K., Beyth, R., Kaatz, S., Mann, D. M., Sussman, J. B., Korenstein, D., Schardt, C., Nagi, A., Sloane, R., &amp; Feldstein, D. A. (2014). Evidence-Based Risk Communication: A Systematic Review. <em>Annals of Internal Medicine</em>, <em>161</em>(4), 270. <a href="https://doi.org/10.7326/M14-0295">https://doi.org/10.7326/M14-0295</a>
+</div>
+</div></section><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
-<li id="fn1"><p>“Risk difference” would more commonly be described as “difference in proportion” in a generalist statistical setting.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2"><p>If you can intuitively interpret odds ratios, that’s great for you, although I’m not sure I believe you.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn1"><p>For a recent example, see <a href="https://thestatsgeek.com/2023/06/23/is-the-ich-e9-estimand-addendum-compatible-with-model-based-estimands/">this talk by Jonathan Bartlett</a>.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>Statisticians.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>Statisticians use the word “marginal” to refer to a population-level average, or an integral. Economists, on the other hand, use the word “marginal” to refer to a change in a quantity, or a derivative. This could never cause any confusion.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>Neither is the hazard ratio, despite the ubiquity of Cox regression for survival analysis.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>Technically, logistic regression directly estimates a conditional difference of log-odds. The difference on the log scale is usually exponentiated and reported as an odds ratio.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>At this point you may find yourself inclined to avoid logistic regression purely to spite the mathematicians. I don’t blame you.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>If you can intuitively interpret odds ratios, that’s great for you, although I’m not sure I believe you.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

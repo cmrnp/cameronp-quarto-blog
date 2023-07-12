@@ -9,6 +9,12 @@ website:
     creator: "@camjpatrick"
   open-graph: true
   navbar:
+    title: "Posting completely at random"
+#    background: "#c3d9cd"
+    background: "#1d4712"
+#    foreground: "#3e4541"
+#    foreground: "#565e59"
+    foreground: "#dce3da"
     right:
       - blog.qmd
       - icon: twitter
@@ -26,7 +32,8 @@ format:
     linestretch: 1.7
     mainfont: Helvetica, Arial, sans
     monofont: Cascadia Mono, Menlo, Courier New
-    backgroundcolor: white
+    backgroundcolor: "white"
+    fontcolor: "#323331"
     knitr:
       opts_chunk:
         dev: "ragg_png"

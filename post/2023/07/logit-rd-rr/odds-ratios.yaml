@@ -1,0 +1,593 @@
+---
+references:
+- id: 2019addendumestimandssensitivity
+  authority: >-
+    International Council for Harmonisation of Technical Requirements for
+    Pharmaceuticals for Human Use
+  citation-key: 2019addendumestimandssensitivity
+  issued:
+    - year: 2019
+  title: >-
+    Addendum on Estimands and Sensitivity Analysis in Clinical Trials to the
+    Guideline on Statistical Principles for Clinical Trials E9(R1)
+  type: standard
+  URL: >-
+    http://www.ema.europa.eu/docs/en_GB/document_library/Scientific_guideline/2017/
+
+- id: altman1998oddsratiosshould
+  accessed:
+    - year: 2023
+      month: 7
+      day: 10
+  author:
+    - family: Altman
+      given: D. G
+    - family: Deeks
+      given: J. J
+    - family: Sackett
+      given: D. L
+  citation-key: altman1998oddsratiosshould
+  container-title: BMJ
+  container-title-short: BMJ
+  DOI: 10.1136/bmj.317.7168.1318
+  ISSN: 0959-8138, 1468-5833
+  issue: '7168'
+  issued:
+    - year: 1998
+      month: 11
+      day: 7
+  language: en
+  page: 1318-1318
+  source: DOI.org (Crossref)
+  title: Odds ratios should be avoided when events are common
+  type: article-journal
+  URL: https://www.bmj.com/lookup/doi/10.1136/bmj.317.7168.1318
+  volume: '317'
+
+- id: daniel2021makingapplesoranges
+  accessed:
+    - year: 2023
+      month: 7
+      day: 10
+  author:
+    - family: Daniel
+      given: Rhian
+    - family: Zhang
+      given: Jingjing
+    - family: Farewell
+      given: Daniel
+  citation-key: daniel2021makingapplesoranges
+  container-title: Biometrical Journal
+  container-title-short: Biometrical Journal
+  DOI: 10.1002/bimj.201900297
+  ISSN: 0323-3847, 1521-4036
+  issue: '3'
+  issued:
+    - year: 2021
+      month: 3
+  language: en
+  page: 528-557
+  source: DOI.org (Crossref)
+  title: >-
+    Making apples from oranges: Comparing noncollapsible effect estimators and
+    their standard errors after adjustment for different covariate sets
+  title-short: Making apples from oranges
+  type: article-journal
+  URL: https://onlinelibrary.wiley.com/doi/10.1002/bimj.201900297
+  volume: '63'
+
+- id: doi2022controversydebatequestionable
+  accessed:
+    - year: 2023
+      month: 7
+      day: 10
+  author:
+    - family: Doi
+      given: Suhail A.
+    - family: Furuya-Kanamori
+      given: Luis
+    - family: Xu
+      given: Chang
+    - family: Lin
+      given: Lifeng
+    - family: Chivese
+      given: Tawanda
+    - family: Thalib
+      given: Lukman
+  citation-key: doi2022controversydebatequestionable
+  container-title: Journal of Clinical Epidemiology
+  container-title-short: Journal of Clinical Epidemiology
+  DOI: 10.1016/j.jclinepi.2020.08.019
+  ISSN: '08954356'
+  issued:
+    - year: 2022
+      month: 2
+  language: en
+  page: 271-279
+  source: DOI.org (Crossref)
+  title: >-
+    Controversy and Debate: Questionable utility of the relative risk in
+    clinical research: Paper 1: A call for change to practice
+  title-short: Controversy and Debate
+  type: article-journal
+  URL: https://linkinghub.elsevier.com/retrieve/pii/S0895435620311719
+  volume: '142'
+
+- id: doi2022oddsratioportable
+  accessed:
+    - year: 2023
+      month: 7
+      day: 11
+  author:
+    - family: Doi
+      given: Suhail A.
+    - family: Furuya-Kanamori
+      given: Luis
+    - family: Xu
+      given: Chang
+    - family: Chivese
+      given: Tawanda
+    - family: Lin
+      given: Lifeng
+    - family: Musa
+      given: Omran A.H.
+    - family: Hindy
+      given: George
+    - family: Thalib
+      given: Lukman
+    - family: Harrell
+      given: Frank E.
+  citation-key: doi2022oddsratioportable
+  container-title: Journal of Clinical Epidemiology
+  container-title-short: Journal of Clinical Epidemiology
+  DOI: 10.1016/j.jclinepi.2021.08.003
+  ISSN: '08954356'
+  issued:
+    - year: 2022
+      month: 2
+  language: en
+  page: 288-293
+  source: DOI.org (Crossref)
+  title: >-
+    The Odds Ratio is “portable” across baseline risk but not the Relative Risk:
+    Time to do away with the log link in binomial regression
+  title-short: The Odds Ratio is “portable” across baseline risk but not the Relative Risk
+  type: article-journal
+  URL: https://linkinghub.elsevier.com/retrieve/pii/S0895435621002419
+  volume: '142'
+
+- id: firth1993biasreductionmaximum
+  accessed:
+    - year: 2023
+      month: 7
+      day: 12
+  author:
+    - family: Firth
+      given: David
+  citation-key: firth1993biasreductionmaximum
+  container-title: Biometrika
+  container-title-short: Biometrika
+  DOI: 10.1093/biomet/80.1.27
+  ISSN: 0006-3444, 1464-3510
+  issue: '1'
+  issued:
+    - year: 1993
+  language: en
+  page: 27-38
+  source: DOI.org (Crossref)
+  title: Bias reduction of maximum likelihood estimates
+  type: article-journal
+  URL: https://academic.oup.com/biomet/article-lookup/doi/10.1093/biomet/80.1.27
+  volume: '80'
+
+- id: grant2014convertingoddsratio
+  accessed:
+    - year: 2023
+      month: 7
+      day: 10
+  author:
+    - family: Grant
+      given: R. L.
+  citation-key: grant2014convertingoddsratio
+  container-title: BMJ
+  container-title-short: BMJ
+  DOI: 10.1136/bmj.f7450
+  ISSN: 1756-1833
+  issue: jan24 1
+  issued:
+    - year: 2014
+      month: 1
+      day: 24
+  language: en
+  page: f7450-f7450
+  source: DOI.org (Crossref)
+  title: >-
+    Converting an odds ratio to a range of plausible relative risks for better
+    communication of research findings
+  type: article-journal
+  URL: https://www.bmj.com/lookup/doi/10.1136/bmj.f7450
+  volume: '348'
+
+- id: greenland1979limitationslogisticanalysis
+  accessed:
+    - year: 2023
+      month: 7
+      day: 10
+  author:
+    - family: Greenland
+      given: Sander
+  citation-key: greenland1979limitationslogisticanalysis
+  container-title: American Journal of Epidemiology
+  DOI: 10.1093/oxfordjournals.aje.a112849
+  ISSN: 1476-6256, 0002-9262
+  issue: '6'
+  issued:
+    - year: 1979
+      month: 12
+  language: en
+  page: 693-698
+  source: DOI.org (Crossref)
+  title: LIMITATIONS OF THE LOGISTIC ANALYSIS OF EPIDEMIOLOGIC DATA
+  type: article-journal
+  URL: https://academic.oup.com/aje/article/65113/LIMITATIONS
+  volume: '110'
+
+- id: greenland1999confoundingcollapsibilitycausal
+  accessed:
+    - year: 2023
+      month: 7
+      day: 10
+  author:
+    - family: Greenland
+      given: Sander
+    - family: Pearl
+      given: Judea
+    - family: Robins
+      given: James M.
+  citation-key: greenland1999confoundingcollapsibilitycausal
+  container-title: Statistical Science
+  container-title-short: Statist. Sci.
+  DOI: 10.1214/ss/1009211805
+  ISSN: 0883-4237
+  issue: '1'
+  issued:
+    - year: 1999
+      month: 2
+      day: 1
+  source: DOI.org (Crossref)
+  title: Confounding and Collapsibility in Causal Inference
+  type: article-journal
+  URL: >-
+    https://projecteuclid.org/journals/statistical-science/volume-14/issue-1/Confounding-and-Collapsibility-in-Causal-Inference/10.1214/ss/1009211805.full
+  volume: '14'
+
+- id: huitfeldt2021shallwecount
+  abstract: >-
+    In the 1958 paper "Shall we count the living or the dead?", Mindel C. Sheps
+    proposed a principled solution to the familiar problem of asymmetry of the
+    relative risk. We provide causal models to clarify the scope and limitations
+    of Sheps' line of reasoning, and show that her preferred variant of the
+    relative risk will be stable between patient groups under certain
+    biologically interpretable conditions. Such stability is useful when
+    findings from an intervention study must be generalized to support clinical
+    decisions in patients whose risk profile differs from the participants in
+    the study. We show that Sheps' approach is consistent with a substantial
+    body of psychological and philosophical research on how human reasoners
+    carry causal information from one context to another, and that it can be
+    implemented in practice using van der Laan et al's Switch Relative Risk, or
+    equivalently, using Baker and Jackson's Generalized Relative Risk Reduction
+    (GRRR).
+  accessed:
+    - year: 2023
+      month: 7
+      day: 11
+  author:
+    - family: Huitfeldt
+      given: Anders
+    - family: Fox
+      given: Matthew P.
+    - family: Murray
+      given: Eleanor J.
+    - family: Hróbjartsson
+      given: Asbjørn
+    - family: Daniel
+      given: Rhian M.
+  citation-key: huitfeldt2021shallwecount
+  DOI: 10.48550/ARXIV.2106.06316
+  issued:
+    - year: 2021
+  license: arXiv.org perpetual, non-exclusive license
+  publisher: arXiv
+  source: DOI.org (Datacite)
+  title: Shall we count the living or the dead?
+  type: article-journal
+  URL: https://arxiv.org/abs/2106.06316
+  version: '5'
+
+- id: lee2004conditionalmarginalmodels
+  accessed:
+    - year: 2023
+      month: 7
+      day: 11
+  author:
+    - family: Lee
+      given: Youngjo
+    - family: Nelder
+      given: John A.
+  citation-key: lee2004conditionalmarginalmodels
+  container-title: Statistical Science
+  container-title-short: Statist. Sci.
+  DOI: 10.1214/088342304000000305
+  ISSN: 0883-4237
+  issue: '2'
+  issued:
+    - year: 2004
+      month: 5
+      day: 1
+  source: DOI.org (Crossref)
+  title: 'Conditional and Marginal Models: Another View'
+  title-short: Conditional and Marginal Models
+  type: article-journal
+  URL: >-
+    https://projecteuclid.org/journals/statistical-science/volume-19/issue-2/Conditional-and-Marginal-Models-Another-View/10.1214/088342304000000305.full
+  volume: '19'
+
+- id: morris2022planningmethodcovariate
+  abstract: |-
+    Abstract
+                
+                  Background
+                  It has long been advised to account for baseline covariates in the analysis of confirmatory randomised trials, with the main statistical justifications being that this increases power and, when a randomisation scheme balanced covariates, permits a valid estimate of experimental error. There are various methods available to account for covariates but it is not clear how to choose among them.
+                
+                
+                  Methods
+                  Taking the perspective of writing a statistical analysis plan, we consider how to choose between the three most promising broad approaches: direct adjustment, standardisation and inverse-probability-of-treatment weighting.
+                
+                
+                  Results
+                  
+                    The three approaches are similar in being asymptotically efficient, in losing efficiency with mis-specified covariate functions and in handling designed balance. If a marginal estimand is targeted (for example, a risk difference or survival difference), then direct adjustment should be avoided because it involves fitting non-standard models that are subject to convergence issues. Convergence is most likely with IPTW. Robust standard errors used by IPTW are anti-conservative at small sample sizes. All approaches can use similar methods to handle missing covariate data. With missing outcome data, each method has its own way to estimate a treatment effect in the all-randomised population. We illustrate some issues in a reanalysis of
+                    GetTested
+                    , a randomised trial designed to assess the effectiveness of an electonic sexually transmitted infection testing and results service.
+                  
+                
+                
+                  Conclusions
+                  No single approach is always best: the choice will depend on the trial context. We encourage trialists to consider all three methods more routinely.
+  accessed:
+    - year: 2023
+      month: 7
+      day: 11
+  author:
+    - family: Morris
+      given: Tim P.
+    - family: Walker
+      given: A. Sarah
+    - family: Williamson
+      given: Elizabeth J.
+    - family: White
+      given: Ian R.
+  citation-key: morris2022planningmethodcovariate
+  container-title: Trials
+  container-title-short: Trials
+  DOI: 10.1186/s13063-022-06097-z
+  ISSN: 1745-6215
+  issue: '1'
+  issued:
+    - year: 2022
+      month: 12
+  language: en
+  page: '328'
+  source: DOI.org (Crossref)
+  title: >-
+    Planning a method for covariate adjustment in individually randomised
+    trials: a practical guide
+  title-short: Planning a method for covariate adjustment in individually randomised trials
+  type: article-journal
+  URL: https://trialsjournal.biomedcentral.com/articles/10.1186/s13063-022-06097-z
+  volume: '23'
+
+- id: permutt2020covariateschangeestimand
+  accessed:
+    - year: 2023
+      month: 7
+      day: 3
+  author:
+    - family: Permutt
+      given: Thomas
+  citation-key: permutt2020covariateschangeestimand
+  container-title: Statistics in Biopharmaceutical Research
+  container-title-short: Statistics in Biopharmaceutical Research
+  DOI: 10.1080/19466315.2019.1647874
+  ISSN: 1946-6315
+  issue: '1'
+  issued:
+    - year: 2020
+      month: 1
+      day: 2
+  language: en
+  page: 45-53
+  source: DOI.org (Crossref)
+  title: Do Covariates Change the Estimand?
+  type: article-journal
+  URL: https://www.tandfonline.com/doi/full/10.1080/19466315.2019.1647874
+  volume: '12'
+
+- id: senn2011uneasereasonsmistrusting
+  accessed:
+    - year: 2023
+      month: 6
+      day: 14
+  author:
+    - family: Senn
+      given: Stephen
+  citation-key: senn2011uneasereasonsmistrusting
+  container-title: Statistics in Biopharmaceutical Research
+  container-title-short: Statistics in Biopharmaceutical Research
+  DOI: 10.1198/sbr.2010.10024
+  ISSN: 1946-6315
+  issue: '2'
+  issued:
+    - year: 2011
+      month: 5
+  language: en
+  page: 302-309
+  source: DOI.org (Crossref)
+  title: >-
+    U is for Unease: Reasons for Mistrusting Overlap Measures for Reporting
+    Clinical Trials
+  title-short: U is for Unease
+  type: article-journal
+  URL: http://www.tandfonline.com/doi/abs/10.1198/sbr.2010.10024
+  volume: '3'
+
+- id: white2021covariateadjustmentrandomised
+  abstract: >-
+    Covariate adjustment has the potential to increase power in the analysis of
+    randomised trials, but mis-specification of the adjustment model could cause
+    error. We explore what error is possible when the adjustment model omits a
+    covariate by randomised treatment interaction, in a setting where the
+    covariate is perfectly balanced between randomised treatments. We use
+    mathematical arguments and analyses of single hypothetical data sets. We
+    show that analysis by a generalised linear model with the canonical link
+    function leads to no error under the null -- that is, if treatment effect is
+    truly zero under the adjusted model then it is also zero under the
+    unadjusted model. However, using non-canonical link functions does not give
+    this property and leads to potentially important error under the null. The
+    error is present even in large samples and hence constitutes bias. We
+    conclude that covariate adjustment analyses of randomised trials should
+    avoid non-canonical links. If a marginal risk difference is the target of
+    estimation then this should not be estimated using an identity link;
+    alternative preferable methods include standardisation and inverse
+    probability of treatment weighting.
+  accessed:
+    - year: 2023
+      month: 7
+      day: 10
+  author:
+    - family: White
+      given: Ian R.
+    - family: Morris
+      given: Tim P
+    - family: Williamson
+      given: Elizabeth
+  citation-key: white2021covariateadjustmentrandomised
+  DOI: 10.48550/ARXIV.2107.07278
+  issued:
+    - year: 2021
+  license: Creative Commons Attribution 4.0 International
+  publisher: arXiv
+  source: DOI.org (Datacite)
+  title: >-
+    Covariate adjustment in randomised trials: canonical link functions protect
+    against model mis-specification
+  title-short: Covariate adjustment in randomised trials
+  type: article-journal
+  URL: https://arxiv.org/abs/2107.07278
+  version: '1'
+
+- id: wilson2017internetaccessedsexuallytransmitted
+  accessed:
+    - year: 2023
+      month: 7
+      day: 6
+  author:
+    - family: Wilson
+      given: Emma
+    - family: Free
+      given: Caroline
+    - family: Morris
+      given: Tim P.
+    - family: Syred
+      given: Jonathan
+    - family: Ahamed
+      given: Irrfan
+    - family: Menon-Johansson
+      given: Anatole S.
+    - family: Palmer
+      given: Melissa J.
+    - family: Barnard
+      given: Sharmani
+    - family: Rezel
+      given: Emma
+    - family: Baraitser
+      given: Paula
+  citation-key: wilson2017internetaccessedsexuallytransmitted
+  container-title: PLOS Medicine
+  container-title-short: PLoS Med
+  DOI: 10.1371/journal.pmed.1002479
+  editor:
+    - family: Broutet
+      given: Nathalie
+  ISSN: 1549-1676
+  issue: '12'
+  issued:
+    - year: 2017
+      month: 12
+      day: 27
+  language: en
+  page: e1002479
+  source: DOI.org (Crossref)
+  title: >-
+    Internet-accessed sexually transmitted infection (e-STI) testing and results
+    service: A randomised, single-blind, controlled trial
+  title-short: >-
+    Internet-accessed sexually transmitted infection (e-STI) testing and results
+    service
+  type: article-journal
+  URL: https://dx.plos.org/10.1371/journal.pmed.1002479
+  volume: '14'
+
+- id: zipkin2014evidencebasedriskcommunication
+  accessed:
+    - year: 2023
+      month: 7
+      day: 10
+  author:
+    - family: Zipkin
+      given: Daniella A.
+    - family: Umscheid
+      given: Craig A.
+    - family: Keating
+      given: Nancy L.
+    - family: Allen
+      given: Elizabeth
+    - family: Aung
+      given: KoKo
+    - family: Beyth
+      given: Rebecca
+    - family: Kaatz
+      given: Scott
+    - family: Mann
+      given: Devin M.
+    - family: Sussman
+      given: Jeremy B.
+    - family: Korenstein
+      given: Deborah
+    - family: Schardt
+      given: Connie
+    - family: Nagi
+      given: Avishek
+    - family: Sloane
+      given: Richard
+    - family: Feldstein
+      given: David A.
+  citation-key: zipkin2014evidencebasedriskcommunication
+  container-title: Annals of Internal Medicine
+  container-title-short: Ann Intern Med
+  DOI: 10.7326/M14-0295
+  ISSN: 0003-4819
+  issue: '4'
+  issued:
+    - year: 2014
+      month: 8
+      day: 19
+  language: en
+  page: '270'
+  source: DOI.org (Crossref)
+  title: 'Evidence-Based Risk Communication: A Systematic Review'
+  title-short: Evidence-Based Risk Communication
+  type: article-journal
+  URL: http://annals.org/article.aspx?doi=10.7326/M14-0295
+  volume: '161'
+...
