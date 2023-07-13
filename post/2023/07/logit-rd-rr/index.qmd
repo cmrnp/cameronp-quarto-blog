@@ -231,9 +231,24 @@ Using the formula for odds ratios, we can calculate an odds ratio of 0.67 in the
 (70/70) / (84/56)
 ```
 
-In this example, we observed a treatment-by-risk-group interaction on the risk difference scale (absolute risk reduction of 0.041 in the low-risk group, absolute risk reduction of 0.100 in the high-risk group) but not on the odds ratio scale (condition odds ratio of 0.67 in both groups). There is no mathematical requirement for the odds ratio scale to have less or no interactions than other scales to, but it is mathematically impossible for there to be no interaction on *any* scale unless the effect size is zero. This issue is discussed in detail from the perspective of psychological research in @rohrer2021preciseanswersvague.
+In this example, we observed a treatment-by-risk-group interaction on the risk difference scale (absolute risk reduction of 0.041 in the low-risk group, absolute risk reduction of 0.100 in the high-risk group) but not on the odds ratio scale (conditional odds ratio of 0.67 in both groups). There is no mathematical requirement for the odds ratio scale to have a smaller interaction than other scales, but it is mathematically impossible for there to be no interaction on *any* scale unless the effect size is zero. This issue is discussed in detail from the perspective of psychological research in @rohrer2021preciseanswersvague.
 
 ## Calculating risk difference and relative risks using the marginaleffects package
+
+```{r, include = FALSE}
+rct_data <- rct_data %>%
+  mutate(treatment = fct_recode(treatment, "T" = "Treatment", "C" = "Control"))
+lrm_unadj <- glm(
+  outcome ~ treatment,
+  family = binomial,
+  data = rct_data
+)
+lrm_adj <- glm(
+  outcome ~ treatment + risk,
+  family = binomial,
+  data = rct_data
+)
+```
 
 The trialists returned to the statistician, requesting adjusted and unadjusted risk differences and relative risks to report in their paper. Fortunately, the statistician was familiar with the `marginaleffects` package, which makes it fairly easy to calculate risk differences from logistic regression models[^stderr].
 
@@ -253,7 +268,7 @@ For the adjusted model, we get an average risk reduction of 7.1% (95% CI: 0.0% t
 avg_comparisons(lrm_adj, variables = "treatment")
 ```
 
-Unlike the odds ratio, the point estimate risk difference didn't change when we added the covariate, but its estimate got more precise: the confidence interval shrank.
+Unlike the odds ratio, the point estimate of the risk difference didn't change when we added the covariate, but its estimate got more precise: the confidence interval shrank.
 
 ### Relative risks
 
@@ -286,10 +301,10 @@ One last way of showing the same thing: below is a plot of unadjusted and adjust
 or_estimates <- bind_rows(
   "Unadjusted" = 
     tidy(lrm_unadj, conf.int = TRUE, exponentiate = TRUE) %>%
-    filter(term == "treatmentTreatment"),
+    filter(term == "treatmentT"),
   "Adjusted" = 
     tidy(lrm_adj, conf.int = TRUE, exponentiate = TRUE) %>%
-    filter(term == "treatmentTreatment"),
+    filter(term == "treatmentT"),
   .id = "model"
 ) %>%
   select(model, estimate, conf.low, conf.high)
