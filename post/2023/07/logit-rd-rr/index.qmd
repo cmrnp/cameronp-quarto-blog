@@ -1,7 +1,7 @@
 ---
-title: "You are what you ATE: Estimating risk differences and relative risks from logistic regression"
+title: "You are what you ATE: Choosing an effect size measure for binary outcomes"
 author: "Cameron Patrick"
-date: "2023-07-12"
+date: "2023-07-13"
 draft: true
 categories: [r, statistics]
 csl: apa.csl
@@ -10,9 +10,8 @@ bibliography:
 format:
   html:
     toc: true
-    code-fold: show
 abstract: |
-  | Wherein I try to make sense of ongoing debates in the statistical community about how to analyse and report trials targeting binary outcomes, and then write some R code to practice what I hesitantly preach.
+  | Wherein I try to make sense of ongoing debates in the statistical community about how to analyse and report clinical trials targeting binary outcomes, and then write some R code to practice what I hesitantly preach.
 ---
 
 ```{r setup, include = FALSE}
@@ -28,7 +27,7 @@ knitr::opts_chunk$set(
 
 ## The great odds ratio debate (with memes)
 
-A lot of noise has been made about why an odds ratio may not be a desirable summary for a treatment effect on a binary variable[^orrefs]. There is that pesky problem that normal humans are unable to correctly interpret an odds ratio [@altman1998oddsratiosshould]. In recent years, people[^stat] have become more aware of the mathematical fact of noncollapsibility [@greenland1999confoundingcollapsibilitycausal; @daniel2021makingapplesoranges; @morris2022planningmethodcovariate]: the marginal[^econstat] odds ratio (population-level odds ratio) is not any kind of average of conditional odds ratios (individual-level odds ratios). The [ICH E9(R1) estimand framework for clinical trials](https://database.ich.org/sites/default/files/E9-R1_Step4_Guideline_2019_1203.pdf) requires a "population-level summary". In the language of causal inference, that's describing an Average Treatment Effect (ATE), and the odds ratio isn't one[^coxreg].
+A lot of noise has been made about why an odds ratio may not be a desirable summary for a treatment effect on a binary variable[^orrefs]. There is that pesky problem that normal humans are unable to correctly interpret an odds ratio [@altman1998oddsratiosshould]. In recent years, people[^stat] have become more aware of the mathematical fact of noncollapsibility [@greenland1999confoundingcollapsibilitycausal; @daniel2021makingapplesoranges; @morris2022planningmethodcovariate]: the marginal[^econstat] odds ratio (population-level odds ratio) is not any kind of average of conditional odds ratios (individual-level odds ratios)[^longitudinal]. The [ICH E9(R1) estimand framework for clinical trials](https://database.ich.org/sites/default/files/E9-R1_Step4_Guideline_2019_1203.pdf) requires a "population-level summary". In the language of causal inference, that's describing an Average Treatment Effect (ATE), and the odds ratio isn't one[^coxreg].
 
 [^orrefs]: For a recent example, see [this talk by Jonathan Bartlett](https://thestatsgeek.com/2023/06/23/is-the-ich-e9-estimand-addendum-compatible-with-model-based-estimands/).
 
@@ -36,27 +35,31 @@ A lot of noise has been made about why an odds ratio may not be a desirable summ
 
 [^econstat]: Statisticians use the word "marginal" to refer to a population-level average, or an integral. Economists, on the other hand, use the word "marginal" to refer to a change in a quantity, or a derivative. This could never cause any confusion.
 
+[^longitudinal]: This issue is also sometimes raised in longitudinal studies, where it is said that generalised linear mixed models (GLMMs) target conditional odds ratios while generalised estimating equations (GEEs) target marginal odds ratios. As far as I understand it, this is only half true: odds ratios from GEEs target what you'd get from a GLMM after marginalising over random effects, but are still conditional on other covariates in the model (fixed effects in a GLMM).
+
 [^coxreg]: Neither is the hazard ratio, despite the ubiquity of Cox regression for survival analysis.
 
 Risk differences (the difference in probability attributable to a particular treatment) and relative risks (the ratio of probabilities due to a particular treatment) avoid these problems of odds ratios. However, statisticians are usually taught to analyse binary outcomes using logistic regression, the direct output[^logdirect] of which is odds ratios. Someone on Stats Twitter rediscovers all of this every few months and starts a heated argument where nobody goes away happy.
 
 [^logdirect]: Technically, logistic regression directly estimates a conditional difference of log-odds. The difference on the log scale is usually exponentiated and reported as an odds ratio.
 
-![Surprisingly, in statistics, we usually prefer collapsibility.](building-collapse.jpg){fig-alt="Picture of a collapsing building with the caption \"I'll take the non-collapsible one\""}
+![Surprisingly, many statisticians prefer collapsibility.](building-collapse.jpg){fig-alt="Picture of a collapsing building with the caption \"I'll take the non-collapsible one\""}
 
 Personally, I'm a fan of risk differences for communicating potential risks to an individual, ideally presented alongside the baseline level of risk. There's some evidence that patients and clinicians find these measures easier to interpret than relative measures [@zipkin2014evidencebasedriskcommunication], especially when presented in the form of a natural frequency, like "6 in 1000 people" rather than "0.6%".
 
-Statistical analyses are often adjusted for covariates, either to reduce confounding (in observational studies) or improve power (in randomised trials). There are some technical challenges when doing this with risk differences and relative risks. Adjusting for covariates requires specifying some kind of model, and the natural mathematical form of covariate adjustment will depend on whether you are modelling log-odds (logistic regression model, corresponding to an odds ratio), probability (linear probability model, corresponding to risk difference) or log-probability (quasi-Poisson or log-link binomial model, corresponding to relative risk). When modelling risk differences or relative risks directly, it's possible to end up with impossible predicted probabilities: "probabilities" which are less than zero or greater than one. Using logistic regression avoids this problem, because any real number on the log-odds scale translates to a probability between zero and one. Any odds ratio can be applied to any level of baseline risk without making mathematicians sad[^mathsad].
+Statistical analyses are often adjusted for covariates, either to reduce confounding (in observational studies) or improve power (in randomised trials). There are some technical challenges when doing this with risk differences and relative risks. Adjusting for covariates requires specifying some kind of model. If we're using a generalised linear model[^gam], the natural mathematical form of covariate adjustment will depend on whether you are modelling log-odds (logistic regression model, where model parameters correspond to an odds ratio), probability (linear probability model, where model parameters correspond to a risk difference) or log-probability (quasi-Poisson or log-link binomial model, where model parameters correspond to a relative risk). When modelling risk differences or relative risks directly, it's possible to end up with impossible predicted probabilities: "probabilities" which are less than zero or greater than one. Using logistic regression avoids this problem, because any real number on the log-odds scale translates to a probability between zero and one. Any odds ratio can be applied to any level of baseline risk without making mathematicians sad[^mathsad].
+
+[^gam]: Or even an additive model --- exactly the same point applies to Generalised Additive Models.
 
 [^mathsad]: At this point you may find yourself inclined to avoid logistic regression purely to spite the mathematicians. I don't blame you.
 
-There are also compelling --- but not universally accepted --- arguments that despite the difficulty in interpreting odds ratios, they are more likely to be transportable between different levels of baseline risk than risk differences or relative risks [@doi2022controversydebatequestionable; @senn2011uneasereasonsmistrusting]. This is another reason to prefer odds ratios for statistical modelling because it reduces the need for interaction terms, which can only be estimated well in large samples. In the context of clinical trials and other randomised experiments, logistic regression is able to produce correct adjusted estimates of the treatment effects even if the exact form of the covariate adjustment is misspecified --- for example, if there are omitted interaction terms or nonlinear effects [@white2021covariateadjustmentrandomised].
+There are also compelling --- but not universally accepted --- arguments that despite the difficulty in interpreting odds ratios, they are more likely to be transportable between different levels of baseline risk than risk differences or relative risks [@doi2022controversydebatequestionable; @senn2011uneasereasonsmistrusting]. This is an empirical matter, not a mathematical one, and the evidence is not clear-cut. If we accept this, though, it is another reason to prefer logistic regression for statistical modelling. Effect size measures being "transportable" is another way of saying that the effects are closer to being additive on the scale that effect measure lives on (probability, log-probability, or log-odds). In the context of regression models, using a scale where the effect size is more transportable reduces the need for interaction terms, which can only be estimated well in large samples.
 
-Thus we have a dilemma: people understand risk differences and (to a lesser extent) relative risks, but they can be problematic to estimate with covariate adjustment; nobody understands odds ratios[^interpor], but logistic regression is probably a better model, operating closer to a scale on which the underlying effects are additive. One way out is to model the data using logistic regression, and then use that model to produce other quantities of interest. This approach is described in @permutt2020covariateschangeestimand, which has some of the best writing I've encountered in a statistics paper --- being written in the form of a dialogue between a randomiser (the "causal inference" perspective) and a parameteriser (the "statistical modelling" perspective) walking through the Garden of Eden, planning to conduct and analyse a clinical trial.
+Thus we have a dilemma: people understand risk differences and (to a lesser extent) relative risks, but they can be problematic to estimate with covariate adjustment; nobody understands odds ratios[^interpor], but logistic regression is probably a better model, operating closer to a scale on which the underlying effects are additive. One possible way out is to model the data using logistic regression, and then use that model to produce other quantities of interest. This approach is described in @permutt2020covariateschangeestimand, which has some of the best writing I've encountered in a statistics paper --- being written in the form of a dialogue between a randomiser (the "causal inference" perspective) and a parameteriser (the "statistical modelling" perspective) walking through the Garden of Eden, planning to conduct and analyse a clinical trial.
 
 [^interpor]: If you can intuitively interpret odds ratios, that's great for you, although I'm not sure I believe you.
 
-@permutt2020covariateschangeestimand also considered what information different audiences might want from the results of a clinical trial: regulator, patient, and scientist. There's a fourth audience which I think is worth considering, very briefly mentioned by Permutt: the meta-analyst, trying to aggregate information from multiple trials.
+@permutt2020covariateschangeestimand also considered what information different audiences might want from the results of a clinical trial: regulator, patient, and scientist. There's a fourth audience which I think is worth considering, only very briefly mentioned by Permutt: the meta-analyst, trying to aggregate information from multiple trials.
 
 Permutt argues in favour of the ATE being the main quantity of regulatory interest:
 
@@ -68,13 +71,15 @@ The most clearly expressed counter-argument to this comes from [a blog post by F
 
 > Marginal adjusted estimates may be robust, but may not accurately estimate RD for either any patient in the RCT or for the clinical population to which RCT results are to be applied, because in effect they assume that the RCT sample is a random sample from the clinical population, something not required and never realized for RCTs.
 
-I am a coward and not (yet?) willing to take a strong position in this fight, but am always sympathetic to the idea that a single number is rarely sufficient to describe scientific evidence (see also: p-values). Harrell's other writing on this topic is also worth reading:
+This refers to the distinction between the population average treatment effect (PATE) and the sample average treatment effect (SATE). RCTs can only ever tell us about the participants who were recruited into the study, but the regulator's decision that Permutt described earlier is implicitly relying on properties of the PATE to generalise from the trial setting to the clinical setting. It's not clear to me whether there are likely to be any real-world scenarios where both (1) the practical conclusions drawn from the SATE and PATE would be different; and (2) the conditional odds ratio derived from the RCT sample is in agreement with the PATE but the risk difference SATE is not.
+
+I am a coward and not (yet?) willing to take a strong position in this fight, but am always sympathetic to the idea that a single number is rarely sufficient to describe scientific evidence (see also: p-values). At some point I might write another blog about Harrell's ideas about plotting the distribution of estimated patient-level treatment effects, which is intriguing, although I struggle to see the practical purpose of it. Harrell's other writing on this topic is also worth reading:
 
 - [Incorrect Covariate Adjustment May Be More Correct than Adjusted Marginal Estimates](https://www.fharrell.com/post/robcov/) makes a similar point to @white2021covariateadjustmentrandomised with a detailed simulated example;
-- [Assessing Heterogeneity of Treatment Effect, Estimating Patient-Specific Efficacy, and Studying Variation in Odds ratios, Risk Ratios, and Risk Differences](https://www.fharrell.com/post/varyor/) argues in favour of the use of odds ratios for modelling, and points out the extreme difficulty in identifying heterogeneous treatment effects even in very large studies; and
-- ["Should one derive risk difference from the odds ratio" thread on Data Methods Discourse](https://discourse.datamethods.org/t/should-one-derive-risk-difference-from-the-odds-ratio/4403/1) featuring valuable input from Sander Greenland and Frank Harrell.
+- [Assessing Heterogeneity of Treatment Effect, Estimating Patient-Specific Efficacy, and Studying Variation in Odds ratios, Risk Ratios, and Risk Differences](https://www.fharrell.com/post/varyor/) argues in favour of the use of odds ratios for modelling, and points out the extreme difficulty of identifying heterogeneous treatment effects even in very large studies; and
+- [Unadjusted Odds Ratios are Conditional](https://www.fharrell.com/post/marg/) demonstrates noncollapsibility and argues that conditional odds ratios are more useful than marginal odds ratios.
 
-One issue which I remain unclear about is whether randomised trials powered to detect main treatment effects are likely to reasonably estimate patient-specific baseline risk --- a simpler task than patient-specific treatment effects, but still outside of the usual design remit for an efficacy trial. Common analytical approaches for clinical trials have good properties for estimating average treatment effects when the covariates are regarded as nuisance parameters, but are not guaranteed to perform so well if the effects of the covariates are themselves of interest.
+One issue which I remain unclear about is whether randomised trials powered to detect main treatment effects are likely to reasonably estimate patient-specific baseline risk --- a simpler task than patient-specific treatment effects, but still outside of the usual design remit for an efficacy trial. Common analytical approaches for clinical trials have good properties for estimating average treatment effects when the covariates are regarded as nuisance parameters [@white2021covariateadjustmentrandomised], but are not guaranteed to perform so well if the effects of the covariates are themselves of interest.
 
 Finally, there is the meta-analytic perspective to consider. An effect size which is less heterogeneous between studies is once again desirable. If arguments about the transportability of odds ratios by the Harrell, Senn, Doi, and others are to be believed, we should report odds ratios, as those are likely to be the most useful for meta-analysts. There is some merit in reporting all commonly-used effect size measures: risk difference, relative risk, and odds ratio. This provides the most flexibility for future meta-analysts.
 
@@ -82,675 +87,254 @@ If all of that was a bit much to take in, maybe this will help:
 
 ![True facts on both sides.](american-chopper-argument.jpeg){fig-alt="American Chopper argument meme: risk differences aren't transportable / nobody understands odds ratios / clinical trials aren't random samples from the population / marginal odds ratios aren't the average of conditional odds ratios / conditional odds ratios still tell us if an intervention works"}
 
-In the rest of this post I'll show how to calculate risk differences and relative risks from logistic regression models using R and the `marginaleffects` package, using an example in which it makes no meaningful difference which method you use (oops?).
+In the rest of this post I'll demonstrate how odds ratios are noncollapsible and show how to calculate risk differences and relative risks from logistic regression models using R and the `marginaleffects` package.
 
 ## An example
 
-For this post, I'm going to look at the same trial [Solomon Kurz re-analysed in his blog post about causal inference with logistic regression](https://solomonkurz.netlify.app/blog/2023-04-24-causal-inference-with-logistic-regression/): @wilson2017internetaccessedsexuallytransmitted, a randomised trial comparing an internet-accessed sexually transmitted infection (STI) testing service to a clinic-based service. The methods I use will be similar to Solomon Kurz's post, but the emphasis and details will be different.
+This is the story of some hypothetical researchers who did a randomised controlled trial (RCT) where 560 patients were randomly assigned to either a treatment or control condition. The primary outcome of the trial was a binary measure, indicating whether a patient's condition had worsened after 6 weeks. The scenario is based on [one from Frank Harrell's blog](https://www.fharrell.com/post/marg/), with the details changed and embellished.
 
-The original trial has some nice features. For example, the randomisation method balanced gender, age, number of sexual partners and sexual orientation between the two study arms. This means that we should expect very little difference in the point estimate from covariate adjustment.
-
-The original analysis used multiple imputation, a sophisticated approach for dealing with missing outcome data. For this blog post I will do a complete case analysis, excluding participants who didn't have outcome data from the analysis. The only covariate with missing data was sexual orientation. Following the original analysis, I will treat 'missing' as an explicit category for sexual orientation.
-
-The trial measured several outcomes, but this post will only consider one of the co-primary outcomes: completion of an STI test at 6 weeks. An increase in this outcome would be considered favourable. The original paper reported the treatment effect as a relative risk with associated 95% confidence interval.
-
-### Getting the data ready in R
-
-We're going to use a bunch of R packages in the code that follows: `tidyverse` for general data wrangling, `readxl` to read Excel files, `cowplot` to get a nicer theme for plots, `gt` and `gtsummary` to make tables, `broom` to extract coefficient estimates, `ggdist` for plotting distributions, and most importantly `marginaleffects` to obtain the estimates of risk difference and relative risk.
+The hidden R code block below loads some R packages and sets up some simulated data for this trial.
 
 ```{r, message = FALSE, warning = FALSE}
+#| code-fold: true
+
 library(tidyverse)
-library(readxl)
-library(cowplot)
 library(gt)
 library(gtsummary)
 library(broom)
-library(ggdist)
+library(cowplot)
 library(marginaleffects)
-```
 
-Set up a default plot theme:
-
-```{r}
 theme_set(
-  theme_cowplot(font_size = 11, rel_small = 9/11,
-                rel_tiny = 8/11, rel_large = 1) +
-    theme(plot.title.position = "plot")
+  theme_cowplot(font_size = 11, rel_large = 1, rel_small = 1, rel_tiny = 1)
 )
-```
 
-```{r, include = FALSE}
-library(here)
-setwd(here("post/2023/07/logit-rd-rr"))
-```
-
-The original data file was [an Excel spreadsheet which can be downloaded from the journal article as electronic supplementary material](https://doi.org/10.1371/journal.pmed.1002479.s001). Note that I name data frames that I read in from a file with the suffix `_orig`, to distinguish them from cleaned or modified versions. This helps with interactive data cleaning, because I always have a copy of the original data on hand in R's memory.
-
-```{r}
-wilson2017_orig <- read_xls("pmed.1002479.s001.xls", sheet = "data")
-```
-
-This spreadsheet was already set up nicely for analysis, so only mild data cleaning is required. I created a new variable `tx` to store the treatment group, because the variable name `group` causes problems for the `marginaleffects` package, and explicitly ensure that "Control" is the reference category. The other level of the treatment factor is `SH:24`, the name of new intervention being trialled. I converted the other categorical variables into factors, sorted in sensible ways: gender, sexual orientation (`msm`) and ethnic group from most to least frequent category; number of partners in ascending numeric order. The `msm` variable had a category of "not known" stored as the number 99. This could be treated as a missing value, but I have chosen to analyse it as a distinct category.
-
-The `partners` variable was censored at 10 partners in the original data (i.e., instead of "10", "11", etc there is "10+") and treated as a categorical variable for analysis purposes. For secret reasons, I have also created a numeric version of this variable (`partners_numeric`).
-
-```{r}
-wilson2017 <- wilson2017_orig %>%
-  mutate(
-    tx = fct_relevel(group, "Control", "SH:24"),
-    gender = fct_infreq(gender),
-    partners_numeric = partners %>%
-      str_replace(r"(\+$)", "") %>%
-      as.numeric(),
-    partners = fct_inseq(partners),
-    msm = msm %>%
-      fct_recode("not known" = "99") %>%
-      fct_infreq(),
-    ethnicgrp = fct_infreq(ethnicgrp)
-  )
-```
-
-A summary table showing demographics and the outcome variable is shown below, produced using the `gtsummary` package. You can see that there is almost perfect balance in all variables except for ethnic group. The outcome (`anytest`) is more likely to be missing in the control group.
-
-```{r}
-tbl_summary(
-  wilson2017,
-  include = c(age, gender, msm, ethnicgrp, partners, anytest),
-  by = tx
+rct_data <- tribble(
+  ~treatment, ~risk, ~outcome_prob,
+  "Control", "Low risk", 1/7,
+  "Control", "High risk", 3/5,
+  "Treatment", "Low risk", 1/10,
+  "Treatment", "High risk", 1/2
 ) %>%
-  add_overall()
+  mutate(across(c(treatment, risk), fct_inorder)) %>%
+  rowwise(everything()) %>%
+  reframe(
+    outcome = rep(c(1, 0), times = round(140*c(outcome_prob, 1 - outcome_prob)))
+  )
 ```
 
-## Fitting a logistic regression model
-
-Let's begin by doing some logistic regressions and getting some odds ratios. We'll start with an unadjusted model, where the outcome `anytest` only has one predictor: `tx`, the assigned treatment.
+Looking at a 2-way table of our hypothetical trial, we can see that the worse outcome ("1") is more common in the control group (37%) than the treatment group (30%). This is an absolute risk reduction of 7%, a promising sign that our treatment may be beneficial.
 
 ```{r}
-lrm_anytest_unadj <- glm(
-  anytest ~ tx,
+tbl_cross(rct_data, outcome, treatment, percent = "column")
+```
+
+Just looking at a table won't convince anybody, though. At this point, our hypothetical trialists asked a statistician to help out[^lastminute]. Taking the role of the hypothetical statistician, we'll need to estimate the treatment effect in some way that also quantifies our uncertainty. Let's fit a binary logistic regression model to this data to examine the effect our treatment had on the outcome.
+
+[^lastminute]: Statisticians love being asked to help at the last minute.
+
+```{r}
+lrm_unadj <- glm(
+  outcome ~ treatment,
   family = binomial,
-  data = wilson2017
+  data = rct_data
 )
 ```
 
-We can obtain an unadjusted (or "crude") odds ratio for the treatment effect by exponentiating the model parameter for `tx`. The `tidy()` function does this, returning the results in an R data frame. The second row of the table (`txSH:24`) tells us what we want: the odds ratio (`estimate`) is 3.40, with a 95% confidence interval of 2.75 to 4.20 (the `conf.low` and `conf.high` columns).
+The table below shows the results of this logistic regression: an odds ratio of 0.73 (95% CI: 0.51 to 1.03). The odds ratio being less than 1 indicates that the treatment was beneficial (since the outcome occurring was bad, in this case) but the p-value of 0.074 indicates this effect is not statistically significant. The trialists were sad, their dreams of publishing in the British Medical Journal scuppered.
 
 ```{r}
-tidy(lrm_anytest_unadj, conf.int = TRUE, exponentiate = TRUE)
+tbl_regression(lrm_unadj, exponentiate = TRUE)
 ```
 
-### Adding covariates
+## Adding a covariate
 
-Adding covariates to the model usually increases statistical power, even in a clinical trial where the unadjusted model still gives "correct" (unbiased) results. In the case of an ANCOVA for a continuous variable, the increase in power comes from decreased residual variance and hence decreased standard errors, but in logistic regression there is no residual variance to decrease. The only way for the increase in power to manifest itself is from an increase in the estimated effect size (odds ratios).
+Just as the statistician was finishing writing up the results, the trialists mentioned that the patients they recruited came from two different groups, one of which was known to have much worse outcomes than the other. 
 
-Let's add age, gender, orientation, ethnic group and number of partners to our model. Age will be modelled as a continuous variable, the rest as categorical; R figures this out based on the column types, which aren't shown here.
+"Does that matter?" they asked. 
+
+"Well, using this information could improve your statistical power" said the statistician.
+
+The statistician made another 2-way table, stratified by the risk group. Through some fluke, exactly half of the trial sample was low risk and the other half high risk, perfectly balanced across treatment arms. It turned out that while only 14% of the low risk patients in the control arm experienced the adverse outcome, 60% of the high risk patients in the control arm experienced the outcome.
 
 ```{r}
-lrm_anytest_adj <- glm(
-  anytest ~ tx + age + gender + msm + ethnicgrp + partners,
+tbl_strata(rct_data, risk, tbl_cross, outcome, treatment, percent = "column")
+```
+
+The statistician decided to fit another logistic regression model, this time including risk as an additional variable in the model.
+
+```{r}
+lrm_adj <- glm(
+  outcome ~ treatment + risk,
   family = binomial,
-  data = wilson2017
+  data = rct_data
 )
 ```
 
-This model has a lot of parameters, but the only one of interest right now is the treatment effect. The adjusted odds ratio is only slightly different from the unadjusted odds ratio (3.52 vs 3.40), and there has been barely any change to the power of the test (*z*-statistic is 11.3, same as before).
+Looking at the coefficients in this model, we can see that the estimated effect of treatment has increased: the odds ratio is further away from 1, now being 0.67 (95% CI: 0.45 to 0.99) instead of 0.73 (95% CI: 0.51 to 1.03). The p-value has decreased from 0.074 to 0.045, meaning that the treatment effect is now statistically significant.
 
 ```{r}
-tidy(lrm_anytest_adj, conf.int = TRUE, exponentiate = TRUE) %>%
-  filter(term == "txSH:24")
+tbl_regression(lrm_adj, exponentiate = TRUE)
 ```
 
-## Calculating risk difference and relative risk from logistic regression models
+The trialists went home happy, dreaming once again of publishing in a high impact factor journal, but the statistician was left with a nagging feeling that something was not quite right. The covariate was balanced between treatment groups, with equal numbers of low risk and high risk assigned to each treatment. Undergraduate linear models courses taught that adding risk to the model in this scenario shouldn't change the coefficient for treatment, only the standard error. Why, then, did the estimates change like that? Is logistic regression different from linear regression in this regard?
 
-The `marginaleffects` package makes it easy to calculate the risk difference and other summary measures from a logistic regression model.
+## Hand calculations: back to the 2-way table
 
-### Absolute risks
+Let's take another look at the 2-way table and do some hand calculations.
 
-We can get the estimated proportion of participants completing an STI test in each treatment group using the `avg_predictions()` function. This function provides its outcome in the response scale (i.e. probability, not log-odds) by default. The new treatment increased proportion of participants completing an STI test from 21% (95% CI: 18%, 24%) to 48% (95% CI: 44%, 51%).
-
-```{r}
-avg_predictions(lrm_anytest_unadj, variables = "tx")
+```{r, echo = FALSE}
+tbl_cross(rct_data, outcome, treatment, percent = "column")
 ```
 
-The results are almost identical in the adjusted model.
+The marginal risk difference is the difference between treatment and control groups in the proportion of patients experiencing the outcome event. From the table above, ignoring the covariate, we can calculate a risk reduction of 0.071:
 
 ```{r}
-avg_predictions(lrm_anytest_adj, variables = "tx")
+#| code-fold: false
+104/280 - 84/280
 ```
 
-### Risk difference
+The marginal odds ratio is the ratio of the oddses for treatment and the control group, where the odds is itself the number who experience the outcome event divided by the number who do not[^orargh]. We can calculate the marginal odds ratio here as 0.73, the same as the unadjusted logistic regression:
 
-The `avg_comparisons()` function gives us comparisons between treatment groups. Once again, we get comparisons on the response scale (i.e. risk differences) by default. The new treatment increased the proportion of participants completing an STI test by 26% (95% CI: 22%, 31%).
+[^orargh]: The odds ratio is a ratio of ratios, no wonder nobody understands them.
 
 ```{r}
-avg_comparisons(lrm_anytest_unadj, variables = "tx")
+#| code-fold: false
+(84/196) / (104/176)
 ```
 
-The results from the adjusted model are very similar.
+Now let's look at the table stratified by risk, and see how that affects our calculations.
 
-```{r}
-avg_comparisons(lrm_anytest_adj, variables = "tx")
+```{r, echo = FALSE}
+tbl_strata(rct_data, risk, tbl_cross, outcome, treatment, percent = "column")
 ```
 
-### Relative risk
-
-To get relative risks using `avg_comparisons()`, we need to ask for the average of the log of the ratio between treatment conditions (`lnratioavg` in the code below), and then exponentiate that. This provides an estimated relative risk of 2.25 (95% CI: 1.94, 2.61).
+Using the same formula as before, we can calculate a risk difference of 0.043 in the low risk group, 0.010 in the high risk group, and the equally-weighted average of those two (because the two risk groups are equally common in this example) is 0.071, same as the marginal risk difference calculated above.
 
 ```{r}
-avg_comparisons(lrm_anytest_unadj, variables = "tx",
+#| code-fold: false
+# conditional risk difference in the low risk group
+20/140 - 14/140
+# conditional risk difference in the high risk group
+84/140 - 70/140
+# average of conditional risk differences is the marginal risk difference
+0.5*((20/140 - 14/140) + (84/140 - 70/140))
+```
+
+Using the formula for odds ratios, we can calculate an odds ratio of 0.67 in the low risk group and 0.67 in the high risk group. The conditional odds ratios in both groups are equal, and equal to the conditional odds ratio from the adjusted logistic regression, but are different from the marginal odds ratio. This is noncollapsibility in action.
+
+```{r}
+#| code-fold: false
+# conditional odds ratio in the low risk group
+(14/126) / (20/120)
+# conditional odds ratio in the high risk group
+(70/70) / (84/56)
+```
+
+In this example, we observed a treatment-by-risk-group interaction on the risk difference scale (absolute risk reduction of 0.041 in the low-risk group, absolute risk reduction of 0.100 in the high-risk group) but not on the odds ratio scale (condition odds ratio of 0.67 in both groups). There is no mathematical requirement for the odds ratio scale to have less or no interactions than other scales to, but it is mathematically impossible for there to be no interaction on *any* scale unless the effect size is zero. This issue is discussed in detail from the perspective of psychological research in @rohrer2021preciseanswersvague.
+
+## Calculating risk difference and relative risks using the marginaleffects package
+
+The trialists returned to the statistician, requesting adjusted and unadjusted risk differences and relative risks to report in their paper. Fortunately, the statistician was familiar with the `marginaleffects` package, which makes it fairly easy to calculate risk differences from logistic regression models[^stderr].
+
+[^stderr]: One thing to be aware of is that the standard errors are derived using the delta method, which is a large-sample approximation. There is experimental support for bootstrapping and simulation-based inference in the `marginaleffects` package to get more accurate estimates in small samples, but this blog post isn't going there.
+
+### Risk differences
+
+The `avg_comparisons()` function calculates differences in one variable, averaged across the observed distribution of the other variables. By default it does this calculation on the response scale, i.e. predicted probability, which is what we want for a risk difference. For the unadjusted model, we get an average risk reduction of 7.1% (95% CI: -0.1% to 14.9%).
+
+```{r}
+avg_comparisons(lrm_unadj, variables = "treatment")
+```
+
+For the adjusted model, we get an average risk reduction of 7.1% (95% CI: 0.0% to 14.1%).
+
+```{r}
+avg_comparisons(lrm_adj, variables = "treatment")
+```
+
+Unlike the odds ratio, the point estimate risk difference didn't change when we added the covariate, but its estimate got more precise: the confidence interval shrank.
+
+### Relative risks
+
+To get relative risks using `avg_comparisons()`, we need to ask for the average of the log of the ratio between treatment conditions (`lnratioavg` in the code below), and then exponentiate that.
+
+For the unadjusted model, the relative risk is 0.81 (95% CI: 0.64 to 1.02).
+
+```{r}
+avg_comparisons(lrm_unadj, variables = "treatment",
                 comparison = "lnratioavg", transform = "exp")
 ```
 
-And again, the results not meaningfully different using the adjusted model.
+For the adjusted model, the relative risk is 0.81 (95% CI: 0.65 to 1.00).
 
 ```{r}
-avg_comparisons(lrm_anytest_adj, variables = "tx",
+avg_comparisons(lrm_adj, variables = "treatment",
                 comparison = "lnratioavg", transform = "exp")
 ```
 
-## Direct estimates of risk difference and relative risk
+Compared to the unadjusted model, the point estimate hasn't changed but the confidence interval shrank. Like risk differences, and unlike odds ratios, relative risks are collapsible.
 
-### Linear probability models for risk difference
+## In pictures
 
-A linear probability model is just a fancy term for fitting a linear regression to a binary outcome. In the unadjusted case, where there are no additional variables, this is [equivalent to doing a t-test](https://lindeloev.github.io/tests-as-linear/). It is common to use heteroscedasticity-robust standard errors when fitting a linear probability model, but this is not necessary in the case of a clinical trial with equal numbers in each treatment arm.
+One last way of showing the same thing: below is a plot of unadjusted and adjusted odds ratios, risk differences, and relative risks. You can see that for the odds ratio, the adjustment has moved the point estimate but not made the confidence interval shorter, whereas for the other measures, the point estimate has not changed but the confidence intervals are shorter for the adjusted estimate.
 
-```{r}
-ols_anytest_unadj <- lm(
-  anytest ~ tx,
-  data = wilson2017
-)
-```
-
-The coefficient for `tx` in the linear model is the risk difference and the intercept is the average baseline risk. These are the same as the values calculated from the logistic regression.
-
-```{r}
-tidy(ols_anytest_unadj, conf.int = TRUE)
-```
-
-Using `avg_comparisons()` is possible for the linear model, too, and gives the same results:
-
-```{r}
-avg_comparisons(ols_anytest_unadj, variables = "tx")
-```
-
-We can also fit an adjusted model, where we assume a constant risk difference against different levels of baseline risk depending on levels of the covariates. This approach is statistically valid, in the same of being robust to misspecification of the covariate adjustment model, for the same reason that ANCOVA is generally a valid way to analyse a clinical trial. The adjusted estimate is very slightly different from the adjusted estimated obtained from logistic regression, but not meaningfully so: the two methods are not mathematically identical but both are reasonable ways to try to estimate the same quantity.
-
-```{r}
-ols_anytest_adj <- lm(
-  anytest ~ tx + age + gender + msm + ethnicgrp + partners,
-  data = wilson2017
-)
-```
-
-Once again the coefficient for `tx` is directly interpretable as a risk difference:
-
-```{r}
-tidy(ols_anytest_adj, conf.int = TRUE) %>%
-  filter(term == "txSH:24")
-```
-
-The output from `avg_comparisons()` is the same as the coefficient in this case:
-
-```{r}
-avg_comparisons(ols_anytest_adj, variables = "tx")
-```
-
-### Quasi-Poisson models for relative risk
-
-Relative risks are often estimated directly using Poisson regression models with robust standard errors. In this example I've used a quasi-likelihood model as a way of providing the robust standard errors, mainly for simplicity because it's built into base R.
-
-```{r}
-qp_anytest_unadj <- glm(
-  anytest ~ tx,
-  family = quasipoisson,
-  data = wilson2017
-)
-```
-
-The exponentiated `tx` coefficient provides the relative risk estimate: 2.25 (95% CI: 1.96, 2.60).
-
-```{r}
-tidy(qp_anytest_unadj, conf.int = TRUE, exponentiate = TRUE)
-```
-
-This exponentiated coefficient is exactly the same as the output from `avg_comparisons()`, as we'd hope.
-
-```{r}
-avg_comparisons(qp_anytest_unadj, variables = "tx",
-                comparison = "lnratioavg", transform = "exp")
-```
-
-It's also possible to include covariates in this kind of model, as with others.
-
-```{r}
-qp_anytest_adj <- glm(
-  anytest ~ tx + age + gender + msm + ethnicgrp + partners,
-  family = quasipoisson,
-  data = wilson2017
-)
-```
-
-In this case the adjusted relative risk (2.22; 95% CI: 1.92, 2.57) is almost identical to the one derived previously from the logistic regression model (2.22; 95% CI: 1.92, 2.56).
-
-```{r}
-tidy(qp_anytest_adj, conf.int = TRUE, exponentiate = TRUE) %>%
-  filter(term == "txSH:24")
-```
-
-And once again, `avg_comparisons()` provides exactly the same estimate and confidence interval as the exponentiated model coefficient.
-
-```{r}
-avg_comparisons(qp_anytest_adj, variables = "tx",
-                comparison = "lnratioavg", transform = "exp")
-```
-
-## Being Bayesian
-
-While we're trying out lots of different models, why not look at a Bayesian approach to logistic regression? To do this we're going to need a couple more R packages: `brms` for fitting Bayesian regression models with Stan and `bayestestR` for setting up contrasts for categorical variables where equal priors have a sensible interpretation.
-
-```{r, message = FALSE, warning = FALSE}
-library(brms)
-library(bayestestR)
-```
-
-I created a copy of the data, named `wilson2017_bayes`, and set up all of the categorical variables to use `contr.equalprior_deviations` for contrasts. Under this parameterisation, a one unit difference represents the average difference between a group mean and the grand mean. For example, a factor with two levels would be encoded as a dummy variable taking the values -1 and 1.
-
-```{r}
-wilson2017_bayes <- wilson2017
-contrasts(wilson2017_bayes$tx) <- "contr.equalprior_deviations"
-contrasts(wilson2017_bayes$gender) <- "contr.equalprior_deviations"
-contrasts(wilson2017_bayes$msm) <- "contr.equalprior_deviations"
-contrasts(wilson2017_bayes$ethnicgrp) <- "contr.equalprior_deviations"
-contrasts(wilson2017_bayes$partners) <- "contr.equalprior_deviations"
-```
-
-### Unadjusted model
-
-The code below fits the unadjusted model using `brms`. It's a little bit more complicated than before, partly due to the extra code that saves the model object to a file and preferentially loads that file if it exists. There are a few other extra things to consider in the Bayesian model:
-
-- Specifying `family = bernoulli` instead of `family = binomial` when the outcome is the result of a single trial uses optimised code which fits the model a lot faster.
-- We need to specify priors. In this case I'm using a Normal(0, 0.5) prior for the treatment effect, which can be interpreted as a 95% prior certainty that the odds ratio will be less than $e^2 \approx 7.4$. I didn't specify a prior for the intercept. The `brms` default is a fairly diffuse Student t distribution which should be fine here.
-- The "cmdstanr" backend is more reliable than the default "rstan" backend, in my experience.
-- We run four chains with 5,000 iterations each, using four CPU cores at once. By default, `brms` uses half of the iterations for warmup, so we will end up with a total of 10,000 draws from the posterior distribution (four times 2,500).
-
-```{r, message = FALSE, warning = FALSE, results = FALSE}
-if (!file.exists("brm_anytest_unadj.Rds")) {
-  brm_anytest_unadj <- brm(
-    anytest ~ tx,
-    family = bernoulli,
-    prior = prior(normal(0, 0.5), class = b),
-    data = wilson2017_bayes,
-    backend = "cmdstanr",
-    cores = 4,
-    chains = 4,
-    iter = 5000,
-    seed = 12345
-  )
-  saveRDS(brm_anytest_unadj, "brm_anytest_unadj.Rds")
-} else {
-  brm_anytest_unadj <- readRDS("brm_anytest_unadj.Rds")
-}
-```
-
-All of the `marginaleffects` functions we've seen before work for this model too. We can also directly access the posterior distribution of quantities we're interested in. For example, the posterior distributions of the marginal means for each treatment are shown below.
-
-```{r posterior-predictions}
-avg_predictions(brm_anytest_unadj, variables = "tx") %>%
-  posterior_draws() %>%
-  ggplot(aes(draw, y = tx, fill = tx)) +
-  stat_halfeye() +
-  theme(legend.position = "off") +
-  labs(y = "Treatment", x = "Proportion")
-```
-
-We can access the posterior distribution of the average treatment effect in a similar way:
-
-```{r posterior-ate}
-avg_comparisons(brm_anytest_unadj, variables = "tx") %>%
-  posterior_draws() %>%
-  ggplot(aes(draw)) +
-  stat_halfeye() +
-  scale_y_continuous(breaks = NULL) +
-  labs(y = NULL, x = "Risk difference")
-```
-
-### Covariate-adjusted model
-
-We can add covariates to this model in the same way as we did for the frequentist model. This model will be examined in more detail in the section "Treatment effects as a function of covariates".
-
-```{r, message = FALSE, warning = FALSE, results = FALSE}
-if (!file.exists("brm_anytest_adj.Rds")) {
-  brm_anytest_adj <- brm(
-    anytest ~ tx + age + gender + msm + ethnicgrp + partners,
-    family = bernoulli,
-    prior = prior(normal(0, 0.5), class = b),
-    data = wilson2017_bayes,
-    backend = "cmdstanr",
-    cores = 4,
-    chains = 4,
-    iter = 5000,
-    seed = 54321
-  )
-  saveRDS(brm_anytest_adj, "brm_anytest_adj.Rds")
-} else {
-  brm_anytest_adj <- readRDS("brm_anytest_adj.Rds")
-}
-```
-
-### Getting a wiggle on: splines for continuous covariates
-
-I can now reveal why I created a `partners_numeric` variable earlier, for previously-secret reasons. Until now, we've modelled the effect of age using a straight line on the log-odds scale, and number of partners using a separate category for each number (1 through "10+"). We can make the model for age more flexible and the model for number of partners more plausible by fitting a penalised spline instead. This is known as a Generalised Additive Model (GAM), and doesn't have to be Bayesian, but in this case it is also Bayesian. Using `brms`, it can be as simple as specifying e.g. `s(age)` to fit a smooth curve relationship between age at the outcome. The wiggliness of the curve will be automatically adjusted based on the data. It's like magic, but made out of fancy maths.
-
-Since this is a Bayesian model, we should also specify a prior for the smoothing term. This takes the form of a prior on the standard deviation of the smoothing parameters, since [penalised splines and random effects are the same thing](https://www.tjmahr.com/random-effects-penalized-splines-same-thing/). I'm not really sure what I'm doing here --- and haven't seen anything written about choosing priors for smooths --- but have specified a Normal(0, 1.5) prior.
-
-```{r, message = FALSE, warning = FALSE, results = FALSE}
-if (!file.exists("brm_anytest_gam.Rds")) {
-  brm_anytest_gam <- brm(
-    anytest ~ tx + s(age) + gender + msm + ethnicgrp + s(partners_numeric),
-    family = bernoulli,
-    prior = c(prior(normal(0, 0.5), class = b),
-              prior(normal(0, 1.5), class = sds)),
-    data = wilson2017_bayes,
-    backend = "cmdstanr",
-    cores = 4,
-    chains = 4,
-    iter = 5000,
-    seed = 11117
-  )
-  saveRDS(brm_anytest_gam, "brm_anytest_gam.Rds")
-} else {
-  brm_anytest_gam <- readRDS("brm_anytest_gam.Rds")
-}
-```
-
-Plots comparing these smooth curves for age and number of partners to the original linear terms are shown later, in the "Treatment effects as a function of covariates" section.
-
-### The kitchen sink model: splines and interaction terms
-
-Finally, I have fit a model including interaction terms, allowing the covariate effects to vary between the treatment and control groups. I've placed tighter priors on the interaction terms, Normal(0, 0.25) instead of Normal(0, 0.5), reflecting the idea that I am fairly certain the odds ratios involved in interactions should be less than $e \approx 2.7$.
-
-```{r, message = FALSE, warning = FALSE, results = FALSE}
-if (!file.exists("brm_anytest_gam_intxn.Rds")) {
-  brm_anytest_gam_intxn <- brm(
-    anytest ~ tx + s(age, by = tx) + tx*gender + tx*msm +
-      tx*ethnicgrp + s(partners_numeric, by = tx),
-    family = bernoulli,
-    prior = c(
-      prior(normal(0, 0.5), class = b),
-      prior(normal(0, 0.25), class = b, coef = "tx1:gender1"),
-      prior(normal(0, 0.25), class = b, coef = "tx1:gender2"),
-      prior(normal(0, 0.25), class = b, coef = "tx1:msm1"),
-      prior(normal(0, 0.25), class = b, coef = "tx1:msm2"),
-      prior(normal(0, 0.25), class = b, coef = "tx1:ethnicgrp1"),
-      prior(normal(0, 0.25), class = b, coef = "tx1:ethnicgrp2"),
-      prior(normal(0, 0.25), class = b, coef = "tx1:ethnicgrp3"),
-      prior(normal(0, 0.25), class = b, coef = "tx1:ethnicgrp4"),
-      prior(normal(0, 1.5), class = sds)
-    ),
-    data = wilson2017_bayes,
-    backend = "cmdstanr",
-    cores = 4,
-    chains = 4,
-    iter = 5000,
-    seed = 11113
-  )
-  saveRDS(brm_anytest_gam_intxn, "brm_anytest_gam_intxn.Rds")
-} else {
-  brm_anytest_gam_intxn <- readRDS("brm_anytest_gam_intxn.Rds")
-}
-```
-
-We'll examine the effect of these interaction terms in the "Treatment effects as a function of covariates" and "Distribution of treatment effects" sections.
-
-## Did any of this make a difference, in the end?
-
-Putting the code above together, we can make a big data frame containing all of our effect size estimates. Click the "Code" button below if you want to see exactly how the sausage is made, or keep reading to see a plot.
-
-```{r}
+```{r coef-plot, fig.width = 6, fig.height = 3}
 #| code-fold: true
 
-# obtain an odds ratio from a brms coefficient estimate
-get_brms_or <- function(model, term, scale = 1, exponentiate = TRUE) {
-  fixef(model)[term, , drop = FALSE] %>%
-    as.data.frame() %>%
-    select(estimate = Estimate, conf.low = Q2.5, conf.high = Q97.5) %>%
-    mutate(across(everything(), \(x) exp(x * scale)))
-}
-
 # odds ratio estimates
-anytest_or_estimates <- bind_rows(
-  "Unadjusted logistic regression" = 
-    tidy(lrm_anytest_unadj, conf.int = TRUE, exponentiate = TRUE) %>%
-    filter(term == "txSH:24"),
-  "Adjusted logistic regression" = 
-    tidy(lrm_anytest_adj, conf.int = TRUE, exponentiate = TRUE) %>%
-    filter(term == "txSH:24"),
-  "Unadjusted Bayesian logistic regression" =
-    get_brms_or(brm_anytest_unadj, "tx1", scale = 2),
-  "Adjusted Bayesian logistic regression" =
-    get_brms_or(brm_anytest_adj, "tx1", scale = 2),
-  "Bayesian logistic regression with splines" =
-    get_brms_or(brm_anytest_gam, "tx1", scale = 2),
+or_estimates <- bind_rows(
+  "Unadjusted" = 
+    tidy(lrm_unadj, conf.int = TRUE, exponentiate = TRUE) %>%
+    filter(term == "treatmentTreatment"),
+  "Adjusted" = 
+    tidy(lrm_adj, conf.int = TRUE, exponentiate = TRUE) %>%
+    filter(term == "treatmentTreatment"),
   .id = "model"
 ) %>%
   select(model, estimate, conf.low, conf.high)
 
 # risk difference estimates
-anytest_rd_estimates <- bind_rows(
-  "Unadjusted logistic regression" =
-    avg_comparisons(lrm_anytest_unadj, variables = "tx"),
-  "Adjusted logistic regression" =
-    avg_comparisons(lrm_anytest_adj, variables = "tx"),
-  "Unadjusted Bayesian logistic regression" =
-    avg_comparisons(brm_anytest_unadj, variables = "tx"),
-  "Adjusted Bayesian logistic regression" =
-    avg_comparisons(brm_anytest_adj, variables = "tx"),
-  "Bayesian logistic regression with splines" =
-    avg_comparisons(brm_anytest_gam, variables = "tx"),
-  "Bayesian with splines and interactions" =
-    avg_comparisons(brm_anytest_gam_intxn, variables = "tx"),
-  "Unadjusted linear model/OLS" =
-    avg_comparisons(ols_anytest_unadj, variables = "tx"),
-  "Adjusted linear model/OLS" =
-    avg_comparisons(ols_anytest_adj, variables = "tx"),
+rd_estimates <- bind_rows(
+  "Unadjusted" =
+    avg_comparisons(lrm_unadj, variables = "treatment"),
+  "Adjusted" =
+    avg_comparisons(lrm_adj, variables = "treatment"),
   .id = "model"
 ) %>%
   select(model, estimate, conf.low, conf.high)
 
 # relative risk estimates
-anytest_rr_estimates <- bind_rows(
-  "Unadjusted logistic regression" =
-    avg_comparisons(lrm_anytest_unadj, variables = "tx",
+rr_estimates <- bind_rows(
+  "Unadjusted" =
+    avg_comparisons(lrm_unadj, variables = "treatment",
                     comparison = "lnratioavg", transform = "exp"),
-  "Adjusted logistic regression" =
-    avg_comparisons(lrm_anytest_adj, variables = "tx",
-                    comparison = "lnratioavg", transform = "exp"),
-  "Unadjusted Bayesian logistic regression" =
-    avg_comparisons(brm_anytest_unadj, variables = "tx",
-                    comparison = "lnratioavg", transform = "exp"),
-  "Adjusted Bayesian logistic regression" =
-    avg_comparisons(brm_anytest_adj, variables = "tx",
-                    comparison = "lnratioavg", transform = "exp"),
-  "Bayesian logistic regression with splines" =
-    avg_comparisons(brm_anytest_gam, variables = "tx",
-                    comparison = "lnratioavg", transform = "exp"),
-  "Bayesian with splines and interactions" =
-    avg_comparisons(brm_anytest_gam_intxn, variables = "tx",
-                    comparison = "lnratioavg", transform = "exp"),
-  "Unadjusted quasi-Poisson" =
-    avg_comparisons(qp_anytest_unadj, variables = "tx",
-                    comparison = "lnratioavg", transform = "exp"),
-  "Adjusted quasi-Poisson" =
-    avg_comparisons(qp_anytest_adj, variables = "tx",
+  "Adjusted" =
+    avg_comparisons(lrm_adj, variables = "treatment",
                     comparison = "lnratioavg", transform = "exp"),
   .id = "model"
 ) %>%
   select(model, estimate, conf.low, conf.high)
 
-anytest_all_estimates <- bind_rows(
-  "Odds ratio" = anytest_or_estimates,
-  "Risk difference" = anytest_rd_estimates,
-  "Relative risk" = anytest_rr_estimates,
+# combine all estimands into a single data frame
+all_estimates <- bind_rows(
+  "Odds ratio" = or_estimates,
+  "Risk difference" = rd_estimates,
+  "Relative risk" = rr_estimates,
   .id = "estimand"
 )
-```
 
-Plotting all of the estimates shows that if all you're after is a risk difference or relative risk, there's very little difference between methods, at least for this particular study. Part of the reason for this is that the intervention effect was much greater effect than differences in baseline risk between levels of covariates. I would not expect this observation to generalise: in other scenarios you may find a larger difference between adjusted and unadjusted methods, although the differences between methods for adjustment are still likely to be minor.
-
-```{r plot-all-estimates, fig.width = 7, fig.height = 3, dpi = 112}
-#| code-fold: true
-
-anytest_all_estimates %>%
+# plot!
+all_estimates %>%
   mutate(model = fct_inorder(model), estimand = fct_inorder(estimand)) %>%
   ggplot(aes(x = estimate, xmin = conf.low, xmax = conf.high,
              y = model)) +
   geom_pointrange() +
   scale_y_discrete(limits = rev) +
-  facet_wrap(vars(estimand), nrow = 1, scales = "free_x") +
+  facet_wrap(vars(estimand), nrow = 3, scales = "free") +
   panel_border() +
-  labs(y = NULL, x = "Estimate (95% CI/CrI)")
+  labs(y = NULL, x = "Estimate (95% CI)")
 ```
-
-These estimates are shown in table form below.
-
-```{r}
-#| code-fold: true
-
-anytest_all_estimates %>%
-  group_by(estimand) %>%
-  gt() %>%
-  fmt_number(columns = c(estimate, conf.low, conf.high), n_sigfig = 3) %>%
-  cols_merge_range(conf.low, conf.high, sep = ", ") %>%
-  cols_label(
-    model = "Model",
-    estimate = "Estimate",
-    conf.low = "95% CI/CrI"
-  )
-```
-
-## Treatment effects as a function of covariates
-
-In this section I will further examine three of the Bayesian models we made earlier:
-
-- the "covariate adjusted" model, which had a linear relationship (on the log-odds scale) between age and outcome, and treated number of partners as a categorical variables;
-- the "spline" model, which fit a smooth curve to the effect of age and number of partners, using the same curve for both treatment conditions; and
-- the "spline and interaction" model, which fit a separate smooth curve for each treatment condition.
-
-### Age
-
-The plots below show the predicted relationship between age and probability of taking an STI test (remember --- our outcome!), for each treatment condition. These are averaged over the sample distribution for all other covariates, so may be misleading if age is causally related to any of the other covariates. This is unlikely to be the case for gender, sexual orientation, or ethnic group, but may well be the case for number of partners.
-
-In this case, it seems plausible that there is a nonlinear relationship between age and the outcome, and that relationship may even be different in the treatment and control conditions (though this study is not powered to detect such a difference).
-
-```{r age-predictions, fig.width = 9, fig.height = 4.5}
-#| code-fold: true
-
-plot_grid(
-  plot_predictions(brm_anytest_adj, condition = c("age", "tx")) + 
-    ylim(c(0, 1)) + theme(legend.position = "bottom") +
-    ggtitle("Linear log-odds"),
-  plot_predictions(brm_anytest_gam, condition = c("age", "tx")) + 
-    ylim(c(0, 1)) + theme(legend.position = "bottom") +
-    ggtitle("Spline"),
-  plot_predictions(brm_anytest_gam_intxn, condition = c("age", "tx")) + 
-    ylim(c(0, 1)) + theme(legend.position = "bottom") +
-    ggtitle("Spline + interaction"),
-  nrow = 1
-)
-```
-
-We can also plot the difference between treatment conditions as a function of age using the `plot_comparisons()` function. In this case, all of the models seem consistent with a constant risk difference as function of age, although the "spline + interaction" model does suggest that the treatment effect may increase with age.
-
-```{r age-comparisons, fig.width = 9, fig.height = 4.5}
-#| code-fold: true
-
-plot_grid(
-  plot_comparisons(brm_anytest_adj, variables = "tx", condition = "age") + 
-    ylim(c(0, 0.65)) + ggtitle("Linear log-odds"),
-  plot_comparisons(brm_anytest_gam, variables = "tx", condition = "age") + 
-    ylim(c(0, 0.65)) + ggtitle("Spline"),
-  plot_comparisons(brm_anytest_gam_intxn, variables = "tx", condition = "age") + 
-    ylim(c(0, 0.65)) + ggtitle("Spline + interaction"),
-  nrow = 1
-)
-```
-
-### Number of partners
-
-We can examine the effect of number of partners in the same way. In this case, the spline looks more plausible than the categorical effects, and there is little to suggest that the effect of number of partners may be between treatment groups.
-
-```{r partners-predictions, fig.width = 9, fig.height = 4.5}
-#| code-fold: true
-
-plot_grid(
-  plot_predictions(brm_anytest_adj, condition = c("partners", "tx")) + 
-    ylim(c(0, 1)) + theme(legend.position = "bottom") +
-    ggtitle("Categorical"),
-  plot_predictions(brm_anytest_gam, condition = c("partners_numeric", "tx")) + 
-    scale_x_continuous(breaks = 1:10) +
-    ylim(c(0, 1)) + theme(legend.position = "bottom") +
-    ggtitle("Spline"),
-  plot_predictions(brm_anytest_gam_intxn, 
-                   condition = c("partners_numeric", "tx")) + 
-    scale_x_continuous(breaks = 1:10) +
-    ylim(c(0, 1)) + theme(legend.position = "bottom") +
-    ggtitle("Spline + interaction"),
-  nrow = 1
-)
-```
-
-The risk difference looks plausibly constant as a function of number of partners.
-
-```{r partners-comparisons, fig.width = 9, fig.height = 4.5}
-#| code-fold: true
-
-plot_grid(
-  plot_comparisons(brm_anytest_adj, variables = "tx", 
-                   condition = "partners") + 
-    ylim(c(0, 0.65)) + ggtitle("Categorical"),
-  plot_comparisons(brm_anytest_gam, variables = "tx", 
-                   condition = "partners_numeric") + 
-    scale_x_continuous(breaks = 1:10) +
-    ylim(c(0, 0.65)) + ggtitle("Spline"),
-  plot_comparisons(brm_anytest_gam_intxn, variables = "tx",
-                   condition = "partners_numeric") + 
-    scale_x_continuous(breaks = 1:10) +
-    ylim(c(0, 0.65)) + ggtitle("Spline + interaction"),
-  nrow = 1
-)
-```
-
-## Distribution of treatment effects
-
-This section uses ideas from [Frank Harrell's blog on effect distributions](https://www.fharrell.com/post/rdist/) and code adapted from [the vignette by Arthur Albuquerque and Vincent Arel-Bundock](https://vincentarelbundock.github.io/marginaleffects/articles/logit.html).
-
-The statistical models that we have fit so far can be used to estimate a probability under each treatment for each participant, and hence a participant-specific risk difference. We've already been using this behind the scenes to produce our average treatment effects, but it's possible to examine them in more detail.
-
-The plot below shows the distribution of participant-level predicted risk differences from four different models.
-
-```{r risk-difference-distribution, fig.width = 7, fig.height = 6, dpi = 112}
-#| code-fold: true
-
-anytest_all_comparisons <- bind_rows(
-  "Frequentist adjusted" = comparisons(lrm_anytest_adj, variables = "tx"),
-  "Bayesian adjusted" = comparisons(brm_anytest_adj, variables = "tx"),
-  "Bayesian splines" = comparisons(brm_anytest_gam, variables = "tx"),
-  "Bayesian splines + interactions" = 
-    comparisons(brm_anytest_gam_intxn, variables = "tx"),
-  .id = "model"
-)
-anytest_all_comparisons %>%
-  mutate(model = fct_inorder(model)) %>%
-  ggplot(aes(x = estimate, y = model)) +
-  stat_dotsinterval() +
-  scale_y_discrete(limits = rev) +
-  labs(x = "Conditional risk difference (treatment - control)",
-       y = NULL)
-```
-
-In this case we can see that the biggest difference in distribution of treatment effects comes from the choice of including treatment by covariate interaction terms in the model. However, those interaction terms are very hard to estimate, raising questions about how much we trust this result. Another concern I have about these plots is that they completely ignore any uncertainty in the individual-level predicted risk differences.
-
-Overall, I find these an intriguing curiosity, but am left uncertain as to the practical value. Recalling the different potential users of clinical trial results from the start of this blog post, do these plots help inform the regulator, the patient, the scientist, or the meta-analyst? I'm not sure how they do.
 
 ## Coda
 

@@ -413,6 +413,52 @@ references:
   URL: https://www.tandfonline.com/doi/full/10.1080/19466315.2019.1647874
   volume: '12'
 
+- id: rohrer2021preciseanswersvague
+  abstract: >-
+    Psychological theories often invoke interactions but remain vague regarding
+    the details. As a consequence, researchers may not know how to properly test
+    them and may potentially run analyses that reliably return the wrong answer
+    to their research question. We discuss three major issues regarding the
+    prediction and interpretation of interactions. First, interactions can be
+    removable in the sense that they appear or disappear depending on scaling
+    decisions, with consequences for a variety of situations (e.g., binary or
+    categorical outcomes, bounded scales with floor and ceiling effects).
+    Second, interactions may be conceptualized as changes in slope or changes in
+    correlations, and because these two phenomena do not necessarily coincide,
+    researchers might draw wrong conclusions. Third, interactions may or may not
+    be causally identified, and this determines which interpretations are valid.
+    Researchers who remain unaware of these distinctions might accidentally
+    analyze their data in a manner that returns the technically correct answer
+    to the wrong question. We illustrate all issues with examples from
+    psychology and issue recommendations for how to best address them in a
+    productive manner.
+  accessed:
+    - year: 2023
+      month: 7
+      day: 13
+  author:
+    - family: Rohrer
+      given: Julia M.
+    - family: Arslan
+      given: Ruben C.
+  citation-key: rohrer2021preciseanswersvague
+  container-title: Advances in Methods and Practices in Psychological Science
+  container-title-short: Advances in Methods and Practices in Psychological Science
+  DOI: 10.1177/25152459211007368
+  ISSN: 2515-2459, 2515-2467
+  issue: '2'
+  issued:
+    - year: 2021
+      month: 4
+  language: en
+  page: '251524592110073'
+  source: DOI.org (Crossref)
+  title: 'Precise Answers to Vague Questions: Issues With Interactions'
+  title-short: Precise Answers to Vague Questions
+  type: article-journal
+  URL: http://journals.sagepub.com/doi/10.1177/25152459211007368
+  volume: '4'
+
 - id: senn2011uneasereasonsmistrusting
   accessed:
     - year: 2023
