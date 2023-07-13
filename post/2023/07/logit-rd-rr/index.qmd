@@ -71,9 +71,9 @@ The most clearly expressed counter-argument to this comes from [a blog post by F
 
 > Marginal adjusted estimates may be robust, but may not accurately estimate RD for either any patient in the RCT or for the clinical population to which RCT results are to be applied, because in effect they assume that the RCT sample is a random sample from the clinical population, something not required and never realized for RCTs.
 
-This refers to the distinction between the population average treatment effect (PATE) and the sample average treatment effect (SATE). RCTs can only ever tell us about the participants who were recruited into the study, but the regulator's decision that Permutt described earlier is implicitly relying on properties of the PATE. It's not clear to me whether there are likely to be any real-world scenarios where both (1) the practical conclusions drawn from the SATE and PATE would be different; and (2) the conditional odds ratio derived from the RCT sample is in agreement with the PATE but the risk difference SATE is not.
+This refers to the distinction between the population average treatment effect (PATE) and the sample average treatment effect (SATE). RCT participants are not random samples from any population, not even from the eligible pool of participants for a particular study. But the regulator's decision that Permutt described earlier is motivated by generalising to a broader population, implicitly relying on properties of the PATE. It's not clear to me whether there are likely to be any real-world scenarios where both (1) the practical conclusions drawn from the SATE and PATE would be different; and (2) the conditional odds ratio derived from the RCT sample is in agreement with the PATE but the risk difference SATE is not.
 
-I am a coward and not (yet?) willing to take a strong position in this fight, but am always sympathetic to the idea that a single number is rarely sufficient to describe scientific evidence (see also: p-values). At some point I might write another blog about Harrell's ideas about plotting the distribution of estimated patient-level treatment effects, which is intriguing, although I struggle to see the practical purpose of it. Harrell's other writing on this topic is also worth reading:
+I am a coward and not (yet?) willing to take a strong position in this fight, but am always sympathetic to the idea that a single number is rarely sufficient to describe scientific evidence (see also: p-values). At some point I might write another blog about Harrell's idea of plotting the distribution of estimated patient-level treatment effects, which is intriguing, although I struggle to see the practical purpose of it. Harrell's other writing on this topic is also worth reading:
 
 - [Incorrect Covariate Adjustment May Be More Correct than Adjusted Marginal Estimates](https://www.fharrell.com/post/robcov/) makes a similar point to @white2021covariateadjustmentrandomised with a detailed simulated example;
 - [Assessing Heterogeneity of Treatment Effect, Estimating Patient-Specific Efficacy, and Studying Variation in Odds ratios, Risk Ratios, and Risk Differences](https://www.fharrell.com/post/varyor/) argues in favour of the use of odds ratios for modelling, and points out the extreme difficulty of identifying heterogeneous treatment effects even in very large studies; and
@@ -177,7 +177,7 @@ Looking at the coefficients in this model, we can see that the estimated effect 
 tbl_regression(lrm_adj, exponentiate = TRUE)
 ```
 
-The trialists went home happy, dreaming once again of publishing in a high impact factor journal, but the statistician was left with a nagging feeling that something was not quite right. The covariate was balanced between treatment groups, with equal numbers of low risk and high risk assigned to each treatment. Undergraduate linear models courses taught that adding risk to the model in this scenario shouldn't change the coefficient for treatment, only the standard error. Why, then, did the estimates change like that? Is logistic regression different from linear regression in this regard?
+The trialists went home happy, dreaming once again of publishing in a high impact factor journal, but the statistician was left with a nagging feeling that something was not quite right. The covariate was balanced between treatment groups, with equal numbers of low risk and high risk assigned to each treatment. Undergraduate linear models courses taught that adding a covariate to the model in this scenario shouldn't change the coefficient for treatment, only the standard error. Why, then, did the estimates change like that? Is logistic regression different from linear regression in this regard?
 
 ## Hand calculations: back to the 2-way table
 
@@ -209,7 +209,7 @@ Now let's look at the table stratified by risk, and see how that affects our cal
 tbl_strata(rct_data, risk, tbl_cross, outcome, treatment, percent = "column")
 ```
 
-Using the same formula as before, we can calculate a risk difference of 0.043 in the low risk group, 0.010 in the high risk group, and the equally-weighted average of those two (because the two risk groups are equally common in this example) is 0.071, same as the marginal risk difference calculated above.
+Using the same formula as before, we can calculate a risk difference of 0.043 in the low risk group, 0.100 in the high risk group, and the equally-weighted average of those two (because the two risk groups are equally common in this example) is 0.071, same as the marginal risk difference calculated above.
 
 ```{r}
 #| code-fold: false
@@ -277,7 +277,7 @@ Compared to the unadjusted model, the point estimate hasn't changed but the conf
 
 ## In pictures
 
-One last way of showing the same thing: below is a plot of unadjusted and adjusted odds ratios, risk differences, and relative risks. You can see that for the odds ratio, the adjustment has moved the point estimate but not made the confidence interval shorter, whereas for the other measures, the point estimate has not changed but the confidence intervals are shorter for the adjusted estimate.
+One last way of showing the same thing: below is a plot of unadjusted and adjusted odds ratios, risk differences, and relative risks. You can see that for the odds ratio, the adjustment has moved the point estimate but not made the confidence interval narrower, whereas for the other measures, the point estimate has not changed but the confidence intervals are narrower for the adjusted estimate.
 
 ```{r coef-plot, fig.width = 6, fig.height = 3}
 #| code-fold: true
@@ -336,7 +336,12 @@ all_estimates %>%
   labs(y = NULL, x = "Estimate (95% CI)")
 ```
 
-## Coda
+## Acknowledgements
+
+Thanks to those who provided feedback on earlier versions of this post, some which resulted in substantial revisions and improvements:
+
+- Isabella Ghement
+- Lachlan Cribb
 
 Feedback welcome, especially any corrections in cases where I may have misunderstood or misattributed arguments, or made clear factual errors.
 
