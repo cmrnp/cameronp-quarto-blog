@@ -11,7 +11,7 @@ format:
   html:
     toc: true
 abstract: |
-  | Wherein I try to make sense of ongoing debates in the statistical community about how to analyse and report clinical trials targeting binary outcomes, and then write some R code to practice what I hesitantly preach.
+  Wherein I try to make sense of ongoing debates in the statistical community about how to analyse and report clinical trials targeting binary outcomes, and then write some R code to practice what I hesitantly preach.
 ---
 
 ```{r setup, include = FALSE}
