@@ -33,6 +33,7 @@ format:
     mainfont: Helvetica, Arial, sans
     monofont: Cascadia Mono, Menlo, Courier New
     backgroundcolor: "white"
+#    backgroundcolor: "#fafbf9"
     fontcolor: "#323331"
     knitr:
       opts_chunk:

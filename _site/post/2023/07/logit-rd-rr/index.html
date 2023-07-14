@@ -217,7 +217,8 @@ div.csl-indent {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#the-great-odds-ratio-debate" id="toc-the-great-odds-ratio-debate" class="nav-link active" data-scroll-target="#the-great-odds-ratio-debate">The great odds ratio debate</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#the-great-odds-ratio-debate" id="toc-the-great-odds-ratio-debate" class="nav-link" data-scroll-target="#the-great-odds-ratio-debate">The great odds ratio debate</a></li>
   <li><a href="#in-defense-of-logistic-regression" id="toc-in-defense-of-logistic-regression" class="nav-link" data-scroll-target="#in-defense-of-logistic-regression">In defense of logistic regression</a></li>
   <li><a href="#summary-in-meme-format" id="toc-summary-in-meme-format" class="nav-link" data-scroll-target="#summary-in-meme-format">Summary, in meme format</a></li>
   <li><a href="#an-example" id="toc-an-example" class="nav-link" data-scroll-target="#an-example">An example</a></li>
@@ -240,8 +241,10 @@ div.csl-indent {
 
 
 
-<p>When summarising the effect of a treatment or intervention on an outcome measured on a continuous scale, it’s almost ubiquitous to represent the Average Treatment Effect (ATE) in the form of a difference in means between the treatment and control groups. When the outcome is binary (yes or no, event occurred or event did not occur), there are three commonly-used measures. The risk difference, also known as absolute risk reduction or difference in proportions, is an absolute measure of effect size: the proportion in one group minus the proportion in the other group. The relative risk, also known as the risk ratio, is a relative measure of effect size: the proportion in one group divided by the proportion in the other group. Finally, there is the odds ratio, another relative measure of effect: the odds in one group divided by the odds in the other group. The odds ratio is the odd (ha!) one out in a few ways, and a bit more controversial.</p>
-<p>In the first half of this post, I’ll dive into the controversy. In the middle, I summarise the arguments using a meme. In the second half, I’ll work through an example of estimating odds ratios, risk differences, and relative risks in a fictional randomised clinical trial, showing both R code examples and hand-calculations.</p>
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>When summarising the effect of a treatment or intervention on an outcome measured on a continuous scale, it’s almost ubiquitous to represent the Average Treatment Effect (ATE) in the form of a difference of means between the treatment and control groups. When the outcome is binary (yes or no, event occurred or event did not occur), there are three commonly-used measures. The risk difference, also known as absolute risk reduction or difference in proportions, is an absolute measure of effect size: the proportion in one group minus the proportion in the other group. The relative risk, also known as the risk ratio, is a relative measure of effect size: the proportion in one group divided by the proportion in the other group. Finally, there is the odds ratio, another relative measure of effect: the odds in one group divided by the odds in the other group. The odds ratio is the odd (ha!) one out in a few ways, and a bit more controversial.</p>
+<p>In the first half of this post, I’ll dive into the controversy. In the middle, I’ll summarise the arguments using a meme. In the second half, I’ll work through an example of estimating odds ratios, risk differences, and relative risks in a fictional randomised controlled trial, showing R code examples and hand-calculations.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -255,6 +258,7 @@ What’s an odds, anyway?
 <p>An odds is the probability of an event occurring divided by the probability of it not occurring. For example, a 50% chance corresponds to an odds of 0.5/0.5 = 1; a 75% chance corresponds to an odds of 0.75/0.25 = 3; a 25% chance corresponds to an odds of 0.25/0.75 = 1/3. Odds are common in gambling and often expressed as ratios, e.g.&nbsp;1:1, 3:1 or 1:3. Odds ratios are ratios of oddses<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>. For example, a change from a 50% proportion to a 75% proportion would be a change from an odds of 1 to an odds of 3, representing an odds ratio of 3/1 = 3.</p>
 </div>
 </div>
+</section>
 <section id="the-great-odds-ratio-debate" class="level2">
 <h2 class="anchored" data-anchor-id="the-great-odds-ratio-debate">The great odds ratio debate</h2>
 <p>A lot of noise has been made about why an odds ratio may not be a desirable summary for a treatment effect on a binary variable<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>. One of the biggest practical problems is that normal humans are unable to correctly interpret an odds ratio <span class="citation" data-cites="altman1998oddsratiosshould">(<a href="#ref-altman1998oddsratiosshould" role="doc-biblioref">Altman et al., 1998</a>)</span>. But for statisticians, there are also deeper concerns to worry about.</p>
@@ -343,23 +347,23 @@ What’s an odds, anyway?
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl_cross</span>(rct_data, outcome, treatment, <span class="at">percent =</span> <span class="st">"column"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 
-<div id="xgxceelidz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#xgxceelidz table {
+<div id="qkhdhxkgxq" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#qkhdhxkgxq table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#xgxceelidz thead, #xgxceelidz tbody, #xgxceelidz tfoot, #xgxceelidz tr, #xgxceelidz td, #xgxceelidz th {
+#qkhdhxkgxq thead, #qkhdhxkgxq tbody, #qkhdhxkgxq tfoot, #qkhdhxkgxq tr, #qkhdhxkgxq td, #qkhdhxkgxq th {
   border-style: none;
 }
 
-#xgxceelidz p {
+#qkhdhxkgxq p {
   margin: 0;
   padding: 0;
 }
 
-#xgxceelidz .gt_table {
+#qkhdhxkgxq .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -385,12 +389,12 @@ What’s an odds, anyway?
   border-left-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_caption {
+#qkhdhxkgxq .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#xgxceelidz .gt_title {
+#qkhdhxkgxq .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -402,7 +406,7 @@ What’s an odds, anyway?
   border-bottom-width: 0;
 }
 
-#xgxceelidz .gt_subtitle {
+#qkhdhxkgxq .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -414,7 +418,7 @@ What’s an odds, anyway?
   border-top-width: 0;
 }
 
-#xgxceelidz .gt_heading {
+#qkhdhxkgxq .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -426,13 +430,13 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_bottom_border {
+#qkhdhxkgxq .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_col_headings {
+#qkhdhxkgxq .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -447,7 +451,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_col_heading {
+#qkhdhxkgxq .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -467,7 +471,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#xgxceelidz .gt_column_spanner_outer {
+#qkhdhxkgxq .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -479,15 +483,15 @@ What’s an odds, anyway?
   padding-right: 4px;
 }
 
-#xgxceelidz .gt_column_spanner_outer:first-child {
+#qkhdhxkgxq .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#xgxceelidz .gt_column_spanner_outer:last-child {
+#qkhdhxkgxq .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#xgxceelidz .gt_column_spanner {
+#qkhdhxkgxq .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -499,11 +503,11 @@ What’s an odds, anyway?
   width: 100%;
 }
 
-#xgxceelidz .gt_spanner_row {
+#qkhdhxkgxq .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#xgxceelidz .gt_group_heading {
+#qkhdhxkgxq .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -529,7 +533,7 @@ What’s an odds, anyway?
   text-align: left;
 }
 
-#xgxceelidz .gt_empty_group_heading {
+#qkhdhxkgxq .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -544,15 +548,15 @@ What’s an odds, anyway?
   vertical-align: middle;
 }
 
-#xgxceelidz .gt_from_md > :first-child {
+#qkhdhxkgxq .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#xgxceelidz .gt_from_md > :last-child {
+#qkhdhxkgxq .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#xgxceelidz .gt_row {
+#qkhdhxkgxq .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -571,7 +575,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#xgxceelidz .gt_stub {
+#qkhdhxkgxq .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -584,7 +588,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#xgxceelidz .gt_stub_row_group {
+#qkhdhxkgxq .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -598,15 +602,15 @@ What’s an odds, anyway?
   vertical-align: top;
 }
 
-#xgxceelidz .gt_row_group_first td {
+#qkhdhxkgxq .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#xgxceelidz .gt_row_group_first th {
+#qkhdhxkgxq .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#xgxceelidz .gt_summary_row {
+#qkhdhxkgxq .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -616,16 +620,16 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#xgxceelidz .gt_first_summary_row {
+#qkhdhxkgxq .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_first_summary_row.thick {
+#qkhdhxkgxq .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#xgxceelidz .gt_last_summary_row {
+#qkhdhxkgxq .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -635,7 +639,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_grand_summary_row {
+#qkhdhxkgxq .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -645,7 +649,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#xgxceelidz .gt_first_grand_summary_row {
+#qkhdhxkgxq .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -655,7 +659,7 @@ What’s an odds, anyway?
   border-top-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_last_grand_summary_row_top {
+#qkhdhxkgxq .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -665,11 +669,11 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_striped {
+#qkhdhxkgxq .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#xgxceelidz .gt_table_body {
+#qkhdhxkgxq .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -678,7 +682,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_footnotes {
+#qkhdhxkgxq .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -692,7 +696,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_footnote {
+#qkhdhxkgxq .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -701,7 +705,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#xgxceelidz .gt_sourcenotes {
+#qkhdhxkgxq .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -715,7 +719,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#xgxceelidz .gt_sourcenote {
+#qkhdhxkgxq .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -723,63 +727,63 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#xgxceelidz .gt_left {
+#qkhdhxkgxq .gt_left {
   text-align: left;
 }
 
-#xgxceelidz .gt_center {
+#qkhdhxkgxq .gt_center {
   text-align: center;
 }
 
-#xgxceelidz .gt_right {
+#qkhdhxkgxq .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#xgxceelidz .gt_font_normal {
+#qkhdhxkgxq .gt_font_normal {
   font-weight: normal;
 }
 
-#xgxceelidz .gt_font_bold {
+#qkhdhxkgxq .gt_font_bold {
   font-weight: bold;
 }
 
-#xgxceelidz .gt_font_italic {
+#qkhdhxkgxq .gt_font_italic {
   font-style: italic;
 }
 
-#xgxceelidz .gt_super {
+#qkhdhxkgxq .gt_super {
   font-size: 65%;
 }
 
-#xgxceelidz .gt_footnote_marks {
+#qkhdhxkgxq .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#xgxceelidz .gt_asterisk {
+#qkhdhxkgxq .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#xgxceelidz .gt_indent_1 {
+#qkhdhxkgxq .gt_indent_1 {
   text-indent: 5px;
 }
 
-#xgxceelidz .gt_indent_2 {
+#qkhdhxkgxq .gt_indent_2 {
   text-indent: 10px;
 }
 
-#xgxceelidz .gt_indent_3 {
+#qkhdhxkgxq .gt_indent_3 {
   text-indent: 15px;
 }
 
-#xgxceelidz .gt_indent_4 {
+#qkhdhxkgxq .gt_indent_4 {
   text-indent: 20px;
 }
 
-#xgxceelidz .gt_indent_5 {
+#qkhdhxkgxq .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -835,23 +839,23 @@ What’s an odds, anyway?
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl_regression</span>(lrm_unadj, <span class="at">exponentiate =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 
-<div id="znxedhkmof" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#znxedhkmof table {
+<div id="fujfyinemw" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#fujfyinemw table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#znxedhkmof thead, #znxedhkmof tbody, #znxedhkmof tfoot, #znxedhkmof tr, #znxedhkmof td, #znxedhkmof th {
+#fujfyinemw thead, #fujfyinemw tbody, #fujfyinemw tfoot, #fujfyinemw tr, #fujfyinemw td, #fujfyinemw th {
   border-style: none;
 }
 
-#znxedhkmof p {
+#fujfyinemw p {
   margin: 0;
   padding: 0;
 }
 
-#znxedhkmof .gt_table {
+#fujfyinemw .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -877,12 +881,12 @@ What’s an odds, anyway?
   border-left-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_caption {
+#fujfyinemw .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#znxedhkmof .gt_title {
+#fujfyinemw .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -894,7 +898,7 @@ What’s an odds, anyway?
   border-bottom-width: 0;
 }
 
-#znxedhkmof .gt_subtitle {
+#fujfyinemw .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -906,7 +910,7 @@ What’s an odds, anyway?
   border-top-width: 0;
 }
 
-#znxedhkmof .gt_heading {
+#fujfyinemw .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -918,13 +922,13 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_bottom_border {
+#fujfyinemw .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_col_headings {
+#fujfyinemw .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -939,7 +943,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_col_heading {
+#fujfyinemw .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -959,7 +963,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#znxedhkmof .gt_column_spanner_outer {
+#fujfyinemw .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -971,15 +975,15 @@ What’s an odds, anyway?
   padding-right: 4px;
 }
 
-#znxedhkmof .gt_column_spanner_outer:first-child {
+#fujfyinemw .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#znxedhkmof .gt_column_spanner_outer:last-child {
+#fujfyinemw .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#znxedhkmof .gt_column_spanner {
+#fujfyinemw .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -991,11 +995,11 @@ What’s an odds, anyway?
   width: 100%;
 }
 
-#znxedhkmof .gt_spanner_row {
+#fujfyinemw .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#znxedhkmof .gt_group_heading {
+#fujfyinemw .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1021,7 +1025,7 @@ What’s an odds, anyway?
   text-align: left;
 }
 
-#znxedhkmof .gt_empty_group_heading {
+#fujfyinemw .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1036,15 +1040,15 @@ What’s an odds, anyway?
   vertical-align: middle;
 }
 
-#znxedhkmof .gt_from_md > :first-child {
+#fujfyinemw .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#znxedhkmof .gt_from_md > :last-child {
+#fujfyinemw .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#znxedhkmof .gt_row {
+#fujfyinemw .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1063,7 +1067,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#znxedhkmof .gt_stub {
+#fujfyinemw .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1076,7 +1080,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#znxedhkmof .gt_stub_row_group {
+#fujfyinemw .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1090,15 +1094,15 @@ What’s an odds, anyway?
   vertical-align: top;
 }
 
-#znxedhkmof .gt_row_group_first td {
+#fujfyinemw .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#znxedhkmof .gt_row_group_first th {
+#fujfyinemw .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#znxedhkmof .gt_summary_row {
+#fujfyinemw .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1108,16 +1112,16 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#znxedhkmof .gt_first_summary_row {
+#fujfyinemw .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_first_summary_row.thick {
+#fujfyinemw .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#znxedhkmof .gt_last_summary_row {
+#fujfyinemw .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1127,7 +1131,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_grand_summary_row {
+#fujfyinemw .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1137,7 +1141,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#znxedhkmof .gt_first_grand_summary_row {
+#fujfyinemw .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1147,7 +1151,7 @@ What’s an odds, anyway?
   border-top-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_last_grand_summary_row_top {
+#fujfyinemw .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1157,11 +1161,11 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_striped {
+#fujfyinemw .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#znxedhkmof .gt_table_body {
+#fujfyinemw .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1170,7 +1174,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_footnotes {
+#fujfyinemw .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1184,7 +1188,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_footnote {
+#fujfyinemw .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -1193,7 +1197,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#znxedhkmof .gt_sourcenotes {
+#fujfyinemw .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1207,7 +1211,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#znxedhkmof .gt_sourcenote {
+#fujfyinemw .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1215,63 +1219,63 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#znxedhkmof .gt_left {
+#fujfyinemw .gt_left {
   text-align: left;
 }
 
-#znxedhkmof .gt_center {
+#fujfyinemw .gt_center {
   text-align: center;
 }
 
-#znxedhkmof .gt_right {
+#fujfyinemw .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#znxedhkmof .gt_font_normal {
+#fujfyinemw .gt_font_normal {
   font-weight: normal;
 }
 
-#znxedhkmof .gt_font_bold {
+#fujfyinemw .gt_font_bold {
   font-weight: bold;
 }
 
-#znxedhkmof .gt_font_italic {
+#fujfyinemw .gt_font_italic {
   font-style: italic;
 }
 
-#znxedhkmof .gt_super {
+#fujfyinemw .gt_super {
   font-size: 65%;
 }
 
-#znxedhkmof .gt_footnote_marks {
+#fujfyinemw .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#znxedhkmof .gt_asterisk {
+#fujfyinemw .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#znxedhkmof .gt_indent_1 {
+#fujfyinemw .gt_indent_1 {
   text-indent: 5px;
 }
 
-#znxedhkmof .gt_indent_2 {
+#fujfyinemw .gt_indent_2 {
   text-indent: 10px;
 }
 
-#znxedhkmof .gt_indent_3 {
+#fujfyinemw .gt_indent_3 {
   text-indent: 15px;
 }
 
-#znxedhkmof .gt_indent_4 {
+#fujfyinemw .gt_indent_4 {
   text-indent: 20px;
 }
 
-#znxedhkmof .gt_indent_5 {
+#fujfyinemw .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -1320,23 +1324,23 @@ What’s an odds, anyway?
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl_strata</span>(rct_data, risk, tbl_cross, outcome, treatment, <span class="at">percent =</span> <span class="st">"column"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 
-<div id="uqsnddbvsl" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#uqsnddbvsl table {
+<div id="uhrwjdgkhd" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#uhrwjdgkhd table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#uqsnddbvsl thead, #uqsnddbvsl tbody, #uqsnddbvsl tfoot, #uqsnddbvsl tr, #uqsnddbvsl td, #uqsnddbvsl th {
+#uhrwjdgkhd thead, #uhrwjdgkhd tbody, #uhrwjdgkhd tfoot, #uhrwjdgkhd tr, #uhrwjdgkhd td, #uhrwjdgkhd th {
   border-style: none;
 }
 
-#uqsnddbvsl p {
+#uhrwjdgkhd p {
   margin: 0;
   padding: 0;
 }
 
-#uqsnddbvsl .gt_table {
+#uhrwjdgkhd .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -1362,12 +1366,12 @@ What’s an odds, anyway?
   border-left-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_caption {
+#uhrwjdgkhd .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#uqsnddbvsl .gt_title {
+#uhrwjdgkhd .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1379,7 +1383,7 @@ What’s an odds, anyway?
   border-bottom-width: 0;
 }
 
-#uqsnddbvsl .gt_subtitle {
+#uhrwjdgkhd .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1391,7 +1395,7 @@ What’s an odds, anyway?
   border-top-width: 0;
 }
 
-#uqsnddbvsl .gt_heading {
+#uhrwjdgkhd .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1403,13 +1407,13 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_bottom_border {
+#uhrwjdgkhd .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_col_headings {
+#uhrwjdgkhd .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1424,7 +1428,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_col_heading {
+#uhrwjdgkhd .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1444,7 +1448,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#uqsnddbvsl .gt_column_spanner_outer {
+#uhrwjdgkhd .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1456,15 +1460,15 @@ What’s an odds, anyway?
   padding-right: 4px;
 }
 
-#uqsnddbvsl .gt_column_spanner_outer:first-child {
+#uhrwjdgkhd .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#uqsnddbvsl .gt_column_spanner_outer:last-child {
+#uhrwjdgkhd .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#uqsnddbvsl .gt_column_spanner {
+#uhrwjdgkhd .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1476,11 +1480,11 @@ What’s an odds, anyway?
   width: 100%;
 }
 
-#uqsnddbvsl .gt_spanner_row {
+#uhrwjdgkhd .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#uqsnddbvsl .gt_group_heading {
+#uhrwjdgkhd .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1506,7 +1510,7 @@ What’s an odds, anyway?
   text-align: left;
 }
 
-#uqsnddbvsl .gt_empty_group_heading {
+#uhrwjdgkhd .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1521,15 +1525,15 @@ What’s an odds, anyway?
   vertical-align: middle;
 }
 
-#uqsnddbvsl .gt_from_md > :first-child {
+#uhrwjdgkhd .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#uqsnddbvsl .gt_from_md > :last-child {
+#uhrwjdgkhd .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#uqsnddbvsl .gt_row {
+#uhrwjdgkhd .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1548,7 +1552,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#uqsnddbvsl .gt_stub {
+#uhrwjdgkhd .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1561,7 +1565,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#uqsnddbvsl .gt_stub_row_group {
+#uhrwjdgkhd .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1575,15 +1579,15 @@ What’s an odds, anyway?
   vertical-align: top;
 }
 
-#uqsnddbvsl .gt_row_group_first td {
+#uhrwjdgkhd .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#uqsnddbvsl .gt_row_group_first th {
+#uhrwjdgkhd .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#uqsnddbvsl .gt_summary_row {
+#uhrwjdgkhd .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1593,16 +1597,16 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#uqsnddbvsl .gt_first_summary_row {
+#uhrwjdgkhd .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_first_summary_row.thick {
+#uhrwjdgkhd .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#uqsnddbvsl .gt_last_summary_row {
+#uhrwjdgkhd .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1612,7 +1616,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_grand_summary_row {
+#uhrwjdgkhd .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1622,7 +1626,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#uqsnddbvsl .gt_first_grand_summary_row {
+#uhrwjdgkhd .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1632,7 +1636,7 @@ What’s an odds, anyway?
   border-top-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_last_grand_summary_row_top {
+#uhrwjdgkhd .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1642,11 +1646,11 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_striped {
+#uhrwjdgkhd .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#uqsnddbvsl .gt_table_body {
+#uhrwjdgkhd .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1655,7 +1659,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_footnotes {
+#uhrwjdgkhd .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1669,7 +1673,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_footnote {
+#uhrwjdgkhd .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -1678,7 +1682,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#uqsnddbvsl .gt_sourcenotes {
+#uhrwjdgkhd .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1692,7 +1696,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#uqsnddbvsl .gt_sourcenote {
+#uhrwjdgkhd .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1700,63 +1704,63 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#uqsnddbvsl .gt_left {
+#uhrwjdgkhd .gt_left {
   text-align: left;
 }
 
-#uqsnddbvsl .gt_center {
+#uhrwjdgkhd .gt_center {
   text-align: center;
 }
 
-#uqsnddbvsl .gt_right {
+#uhrwjdgkhd .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#uqsnddbvsl .gt_font_normal {
+#uhrwjdgkhd .gt_font_normal {
   font-weight: normal;
 }
 
-#uqsnddbvsl .gt_font_bold {
+#uhrwjdgkhd .gt_font_bold {
   font-weight: bold;
 }
 
-#uqsnddbvsl .gt_font_italic {
+#uhrwjdgkhd .gt_font_italic {
   font-style: italic;
 }
 
-#uqsnddbvsl .gt_super {
+#uhrwjdgkhd .gt_super {
   font-size: 65%;
 }
 
-#uqsnddbvsl .gt_footnote_marks {
+#uhrwjdgkhd .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#uqsnddbvsl .gt_asterisk {
+#uhrwjdgkhd .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#uqsnddbvsl .gt_indent_1 {
+#uhrwjdgkhd .gt_indent_1 {
   text-indent: 5px;
 }
 
-#uqsnddbvsl .gt_indent_2 {
+#uhrwjdgkhd .gt_indent_2 {
   text-indent: 10px;
 }
 
-#uqsnddbvsl .gt_indent_3 {
+#uhrwjdgkhd .gt_indent_3 {
   text-indent: 15px;
 }
 
-#uqsnddbvsl .gt_indent_4 {
+#uhrwjdgkhd .gt_indent_4 {
   text-indent: 20px;
 }
 
-#uqsnddbvsl .gt_indent_5 {
+#uhrwjdgkhd .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -1830,23 +1834,23 @@ What’s an odds, anyway?
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl_regression</span>(lrm_adj, <span class="at">exponentiate =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 
-<div id="hexgsajufr" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#hexgsajufr table {
+<div id="asoxvhferc" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#asoxvhferc table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#hexgsajufr thead, #hexgsajufr tbody, #hexgsajufr tfoot, #hexgsajufr tr, #hexgsajufr td, #hexgsajufr th {
+#asoxvhferc thead, #asoxvhferc tbody, #asoxvhferc tfoot, #asoxvhferc tr, #asoxvhferc td, #asoxvhferc th {
   border-style: none;
 }
 
-#hexgsajufr p {
+#asoxvhferc p {
   margin: 0;
   padding: 0;
 }
 
-#hexgsajufr .gt_table {
+#asoxvhferc .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -1872,12 +1876,12 @@ What’s an odds, anyway?
   border-left-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_caption {
+#asoxvhferc .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#hexgsajufr .gt_title {
+#asoxvhferc .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1889,7 +1893,7 @@ What’s an odds, anyway?
   border-bottom-width: 0;
 }
 
-#hexgsajufr .gt_subtitle {
+#asoxvhferc .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1901,7 +1905,7 @@ What’s an odds, anyway?
   border-top-width: 0;
 }
 
-#hexgsajufr .gt_heading {
+#asoxvhferc .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1913,13 +1917,13 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_bottom_border {
+#asoxvhferc .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_col_headings {
+#asoxvhferc .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1934,7 +1938,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_col_heading {
+#asoxvhferc .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1954,7 +1958,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#hexgsajufr .gt_column_spanner_outer {
+#asoxvhferc .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1966,15 +1970,15 @@ What’s an odds, anyway?
   padding-right: 4px;
 }
 
-#hexgsajufr .gt_column_spanner_outer:first-child {
+#asoxvhferc .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#hexgsajufr .gt_column_spanner_outer:last-child {
+#asoxvhferc .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#hexgsajufr .gt_column_spanner {
+#asoxvhferc .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1986,11 +1990,11 @@ What’s an odds, anyway?
   width: 100%;
 }
 
-#hexgsajufr .gt_spanner_row {
+#asoxvhferc .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#hexgsajufr .gt_group_heading {
+#asoxvhferc .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2016,7 +2020,7 @@ What’s an odds, anyway?
   text-align: left;
 }
 
-#hexgsajufr .gt_empty_group_heading {
+#asoxvhferc .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -2031,15 +2035,15 @@ What’s an odds, anyway?
   vertical-align: middle;
 }
 
-#hexgsajufr .gt_from_md > :first-child {
+#asoxvhferc .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#hexgsajufr .gt_from_md > :last-child {
+#asoxvhferc .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#hexgsajufr .gt_row {
+#asoxvhferc .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2058,7 +2062,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#hexgsajufr .gt_stub {
+#asoxvhferc .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2071,7 +2075,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#hexgsajufr .gt_stub_row_group {
+#asoxvhferc .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2085,15 +2089,15 @@ What’s an odds, anyway?
   vertical-align: top;
 }
 
-#hexgsajufr .gt_row_group_first td {
+#asoxvhferc .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#hexgsajufr .gt_row_group_first th {
+#asoxvhferc .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#hexgsajufr .gt_summary_row {
+#asoxvhferc .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2103,16 +2107,16 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#hexgsajufr .gt_first_summary_row {
+#asoxvhferc .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_first_summary_row.thick {
+#asoxvhferc .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#hexgsajufr .gt_last_summary_row {
+#asoxvhferc .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2122,7 +2126,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_grand_summary_row {
+#asoxvhferc .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2132,7 +2136,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#hexgsajufr .gt_first_grand_summary_row {
+#asoxvhferc .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2142,7 +2146,7 @@ What’s an odds, anyway?
   border-top-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_last_grand_summary_row_top {
+#asoxvhferc .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2152,11 +2156,11 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_striped {
+#asoxvhferc .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#hexgsajufr .gt_table_body {
+#asoxvhferc .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2165,7 +2169,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_footnotes {
+#asoxvhferc .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2179,7 +2183,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_footnote {
+#asoxvhferc .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -2188,7 +2192,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#hexgsajufr .gt_sourcenotes {
+#asoxvhferc .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2202,7 +2206,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#hexgsajufr .gt_sourcenote {
+#asoxvhferc .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -2210,63 +2214,63 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#hexgsajufr .gt_left {
+#asoxvhferc .gt_left {
   text-align: left;
 }
 
-#hexgsajufr .gt_center {
+#asoxvhferc .gt_center {
   text-align: center;
 }
 
-#hexgsajufr .gt_right {
+#asoxvhferc .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#hexgsajufr .gt_font_normal {
+#asoxvhferc .gt_font_normal {
   font-weight: normal;
 }
 
-#hexgsajufr .gt_font_bold {
+#asoxvhferc .gt_font_bold {
   font-weight: bold;
 }
 
-#hexgsajufr .gt_font_italic {
+#asoxvhferc .gt_font_italic {
   font-style: italic;
 }
 
-#hexgsajufr .gt_super {
+#asoxvhferc .gt_super {
   font-size: 65%;
 }
 
-#hexgsajufr .gt_footnote_marks {
+#asoxvhferc .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#hexgsajufr .gt_asterisk {
+#asoxvhferc .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#hexgsajufr .gt_indent_1 {
+#asoxvhferc .gt_indent_1 {
   text-indent: 5px;
 }
 
-#hexgsajufr .gt_indent_2 {
+#asoxvhferc .gt_indent_2 {
   text-indent: 10px;
 }
 
-#hexgsajufr .gt_indent_3 {
+#asoxvhferc .gt_indent_3 {
   text-indent: 15px;
 }
 
-#hexgsajufr .gt_indent_4 {
+#asoxvhferc .gt_indent_4 {
   text-indent: 20px;
 }
 
-#hexgsajufr .gt_indent_5 {
+#asoxvhferc .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -2324,23 +2328,23 @@ What’s an odds, anyway?
 <div class="cell">
 <div class="cell-output-display">
 
-<div id="fsfvbvocmh" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#fsfvbvocmh table {
+<div id="xogrvhpdio" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#xogrvhpdio table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#fsfvbvocmh thead, #fsfvbvocmh tbody, #fsfvbvocmh tfoot, #fsfvbvocmh tr, #fsfvbvocmh td, #fsfvbvocmh th {
+#xogrvhpdio thead, #xogrvhpdio tbody, #xogrvhpdio tfoot, #xogrvhpdio tr, #xogrvhpdio td, #xogrvhpdio th {
   border-style: none;
 }
 
-#fsfvbvocmh p {
+#xogrvhpdio p {
   margin: 0;
   padding: 0;
 }
 
-#fsfvbvocmh .gt_table {
+#xogrvhpdio .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -2366,12 +2370,12 @@ What’s an odds, anyway?
   border-left-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_caption {
+#xogrvhpdio .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#fsfvbvocmh .gt_title {
+#xogrvhpdio .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -2383,7 +2387,7 @@ What’s an odds, anyway?
   border-bottom-width: 0;
 }
 
-#fsfvbvocmh .gt_subtitle {
+#xogrvhpdio .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -2395,7 +2399,7 @@ What’s an odds, anyway?
   border-top-width: 0;
 }
 
-#fsfvbvocmh .gt_heading {
+#xogrvhpdio .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -2407,13 +2411,13 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_bottom_border {
+#xogrvhpdio .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_col_headings {
+#xogrvhpdio .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2428,7 +2432,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_col_heading {
+#xogrvhpdio .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2448,7 +2452,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#fsfvbvocmh .gt_column_spanner_outer {
+#xogrvhpdio .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2460,15 +2464,15 @@ What’s an odds, anyway?
   padding-right: 4px;
 }
 
-#fsfvbvocmh .gt_column_spanner_outer:first-child {
+#xogrvhpdio .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#fsfvbvocmh .gt_column_spanner_outer:last-child {
+#xogrvhpdio .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#fsfvbvocmh .gt_column_spanner {
+#xogrvhpdio .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -2480,11 +2484,11 @@ What’s an odds, anyway?
   width: 100%;
 }
 
-#fsfvbvocmh .gt_spanner_row {
+#xogrvhpdio .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#fsfvbvocmh .gt_group_heading {
+#xogrvhpdio .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2510,7 +2514,7 @@ What’s an odds, anyway?
   text-align: left;
 }
 
-#fsfvbvocmh .gt_empty_group_heading {
+#xogrvhpdio .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -2525,15 +2529,15 @@ What’s an odds, anyway?
   vertical-align: middle;
 }
 
-#fsfvbvocmh .gt_from_md > :first-child {
+#xogrvhpdio .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#fsfvbvocmh .gt_from_md > :last-child {
+#xogrvhpdio .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#fsfvbvocmh .gt_row {
+#xogrvhpdio .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2552,7 +2556,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#fsfvbvocmh .gt_stub {
+#xogrvhpdio .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2565,7 +2569,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#fsfvbvocmh .gt_stub_row_group {
+#xogrvhpdio .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2579,15 +2583,15 @@ What’s an odds, anyway?
   vertical-align: top;
 }
 
-#fsfvbvocmh .gt_row_group_first td {
+#xogrvhpdio .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#fsfvbvocmh .gt_row_group_first th {
+#xogrvhpdio .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#fsfvbvocmh .gt_summary_row {
+#xogrvhpdio .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2597,16 +2601,16 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#fsfvbvocmh .gt_first_summary_row {
+#xogrvhpdio .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_first_summary_row.thick {
+#xogrvhpdio .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#fsfvbvocmh .gt_last_summary_row {
+#xogrvhpdio .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2616,7 +2620,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_grand_summary_row {
+#xogrvhpdio .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2626,7 +2630,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#fsfvbvocmh .gt_first_grand_summary_row {
+#xogrvhpdio .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2636,7 +2640,7 @@ What’s an odds, anyway?
   border-top-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_last_grand_summary_row_top {
+#xogrvhpdio .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2646,11 +2650,11 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_striped {
+#xogrvhpdio .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#fsfvbvocmh .gt_table_body {
+#xogrvhpdio .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2659,7 +2663,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_footnotes {
+#xogrvhpdio .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2673,7 +2677,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_footnote {
+#xogrvhpdio .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -2682,7 +2686,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#fsfvbvocmh .gt_sourcenotes {
+#xogrvhpdio .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2696,7 +2700,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#fsfvbvocmh .gt_sourcenote {
+#xogrvhpdio .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -2704,63 +2708,63 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#fsfvbvocmh .gt_left {
+#xogrvhpdio .gt_left {
   text-align: left;
 }
 
-#fsfvbvocmh .gt_center {
+#xogrvhpdio .gt_center {
   text-align: center;
 }
 
-#fsfvbvocmh .gt_right {
+#xogrvhpdio .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#fsfvbvocmh .gt_font_normal {
+#xogrvhpdio .gt_font_normal {
   font-weight: normal;
 }
 
-#fsfvbvocmh .gt_font_bold {
+#xogrvhpdio .gt_font_bold {
   font-weight: bold;
 }
 
-#fsfvbvocmh .gt_font_italic {
+#xogrvhpdio .gt_font_italic {
   font-style: italic;
 }
 
-#fsfvbvocmh .gt_super {
+#xogrvhpdio .gt_super {
   font-size: 65%;
 }
 
-#fsfvbvocmh .gt_footnote_marks {
+#xogrvhpdio .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#fsfvbvocmh .gt_asterisk {
+#xogrvhpdio .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#fsfvbvocmh .gt_indent_1 {
+#xogrvhpdio .gt_indent_1 {
   text-indent: 5px;
 }
 
-#fsfvbvocmh .gt_indent_2 {
+#xogrvhpdio .gt_indent_2 {
   text-indent: 10px;
 }
 
-#fsfvbvocmh .gt_indent_3 {
+#xogrvhpdio .gt_indent_3 {
   text-indent: 15px;
 }
 
-#fsfvbvocmh .gt_indent_4 {
+#xogrvhpdio .gt_indent_4 {
   text-indent: 20px;
 }
 
-#fsfvbvocmh .gt_indent_5 {
+#xogrvhpdio .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
@@ -2821,23 +2825,23 @@ What’s an odds, anyway?
 <div class="cell">
 <div class="cell-output-display">
 
-<div id="pemcoazfar" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#pemcoazfar table {
+<div id="tppughrjju" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#tppughrjju table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#pemcoazfar thead, #pemcoazfar tbody, #pemcoazfar tfoot, #pemcoazfar tr, #pemcoazfar td, #pemcoazfar th {
+#tppughrjju thead, #tppughrjju tbody, #tppughrjju tfoot, #tppughrjju tr, #tppughrjju td, #tppughrjju th {
   border-style: none;
 }
 
-#pemcoazfar p {
+#tppughrjju p {
   margin: 0;
   padding: 0;
 }
 
-#pemcoazfar .gt_table {
+#tppughrjju .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -2863,12 +2867,12 @@ What’s an odds, anyway?
   border-left-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_caption {
+#tppughrjju .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#pemcoazfar .gt_title {
+#tppughrjju .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -2880,7 +2884,7 @@ What’s an odds, anyway?
   border-bottom-width: 0;
 }
 
-#pemcoazfar .gt_subtitle {
+#tppughrjju .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -2892,7 +2896,7 @@ What’s an odds, anyway?
   border-top-width: 0;
 }
 
-#pemcoazfar .gt_heading {
+#tppughrjju .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -2904,13 +2908,13 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_bottom_border {
+#tppughrjju .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_col_headings {
+#tppughrjju .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2925,7 +2929,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_col_heading {
+#tppughrjju .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2945,7 +2949,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#pemcoazfar .gt_column_spanner_outer {
+#tppughrjju .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2957,15 +2961,15 @@ What’s an odds, anyway?
   padding-right: 4px;
 }
 
-#pemcoazfar .gt_column_spanner_outer:first-child {
+#tppughrjju .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#pemcoazfar .gt_column_spanner_outer:last-child {
+#tppughrjju .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#pemcoazfar .gt_column_spanner {
+#tppughrjju .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -2977,11 +2981,11 @@ What’s an odds, anyway?
   width: 100%;
 }
 
-#pemcoazfar .gt_spanner_row {
+#tppughrjju .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#pemcoazfar .gt_group_heading {
+#tppughrjju .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3007,7 +3011,7 @@ What’s an odds, anyway?
   text-align: left;
 }
 
-#pemcoazfar .gt_empty_group_heading {
+#tppughrjju .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3022,15 +3026,15 @@ What’s an odds, anyway?
   vertical-align: middle;
 }
 
-#pemcoazfar .gt_from_md > :first-child {
+#tppughrjju .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#pemcoazfar .gt_from_md > :last-child {
+#tppughrjju .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#pemcoazfar .gt_row {
+#tppughrjju .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3049,7 +3053,7 @@ What’s an odds, anyway?
   overflow-x: hidden;
 }
 
-#pemcoazfar .gt_stub {
+#tppughrjju .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3062,7 +3066,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#pemcoazfar .gt_stub_row_group {
+#tppughrjju .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3076,15 +3080,15 @@ What’s an odds, anyway?
   vertical-align: top;
 }
 
-#pemcoazfar .gt_row_group_first td {
+#tppughrjju .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#pemcoazfar .gt_row_group_first th {
+#tppughrjju .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#pemcoazfar .gt_summary_row {
+#tppughrjju .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3094,16 +3098,16 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#pemcoazfar .gt_first_summary_row {
+#tppughrjju .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_first_summary_row.thick {
+#tppughrjju .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#pemcoazfar .gt_last_summary_row {
+#tppughrjju .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3113,7 +3117,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_grand_summary_row {
+#tppughrjju .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3123,7 +3127,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#pemcoazfar .gt_first_grand_summary_row {
+#tppughrjju .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3133,7 +3137,7 @@ What’s an odds, anyway?
   border-top-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_last_grand_summary_row_top {
+#tppughrjju .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3143,11 +3147,11 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_striped {
+#tppughrjju .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#pemcoazfar .gt_table_body {
+#tppughrjju .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3156,7 +3160,7 @@ What’s an odds, anyway?
   border-bottom-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_footnotes {
+#tppughrjju .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3170,7 +3174,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_footnote {
+#tppughrjju .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -3179,7 +3183,7 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#pemcoazfar .gt_sourcenotes {
+#tppughrjju .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3193,7 +3197,7 @@ What’s an odds, anyway?
   border-right-color: #D3D3D3;
 }
 
-#pemcoazfar .gt_sourcenote {
+#tppughrjju .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -3201,63 +3205,63 @@ What’s an odds, anyway?
   padding-right: 5px;
 }
 
-#pemcoazfar .gt_left {
+#tppughrjju .gt_left {
   text-align: left;
 }
 
-#pemcoazfar .gt_center {
+#tppughrjju .gt_center {
   text-align: center;
 }
 
-#pemcoazfar .gt_right {
+#tppughrjju .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#pemcoazfar .gt_font_normal {
+#tppughrjju .gt_font_normal {
   font-weight: normal;
 }
 
-#pemcoazfar .gt_font_bold {
+#tppughrjju .gt_font_bold {
   font-weight: bold;
 }
 
-#pemcoazfar .gt_font_italic {
+#tppughrjju .gt_font_italic {
   font-style: italic;
 }
 
-#pemcoazfar .gt_super {
+#tppughrjju .gt_super {
   font-size: 65%;
 }
 
-#pemcoazfar .gt_footnote_marks {
+#tppughrjju .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#pemcoazfar .gt_asterisk {
+#tppughrjju .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#pemcoazfar .gt_indent_1 {
+#tppughrjju .gt_indent_1 {
   text-indent: 5px;
 }
 
-#pemcoazfar .gt_indent_2 {
+#tppughrjju .gt_indent_2 {
   text-indent: 10px;
 }
 
-#pemcoazfar .gt_indent_3 {
+#tppughrjju .gt_indent_3 {
   text-indent: 15px;
 }
 
-#pemcoazfar .gt_indent_4 {
+#tppughrjju .gt_indent_4 {
   text-indent: 20px;
 }
 
-#pemcoazfar .gt_indent_5 {
+#tppughrjju .gt_indent_5 {
   text-indent: 25px;
 }
 </style>
