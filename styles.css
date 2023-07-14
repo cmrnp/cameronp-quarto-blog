@@ -10,6 +10,12 @@
   color: #323331;
 }
 
+.navbar {
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: normal;
+}
+
 div.quarto-about-trestles .about-contents {
   border-left: none;
 }
@@ -23,7 +29,6 @@ h2, .h2 {
 h3, .h3 {
   font-size: 1.09rem;
 }
-
 
 h4, .h5, h5, .h5, h6, .h6 {
   font-size: 1rem;
