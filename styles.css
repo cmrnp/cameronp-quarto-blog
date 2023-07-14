@@ -5,21 +5,50 @@
    text-align: center;
 }
 
+/* background and text colour for page title block */
 .quarto-title-banner {
   background: #dce3da;
   color: #323331;
 }
 
+/* navbar stuff: remove padding and margin etc */
 .navbar {
   padding-top: 0;
   padding-bottom: 0;
   line-height: normal;
 }
 
+.navbar .navbar-toggler {
+  padding: 0;
+}
+
+/* mobile navbar fixes */
+@media (max-width: 520px) {
+  .navbar > .container-fluid {
+    justify-content: start;
+    -webkit-justify-content: start;
+  }
+  div.navbar-brand-container {
+    max-width: 100%;
+  }
+  .navbar-brand {
+    font-size: 1rem;
+  }
+  div#quarto-search {
+    display: none;
+  }
+  #quarto-header > nav {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+  }
+}
+
+/* front page: remove border between photo and content */
 div.quarto-about-trestles .about-contents {
   border-left: none;
 }
 
+/* heading formatting - smaller, no horizontal rules */
 h2, .h2 {
   font-size: 1.27rem;
   border-bottom: none;
