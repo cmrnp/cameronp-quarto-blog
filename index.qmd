@@ -5,6 +5,7 @@ about:
   image-shape: round
   image: "Cam_headshot_small.jpg"
   links:
+    - blog.qmd
     - icon: twitter
       href: https://twitter.com/camjpatrick
     - icon: mastodon
@@ -14,7 +15,7 @@ about:
 format:
   html:
     page-layout: full
-navbar: true
+navbar: false
 listing:
   contents: post
   sort: "date desc"

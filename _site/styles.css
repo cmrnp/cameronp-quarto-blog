@@ -1,11 +1,30 @@
 /* css styles */
 
 /* centre figure captions */
-.figure-caption{
+.figure-caption {
    text-align: center;
 }
 
-.quarto-title-banner{
+.quarto-title-banner {
   background: #dce3da;
   color: #323331;
+}
+
+div.quarto-about-trestles .about-contents {
+  border-left: none;
+}
+
+h2, .h2 {
+  font-size: 1.27rem;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+h3, .h3 {
+  font-size: 1.09rem;
+}
+
+
+h4, .h5, h5, .h5, h6, .h6 {
+  font-size: 1rem;
 }
