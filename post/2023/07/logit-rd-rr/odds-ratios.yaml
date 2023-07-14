@@ -332,6 +332,51 @@ references:
     https://projecteuclid.org/journals/statistical-science/volume-19/issue-2/Conditional-and-Marginal-Models-Another-View/10.1214/088342304000000305.full
   volume: '19'
 
+- id: moher2010consort2010explanation
+  accessed:
+    - year: 2023
+      month: 7
+      day: 14
+  author:
+    - family: Moher
+      given: D.
+    - family: Hopewell
+      given: S.
+    - family: Schulz
+      given: K. F
+    - family: Montori
+      given: V.
+    - family: Gotzsche
+      given: P. C
+    - family: Devereaux
+      given: P J
+    - family: Elbourne
+      given: D.
+    - family: Egger
+      given: M.
+    - family: Altman
+      given: D. G
+  citation-key: moher2010consort2010explanation
+  container-title: BMJ
+  container-title-short: BMJ
+  DOI: 10.1136/bmj.c869
+  ISSN: 0959-8138, 1468-5833
+  issue: mar23 1
+  issued:
+    - year: 2010
+      month: 3
+      day: 23
+  language: en
+  page: c869-c869
+  source: DOI.org (Crossref)
+  title: >-
+    CONSORT 2010 Explanation and Elaboration: updated guidelines for reporting
+    parallel group randomised trials
+  title-short: CONSORT 2010 Explanation and Elaboration
+  type: article-journal
+  URL: https://www.bmj.com/lookup/doi/10.1136/bmj.c869
+  volume: '340'
+
 - id: morris2022planningmethodcovariate
   abstract: |-
     Abstract

@@ -1,7 +1,7 @@
 ---
 title: "You are what you ATE: Choosing an effect size measure for binary outcomes"
 author: "Cameron Patrick"
-date: "2023-07-13"
+date: "2023-07-14"
 draft: true
 categories: [r, statistics]
 csl: apa.csl
@@ -24,22 +24,36 @@ knitr::opts_chunk$set(
 )
 ```
 
+When summarising the effect of a treatment or intervention on an outcome measured on a continuous scale, it's almost ubiquitous to represent the Average Treatment Effect (ATE) in the form of a difference in means between the treatment and control groups. When the outcome is binary (yes or no, event occurred or event did not occur), there are three commonly-used measures. The risk difference, also known as absolute risk reduction or difference in proportions, is an absolute measure of effect size: the proportion in one group minus the proportion in the other group. The relative risk, also known as the risk ratio, is a relative measure of effect size: the proportion in one group divided by the proportion in the other group. Finally, there is the odds ratio, another relative measure of effect: the odds in one group divided by the odds in the other group. The odds ratio is the odd (ha!) one out in a few ways, and a bit more controversial.
 
-## The great odds ratio debate (with memes)
+In the first half of this post, I'll dive into the controversy. In the middle, I summarise the arguments using a meme. In the second half, I'll work through an example of estimating odds ratios, risk differences, and relative risks in a fictional randomised clinical trial, showing both R code examples and hand-calculations.
 
-A lot of noise has been made about why an odds ratio may not be a desirable summary for a treatment effect on a binary variable[^orrefs]. There is that pesky problem that normal humans are unable to correctly interpret an odds ratio [@altman1998oddsratiosshould]. In recent years, people[^stat] have become more aware of the mathematical fact of noncollapsibility [@greenland1999confoundingcollapsibilitycausal; @daniel2021makingapplesoranges; @morris2022planningmethodcovariate]: the marginal[^econstat] odds ratio (population-level odds ratio) is not any kind of average of conditional odds ratios (individual-level odds ratios)[^longitudinal]. The [ICH E9(R1) estimand framework for clinical trials](https://database.ich.org/sites/default/files/E9-R1_Step4_Guideline_2019_1203.pdf) requires a "population-level summary". In the language of causal inference, that's describing an Average Treatment Effect (ATE), and the odds ratio isn't one[^coxreg].
+::: {.callout-note}
+## What's an odds, anyway?
+An odds is the probability of an event occurring divided by the probability of it not occurring. For example, a 50% chance corresponds to an odds of 0.5/0.5 = 1; a 75% chance corresponds to an odds of 0.75/0.25 = 3; a 25% chance corresponds to an odds of 0.25/0.75 = 1/3. Odds are common in gambling and often expressed as ratios, e.g. 1:1, 3:1 or 1:3. Odds ratios are ratios of oddses[^oddses]. For example, a change from a 50% proportion to a 75% proportion would be a change from an odds of 1 to an odds of 3, representing an odds ratio of 3/1 = 3.
+:::
+
+[^oddses]: This plural form is non-standard but I'm trying to make it happen.
+
+## The great odds ratio debate
+
+A lot of noise has been made about why an odds ratio may not be a desirable summary for a treatment effect on a binary variable[^orrefs]. One of the biggest practical problems is that normal humans are unable to correctly interpret an odds ratio [@altman1998oddsratiosshould]. But for statisticians, there are also deeper concerns to worry about.
 
 [^orrefs]: For a recent example, see [this talk by Jonathan Bartlett](https://thestatsgeek.com/2023/06/23/is-the-ich-e9-estimand-addendum-compatible-with-model-based-estimands/).
 
+In recent years, people[^stat] have become more aware of the mathematical fact of noncollapsibility [@greenland1999confoundingcollapsibilitycausal; @daniel2021makingapplesoranges; @morris2022planningmethodcovariate]: the marginal[^econstat] odds ratio (population-level odds ratio) is not any kind of average of conditional odds ratios (individual-level odds ratios). Marginal odds ratios are the ones you might calculate directly from summary tables. Where do conditional odds ratios come from? They are artefacts of statistical models --- logistic regression models, specifically. In the context of a randomised trial, these models predict the probability of an event occurring for each participant based on their treatment assignment and other variables measured prior to treatment (usually demographic characteristics, but could be any variable that is informative of the outcome)[^longitudinal]. The second half of this post shows a worked example where every participant has the same conditional odds ratio of treatment, but the conditional odds ratio is not equal to the marginal odds ratio.
+
 [^stat]: Statisticians.
 
-[^econstat]: Statisticians use the word "marginal" to refer to a population-level average, or an integral. Economists, on the other hand, use the word "marginal" to refer to a change in a quantity, or a derivative. This could never cause any confusion.
+[^econstat]: Statisticians use the word "marginal" to refer to a population-level average, or an integral. Economists, on the other hand, use the word "marginal" to refer to a change in a quantity, or a derivative. These opposite meanings can potentially cause a lot of confusion.
 
-[^longitudinal]: This issue is also sometimes raised in longitudinal studies, where it is said that generalised linear mixed models (GLMMs) target conditional odds ratios while generalised estimating equations (GEEs) target marginal odds ratios. As far as I understand it, this is only half true: odds ratios from GEEs target what you'd get from a GLMM after marginalising over random effects, but are still conditional on other covariates in the model (fixed effects in a GLMM).
+[^longitudinal]: This issue is also sometimes raised in longitudinal studies, where it is said that generalised linear mixed models (GLMMs) target conditional odds ratios while generalised estimating equations (GEEs) target marginal odds ratios. This has led to an epidemic of epidemiologists applying GEEs to their data. As far as I understand it, this claim is only half true: odds ratios from GEEs target what you'd get from a GLMM after marginalising over random effects, but are still conditional on other covariates in the model (fixed effects in a GLMM). Confused yet? Probably not nearly as confused as you should be.
 
-[^coxreg]: Neither is the hazard ratio, despite the ubiquity of Cox regression for survival analysis.
+The problem of noncollapsibility is relevant to the analysis and reporting of randomised clinical trials. The [ICH E9(R1) estimand framework for clinical trials](https://database.ich.org/sites/default/files/E9-R1_Step4_Guideline_2019_1203.pdf) requires a "population-level summary" be defined for each outcome without reference to method used to estimate it. In the language of causal inference, that's describing an Average Treatment Effect (ATE), and the odds ratio isn't one[^coxreg].
 
-Risk differences (the difference in probability attributable to a particular treatment) and relative risks (the ratio of probabilities due to a particular treatment) avoid these problems of odds ratios. However, statisticians are usually taught to analyse binary outcomes using logistic regression, the direct output[^logdirect] of which is odds ratios. Someone on Stats Twitter rediscovers all of this every few months and starts a heated argument where nobody goes away happy.
+[^coxreg]: Neither is the hazard ratio, which means --- despite its ubiquity --- Cox regression for survival analysis is technically not allowed by the estimand framework.
+
+Risk differences (the difference in probability attributable to a particular treatment) and relative risks (the ratio of probabilities due to a particular treatment) avoid both the interpretability and noncollapsibility problems of odds ratios. However, statisticians are usually taught to analyse binary outcomes using logistic regression, the direct output[^logdirect] of which is odds ratios, so odds ratios are ubiquitous in the research literature. Someone on Stats Twitter rediscovers all of this every few months and starts a heated argument where nobody goes away happy.
 
 [^logdirect]: Technically, logistic regression directly estimates a conditional difference of log-odds. The difference on the log scale is usually exponentiated and reported as an odds ratio.
 
@@ -47,17 +61,19 @@ Risk differences (the difference in probability attributable to a particular tre
 
 Personally, I'm a fan of risk differences for communicating potential risks to an individual, ideally presented alongside the baseline level of risk. There's some evidence that patients and clinicians find these measures easier to interpret than relative measures [@zipkin2014evidencebasedriskcommunication], especially when presented in the form of a natural frequency, like "6 in 1000 people" rather than "0.6%".
 
-Statistical analyses are often adjusted for covariates, either to reduce confounding (in observational studies) or improve power (in randomised trials). There are some technical challenges when doing this with risk differences and relative risks. Adjusting for covariates requires specifying some kind of model. If we're using a generalised linear model[^gam], the natural mathematical form of covariate adjustment will depend on whether you are modelling log-odds (logistic regression model, where model parameters correspond to an odds ratio), probability (linear probability model, where model parameters correspond to a risk difference) or log-probability (quasi-Poisson or log-link binomial model, where model parameters correspond to a relative risk). When modelling risk differences or relative risks directly, it's possible to end up with impossible predicted probabilities: "probabilities" which are less than zero or greater than one. Using logistic regression avoids this problem, because any real number on the log-odds scale translates to a probability between zero and one. Any odds ratio can be applied to any level of baseline risk without making mathematicians sad[^mathsad].
+So, with all those disadvantages, will anyone speak up in support of odds ratios? Should we all hang up our logistic regression hats for good?
 
-[^gam]: Or even an additive model --- exactly the same point applies to Generalised Additive Models.
+## In defense of logistic regression
+
+Statistical analyses are often adjusted for covariates, either to reduce confounding (in observational studies) or improve power (in randomised trials). Adjusting for covariates requires specifying some kind of model. If we're using a generalised linear model[^gam], the natural mathematical form of covariate adjustment will depend on whether you are modelling log-odds (logistic regression model, where model parameters correspond to an odds ratio), probability (linear probability model, where model parameters correspond to a risk difference) or log-probability (quasi-Poisson or log-link binomial model, where model parameters correspond to a relative risk). When modelling risk differences or relative risks directly, it's possible to end up with impossible predicted probabilities: "probabilities" which are less than zero or greater than one. Using logistic regression avoids this problem, because any real number on the log-odds scale translates to a probability between zero and one. Any odds ratio can be applied to any level of baseline risk without making mathematicians sad[^mathsad].
+
+[^gam]: Or even an additive model --- exactly the same point applies to Generalised Additive Models (GAMs).
 
 [^mathsad]: At this point you may find yourself inclined to avoid logistic regression purely to spite the mathematicians. I don't blame you.
 
-There are also compelling --- but not universally accepted --- arguments that despite the difficulty in interpreting odds ratios, they are more likely to be transportable between different levels of baseline risk than risk differences or relative risks [@doi2022controversydebatequestionable; @senn2011uneasereasonsmistrusting]. This is an empirical matter, not a mathematical one, and the evidence is not clear-cut. If we accept this, though, it is another reason to prefer logistic regression for statistical modelling. Effect size measures being "transportable" is another way of saying that the effects are closer to being additive on the scale that effect measure lives on (probability, log-probability, or log-odds). In the context of regression models, using a scale where the effect size is more transportable reduces the need for interaction terms, which can only be estimated well in large samples.
+There are also compelling --- but not universally accepted --- arguments that despite the difficulty in interpreting odds ratios, conditional odds ratios are more likely to be transportable between different levels of baseline risk than risk differences or relative risks [@doi2022controversydebatequestionable; @senn2011uneasereasonsmistrusting]. This is an empirical matter, not a mathematical one, and the evidence is not clear-cut. If we accept this, though, it is another reason to prefer logistic regression for statistical modelling. Effect size measures being "transportable" is another way of saying that the effects are closer to being additive on the scale that effect measure lives on (probability, log-probability, or log-odds). In the context of regression models, using a scale where the effect size is more transportable reduces the need for interaction terms, which can only be estimated well in large samples.
 
-Thus we have a dilemma: people understand risk differences and (to a lesser extent) relative risks, but they can be problematic to estimate with covariate adjustment; nobody understands odds ratios[^interpor], but logistic regression is probably a better model, operating closer to a scale on which the underlying effects are additive. One possible way out is to model the data using logistic regression, and then use that model to produce other quantities of interest. This approach is described in @permutt2020covariateschangeestimand, which has some of the best writing I've encountered in a statistics paper --- being written in the form of a dialogue between a randomiser (the "causal inference" perspective) and a parameteriser (the "statistical modelling" perspective) walking through the Garden of Eden, planning to conduct and analyse a clinical trial.
-
-[^interpor]: If you can intuitively interpret odds ratios, that's great for you, although I'm not sure I believe you.
+It's possible to model the data using logistic regression, and then use that model to produce other quantities of interest, such as average risk differences. This approach is described in @permutt2020covariateschangeestimand, which has some of the best writing I've encountered in a statistics paper --- being written in the form of a dialogue between a randomiser (the "causal inference" perspective) and a parameteriser (the "statistical modelling" perspective) walking through the Garden of Eden, planning to conduct and analyse a clinical trial. Does this method give us the best of both worlds: the modelling advantages of logistic regression and the interpretability advantages of risk differences and relative risks?
 
 @permutt2020covariateschangeestimand also considered what information different audiences might want from the results of a clinical trial: regulator, patient, and scientist. There's a fourth audience which I think is worth considering, only very briefly mentioned by Permutt: the meta-analyst, trying to aggregate information from multiple trials.
 
@@ -79,9 +95,11 @@ I am a coward and not (yet?) willing to take a strong position in this fight, bu
 - [Assessing Heterogeneity of Treatment Effect, Estimating Patient-Specific Efficacy, and Studying Variation in Odds ratios, Risk Ratios, and Risk Differences](https://www.fharrell.com/post/varyor/) argues in favour of the use of odds ratios for modelling, and points out the extreme difficulty of identifying heterogeneous treatment effects even in very large studies; and
 - [Unadjusted Odds Ratios are Conditional](https://www.fharrell.com/post/marg/) demonstrates noncollapsibility and argues that conditional odds ratios are more useful than marginal odds ratios.
 
-One issue which I remain unclear about is whether randomised trials powered to detect main treatment effects are likely to reasonably estimate patient-specific baseline risk --- a simpler task than patient-specific treatment effects, but still outside of the usual design remit for an efficacy trial. Common analytical approaches for clinical trials have good properties for estimating average treatment effects when the covariates are regarded as nuisance parameters [@white2021covariateadjustmentrandomised], but are not guaranteed to perform so well if the effects of the covariates are themselves of interest.
+One issue which I remain unclear about is whether randomised trials powered to detect main treatment effects are likely to provide reasonable estimates of patient-specific baseline risk --- a simpler task than patient-specific treatment effects, but still outside of the usual design remit for an efficacy trial. Common analytical approaches for clinical trials have good properties for estimating average treatment effects when the covariates are regarded as nuisance parameters [@white2021covariateadjustmentrandomised], but are not guaranteed to perform so well if the effects of the covariates are themselves of interest.
 
-Finally, there is the meta-analytic perspective to consider. An effect size which is less heterogeneous between studies is once again desirable. If arguments about the transportability of odds ratios by the Harrell, Senn, Doi, and others are to be believed, we should report odds ratios, as those are likely to be the most useful for meta-analysts. There is some merit in reporting all commonly-used effect size measures: risk difference, relative risk, and odds ratio. This provides the most flexibility for future meta-analysts.
+Finally, there is the meta-analytic perspective to consider. An effect size which is less heterogeneous between studies is once again desirable. If arguments about the transportability of odds ratios by the Harrell, Senn, Doi, and others are to be believed, we should report conditional odds ratios, as those are likely to be the most useful for meta-analysts. The CONSORT guidelines for reporting randomised trials [@moher2010consort2010explanation] state that both absolute and relative effect sizes should be reported for binary outcomes. I think there is merit in reporting all commonly-used effect size measures: risk difference, relative risk, and odds ratio. This provides the most flexibility for future meta-analysts.
+
+## Summary, in meme format
 
 If all of that was a bit much to take in, maybe this will help:
 
@@ -155,7 +173,7 @@ Just as the statistician was finishing writing up the results, the trialists men
 
 "Well, using this information could improve your statistical power" said the statistician.
 
-The statistician made another 2-way table, stratified by the risk group. Through some fluke, exactly half of the trial sample was low risk and the other half high risk, perfectly balanced across treatment arms. It turned out that while only 14% of the low risk patients in the control arm experienced the adverse outcome, 60% of the high risk patients in the control arm experienced the outcome.
+The statistician made another 2-way table, stratified by the risk group. Through some fluke, exactly half of the trial sample was low risk and the other half high risk, perfectly balanced across treatment arms. It turned out that while only 14% of the low risk patients in the control arm experienced the worse outcome, 60% of the high risk patients in the control arm experienced that outcome.
 
 ```{r}
 tbl_strata(rct_data, risk, tbl_cross, outcome, treatment, percent = "column")
@@ -357,6 +375,9 @@ Thanks to those who provided feedback on earlier versions of this post, some whi
 
 - Isabella Ghement
 - Lachlan Cribb
+- Solomon Kurz
+
+This does not represent an endorsement of this post by any of the above. Mistakes and opinions are entirely my own.
 
 Feedback welcome, especially any corrections in cases where I may have misunderstood or misattributed arguments, or made clear factual errors.
 
