@@ -2,7 +2,7 @@
 title: "You are what you ATE: Choosing an effect size measure for binary outcomes"
 author: "Cameron Patrick"
 date: "2023-07-14"
-draft: true
+draft: false
 categories: [r, statistics]
 csl: apa.csl
 bibliography: 
@@ -26,7 +26,7 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-When summarising the effect of a treatment or intervention on an outcome measured on a continuous scale, it's almost ubiquitous to represent the Average Treatment Effect (ATE) in the form of a difference of means between the treatment and control groups. When the outcome is binary (yes or no, event occurred or event did not occur), there are three commonly-used measures. The risk difference, also known as absolute risk reduction or difference in proportions, is an absolute measure of effect size: the proportion in one group minus the proportion in the other group. The relative risk, also known as the risk ratio, is a relative measure of effect size: the proportion in one group divided by the proportion in the other group. Finally, there is the odds ratio, another relative measure of effect: the odds in one group divided by the odds in the other group. The odds ratio is the odd (ha!) one out in a few ways, and a bit more controversial.
+When summarising the effect of a treatment or intervention on an outcome measured on a continuous scale, it's almost ubiquitous to represent the Average Treatment Effect (ATE) in the form of a difference of means between the treatment and control groups. When the outcome is binary (yes or no, event occurred or event did not occur), there are three commonly-used measures. The risk difference, also known as absolute risk reduction or difference in proportions, is an absolute measure of effect size: the proportion in one group minus the proportion in the other group. The relative risk, also known as the risk ratio, is a relative measure of effect size: the proportion in one group divided by the proportion in the other group. Finally, there is the odds ratio, another relative measure of effect: the odds in one group divided by the odds in the other group. The odds ratio is the odd one out in a few ways, and a bit more controversial.
 
 In the first half of this post, I'll dive into the controversy. In the middle, I'll summarise the arguments using a meme. In the second half, I'll work through an example of estimating odds ratios, risk differences, and relative risks in a fictional randomised controlled trial, showing R code examples and hand-calculations. I'm taking a particular interest in the application to randomised controlled trials (RCTs) but most of the issues discussed here apply more broadly.
 

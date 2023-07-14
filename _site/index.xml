@@ -10,7 +10,3898 @@
 <atom:link href="https://cameronpatrick.com/index.xml" rel="self" type="application/rss+xml"/>
 <description></description>
 <generator>quarto-1.3.302</generator>
-<lastBuildDate>Tue, 27 Jun 2023 14:00:00 GMT</lastBuildDate>
+<lastBuildDate>Thu, 13 Jul 2023 14:00:00 GMT</lastBuildDate>
+<item>
+  <title>You are what you ATE: Choosing an effect size measure for binary outcomes</title>
+  <dc:creator>Cameron Patrick</dc:creator>
+  <link>https://cameronpatrick.com/post/2023/07/logit-rd-rr/index.html</link>
+  <description><![CDATA[ 
+
+
+
+
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>When summarising the effect of a treatment or intervention on an outcome measured on a continuous scale, it’s almost ubiquitous to represent the Average Treatment Effect (ATE) in the form of a difference of means between the treatment and control groups. When the outcome is binary (yes or no, event occurred or event did not occur), there are three commonly-used measures. The risk difference, also known as absolute risk reduction or difference in proportions, is an absolute measure of effect size: the proportion in one group minus the proportion in the other group. The relative risk, also known as the risk ratio, is a relative measure of effect size: the proportion in one group divided by the proportion in the other group. Finally, there is the odds ratio, another relative measure of effect: the odds in one group divided by the odds in the other group. The odds ratio is the odd one out in a few ways, and a bit more controversial.</p>
+<p>In the first half of this post, I’ll dive into the controversy. In the middle, I’ll summarise the arguments using a meme. In the second half, I’ll work through an example of estimating odds ratios, risk differences, and relative risks in a fictional randomised controlled trial, showing R code examples and hand-calculations. I’m taking a particular interest in the application to randomised controlled trials (RCTs) but most of the issues discussed here apply more broadly.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+What’s an odds, anyway?
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>An odds is the probability of an event occurring divided by the probability of it not occurring. For example, a 50% chance corresponds to an odds of 0.5/0.5 = 1; a 75% chance corresponds to an odds of 0.75/0.25 = 3; a 25% chance corresponds to an odds of 0.25/0.75 = 1/3. Odds are common in gambling and often expressed as ratios, e.g.&nbsp;1:1, 3:1 or 1:3. Odds ratios are ratios of oddses<sup>1</sup>. For example, a change from a 50% proportion to a 75% proportion would be a change from an odds of 1 to an odds of 3, representing an odds ratio of 3/1 = 3.</p>
+</div>
+</div>
+</section>
+<section id="the-great-odds-ratio-debate" class="level2">
+<h2 class="anchored" data-anchor-id="the-great-odds-ratio-debate">The great odds ratio debate</h2>
+<p>A lot of noise has been made about why an odds ratio may not be a desirable summary for a treatment effect on a binary variable<sup>2</sup>. One of the biggest practical problems is that normal humans are unable to correctly interpret an odds ratio <span class="citation" data-cites="altman1998oddsratiosshould">(Altman et al., 1998)</span>. But for statisticians, there are also deeper concerns to worry about.</p>
+<p>In recent years, people<sup>3</sup> have become more aware of the mathematical fact of noncollapsibility <span class="citation" data-cites="greenland1999confoundingcollapsibilitycausal daniel2021makingapplesoranges morris2022planningmethodcovariate">(Daniel et al., 2021; Greenland et al., 1999; Morris et al., 2022)</span>: the marginal<sup>4</sup> odds ratio (population-level odds ratio) is not any kind of average of conditional odds ratios (individual-level odds ratios). Marginal odds ratios are the ones you might calculate directly from summary tables. Where do conditional odds ratios come from? They are artefacts of statistical models — logistic regression models, specifically. In the context of a randomised trial, these models predict the probability of an event occurring for each participant based on their treatment assignment and other variables measured prior to treatment (usually demographic characteristics, but could be any variable that is informative of the outcome)<sup>5</sup>. The second half of this post shows a worked example where every participant has the same conditional odds ratio of treatment, but the conditional odds ratio is not equal to the marginal odds ratio.</p>
+<p>The problem of noncollapsibility is relevant to the analysis and reporting of randomised controlled trials. The <a href="https://database.ich.org/sites/default/files/E9-R1_Step4_Guideline_2019_1203.pdf">ICH E9(R1) estimand framework for clinical trials</a> requires a “population-level summary” be defined for each outcome without reference to method used to estimate it. In the language of causal inference, that’s describing an Average Treatment Effect (ATE), and the odds ratio isn’t one<sup>6</sup>.</p>
+<p>Risk differences (the difference in probability attributable to a particular treatment) and relative risks (the ratio of probabilities due to a particular treatment) avoid both the interpretability and noncollapsibility problems of odds ratios. However, statisticians are usually taught to analyse binary outcomes using logistic regression, the direct output<sup>7</sup> of which is odds ratios, so odds ratios are ubiquitous in the research literature. Someone on Stats Twitter rediscovers all of this every few months and starts a heated argument where nobody goes away happy.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://cameronpatrick.com/post/2023/07/logit-rd-rr/building-collapse.jpg" class="img-fluid figure-img" alt="Picture of a collapsing building with the caption &quot;I'll take the non-collapsible one&quot;"></p>
+<p></p><figcaption class="figure-caption">Surprisingly, many statisticians prefer collapsibility.</figcaption><p></p>
+</figure>
+</div>
+<p>Personally, I’m a fan of risk differences for communicating potential risks to an individual, ideally presented alongside the baseline level of risk. There’s some evidence that patients and clinicians find these measures easier to interpret than relative measures <span class="citation" data-cites="zipkin2014evidencebasedriskcommunication">(Zipkin et al., 2014)</span>, especially when presented in the form of a natural frequency, like “6 in 1000 people” rather than “0.6%”.</p>
+<p>So, with all those disadvantages, will anyone speak up in support of odds ratios? Should we all hang up our logistic regression hats for good?</p>
+</section>
+<section id="in-defense-of-logistic-regression" class="level2">
+<h2 class="anchored" data-anchor-id="in-defense-of-logistic-regression">In defense of logistic regression</h2>
+<p>Statistical analyses are often adjusted for covariates, either to reduce confounding (in observational studies) or improve power (in randomised trials). Adjusting for covariates requires specifying some kind of model. If we’re using a generalised linear model<sup>8</sup>, the natural mathematical form of covariate adjustment will depend on whether you are modelling log-odds (logistic regression model, where model parameters correspond to an odds ratio), probability (linear probability model, where model parameters correspond to a risk difference) or log-probability (quasi-Poisson or log-link binomial model, where model parameters correspond to a relative risk). When modelling risk differences or relative risks directly, it’s possible to end up with impossible predicted probabilities: “probabilities” which are less than zero or greater than one. Using logistic regression avoids this problem, because any real number on the log-odds scale translates to a probability between zero and one. Any odds ratio can be applied to any level of baseline risk without making mathematicians sad<sup>9</sup>.</p>
+<p>There are also compelling — but not universally accepted — arguments that despite the difficulty in interpreting odds ratios, conditional odds ratios are more likely to be transportable between different levels of baseline risk than risk differences or relative risks <span class="citation" data-cites="doi2022controversydebatequestionable senn2011uneasereasonsmistrusting">(Doi et al., 2022; Senn, 2011)</span>. This is an empirical matter, not a mathematical one, and the evidence is not clear-cut. If we accept this, though, it is another reason to prefer logistic regression for statistical modelling. Effect size measures being “transportable” is another way of saying that the effects are closer to being additive on the scale that effect measure lives on (probability, log-probability, or log-odds). In the context of regression models, using a scale where the effect size is more transportable reduces the need for interaction terms, which can only be estimated well in large samples.</p>
+<p>It’s possible to model the data using logistic regression, and then use that model to produce other quantities of interest, such as average risk differences. This approach is described in <span class="citation" data-cites="permutt2020covariateschangeestimand">Permutt (2020)</span>, which has some of the best writing I’ve encountered in a statistics paper — being written in the form of a dialogue between a randomiser (the “causal inference” perspective) and a parameteriser (the “statistical modelling” perspective) walking through the Garden of Eden, planning to conduct and analyse a clinical trial. Does this method give us the best of both worlds: the modelling advantages of logistic regression and the interpretability advantages of risk differences and relative risks?</p>
+<p><span class="citation" data-cites="permutt2020covariateschangeestimand">Permutt (2020)</span> also considered what information different audiences might want from the results of a clinical trial: regulator, patient, and scientist. There’s a fourth audience which I think is worth considering, only very briefly mentioned by Permutt: the meta-analyst, trying to aggregate information from multiple trials.</p>
+<p>Permutt argues in favour of the ATE being the main quantity of regulatory interest:</p>
+<blockquote class="blockquote">
+<p>The average treatment effect should be of regulatory interest, however. The primary analysis of outcome should be of a variable that is reasonably linear in utility to the patient. Then, if and only if the average effect is positive, the ensemble of patients can be said to be better off under the test condition than under the control. This is perhaps the weakest imaginable statistical condition for approval of a drug product, but it is surely a necessary condition.</p>
+</blockquote>
+<p>Permutt notes that studies designed to be able to detect average treatment effects are unlikely to be adequate for patient-specific decision making or providing a more detailed scientific understanding.</p>
+<p>The most clearly expressed counter-argument to this comes from <a href="https://www.fharrell.com/post/rdist/">a blog post by Frank Harrell arguing against single-number summaries for treatment effects on binary outcomes</a>:</p>
+<blockquote class="blockquote">
+<p>Marginal adjusted estimates may be robust, but may not accurately estimate RD for either any patient in the RCT or for the clinical population to which RCT results are to be applied, because in effect they assume that the RCT sample is a random sample from the clinical population, something not required and never realized for RCTs.</p>
+</blockquote>
+<p>This refers to the distinction between the population average treatment effect (PATE) and the sample average treatment effect (SATE). RCT participants are not random samples from any population, not even from the eligible pool of participants for a particular study. But the regulator’s decision that Permutt described earlier is motivated by generalising to a broader population, implicitly relying on properties of the PATE. It’s not clear to me whether there are likely to be any real-world scenarios where both (1) the practical conclusions drawn from the SATE and PATE would be different; and (2) the conditional odds ratio derived from the RCT sample is in agreement with the PATE but the risk difference SATE is not.</p>
+<p>I am a coward and not (yet?) willing to take a strong position in this fight, but am always sympathetic to the idea that a single number is rarely sufficient to describe scientific evidence (see also: p-values). At some point I might write another blog about Harrell’s idea of plotting the distribution of estimated patient-level treatment effects, which is intriguing, although I struggle to see the practical purpose of it. Harrell’s other writing on this topic is also worth reading:</p>
+<ul>
+<li><a href="https://www.fharrell.com/post/robcov/">Incorrect Covariate Adjustment May Be More Correct than Adjusted Marginal Estimates</a> makes a similar point to <span class="citation" data-cites="white2021covariateadjustmentrandomised">White et al. (2021)</span> with a detailed simulated example;</li>
+<li><a href="https://www.fharrell.com/post/varyor/">Assessing Heterogeneity of Treatment Effect, Estimating Patient-Specific Efficacy, and Studying Variation in Odds ratios, Risk Ratios, and Risk Differences</a> argues in favour of the use of odds ratios for modelling, and points out the extreme difficulty of identifying heterogeneous treatment effects even in very large studies; and</li>
+<li><a href="https://www.fharrell.com/post/marg/">Unadjusted Odds Ratios are Conditional</a> demonstrates noncollapsibility and argues that conditional odds ratios are more useful than marginal odds ratios.</li>
+</ul>
+<p>One issue which I remain unclear about is whether randomised trials powered to detect main treatment effects are likely to provide reasonable estimates of patient-specific baseline risk — a simpler task than patient-specific treatment effects, but still outside of the usual design remit for an efficacy trial. Common analytical approaches for clinical trials have good properties for estimating average treatment effects when the covariates are regarded as nuisance parameters <span class="citation" data-cites="white2021covariateadjustmentrandomised">(White et al., 2021)</span>, but are not guaranteed to perform so well if the effects of the covariates are themselves of interest.</p>
+<p>Finally, there is the meta-analytic perspective to consider. An effect size which is less heterogeneous between studies is once again desirable. If arguments about the transportability of odds ratios by the Harrell, Senn, Doi, and others are to be believed, we should report conditional odds ratios, as those are likely to be the most useful for meta-analysts. The CONSORT guidelines for reporting randomised trials <span class="citation" data-cites="moher2010consort2010explanation">(Moher et al., 2010)</span> state that both absolute and relative effect sizes should be reported for binary outcomes. I think there is merit in reporting all commonly-used effect size measures: risk difference, relative risk, and odds ratio. This provides the most flexibility for future meta-analysts.</p>
+</section>
+<section id="summary-in-meme-format" class="level2">
+<h2 class="anchored" data-anchor-id="summary-in-meme-format">Summary, in meme format</h2>
+<p>If all of that was a bit much to take in, maybe this will help:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://cameronpatrick.com/post/2023/07/logit-rd-rr/american-chopper-argument.jpeg" class="img-fluid figure-img" alt="American Chopper argument meme: risk differences aren't transportable / nobody understands odds ratios / clinical trials aren't random samples from the population / marginal odds ratios aren't the average of conditional odds ratios / conditional odds ratios still tell us if an intervention works"></p>
+<p></p><figcaption class="figure-caption">True facts on both sides.</figcaption><p></p>
+</figure>
+</div>
+<p>In the rest of this post I’ll demonstrate how odds ratios are noncollapsible and show how to calculate risk differences and relative risks from logistic regression models using R and the <code>marginaleffects</code> package.</p>
+</section>
+<section id="an-example" class="level2">
+<h2 class="anchored" data-anchor-id="an-example">An example</h2>
+<p>This is the story of some hypothetical researchers who did a randomised controlled trial (RCT) where 560 patients were randomly assigned to either a treatment or control condition. The primary outcome of the trial was a binary measure, indicating whether a patient’s condition had worsened after 6 weeks. The scenario is based on <a href="https://www.fharrell.com/post/marg/">one from Frank Harrell’s blog</a>, with the details changed and embellished.</p>
+<p>The hidden R code block below loads some R packages and sets up some simulated data for this trial.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(tidyverse)</span>
+<span id="cb1-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(gt)</span>
+<span id="cb1-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(gtsummary)</span>
+<span id="cb1-4"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(broom)</span>
+<span id="cb1-5"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(cowplot)</span>
+<span id="cb1-6"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(marginaleffects)</span>
+<span id="cb1-7"></span>
+<span id="cb1-8"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_set</span>(</span>
+<span id="cb1-9">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">theme_cowplot</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">font_size =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">11</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">rel_large =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">rel_small =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">rel_tiny =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>)</span>
+<span id="cb1-10">)</span>
+<span id="cb1-11"></span>
+<span id="cb1-12">rct_data <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tribble</span>(</span>
+<span id="cb1-13">  <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span>treatment, <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span>risk, <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span>outcome_prob,</span>
+<span id="cb1-14">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Control"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Low risk"</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">7</span>,</span>
+<span id="cb1-15">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Control"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"High risk"</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span>,</span>
+<span id="cb1-16">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Treatment"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Low risk"</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>,</span>
+<span id="cb1-17">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Treatment"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"High risk"</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span></span>
+<span id="cb1-18">) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb1-19">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">across</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(treatment, risk), fct_inorder)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb1-20">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rowwise</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">everything</span>()) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb1-21">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reframe</span>(</span>
+<span id="cb1-22">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">outcome =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rep</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">times =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">round</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">140</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(outcome_prob, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> outcome_prob)))</span>
+<span id="cb1-23">  )</span></code></pre></div>
+</details>
+</div>
+<p>Looking at a 2-way table of our hypothetical trial, we can see that the worse outcome (“1”) is more common in the control group (37%) than the treatment group (30%). This is an absolute risk reduction of 7%, a promising sign that our treatment may be beneficial.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tbl_cross</span>(rct_data, outcome, treatment, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">percent =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"column"</span>)</span></code></pre></div>
+<div class="cell-output-display">
+
+<div id="rbusajcmqj" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#rbusajcmqj table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#rbusajcmqj thead, #rbusajcmqj tbody, #rbusajcmqj tfoot, #rbusajcmqj tr, #rbusajcmqj td, #rbusajcmqj th {
+  border-style: none;
+}
+
+#rbusajcmqj p {
+  margin: 0;
+  padding: 0;
+}
+
+#rbusajcmqj .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#rbusajcmqj .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#rbusajcmqj .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#rbusajcmqj .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#rbusajcmqj .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#rbusajcmqj .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#rbusajcmqj .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#rbusajcmqj .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#rbusajcmqj .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#rbusajcmqj .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#rbusajcmqj .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#rbusajcmqj .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#rbusajcmqj .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#rbusajcmqj .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#rbusajcmqj .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rbusajcmqj .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#rbusajcmqj .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#rbusajcmqj .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#rbusajcmqj .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rbusajcmqj .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#rbusajcmqj .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rbusajcmqj .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#rbusajcmqj .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rbusajcmqj .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#rbusajcmqj .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#rbusajcmqj .gt_left {
+  text-align: left;
+}
+
+#rbusajcmqj .gt_center {
+  text-align: center;
+}
+
+#rbusajcmqj .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#rbusajcmqj .gt_font_normal {
+  font-weight: normal;
+}
+
+#rbusajcmqj .gt_font_bold {
+  font-weight: bold;
+}
+
+#rbusajcmqj .gt_font_italic {
+  font-style: italic;
+}
+
+#rbusajcmqj .gt_super {
+  font-size: 65%;
+}
+
+#rbusajcmqj .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#rbusajcmqj .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#rbusajcmqj .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#rbusajcmqj .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#rbusajcmqj .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#rbusajcmqj .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#rbusajcmqj .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings gt_spanner_row">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="2" colspan="1" scope="col" id=""></th>
+      <th class="gt_center gt_columns_top_border gt_column_spanner_outer" rowspan="1" colspan="2" scope="colgroup" id="treatment">
+        <span class="gt_column_spanner">treatment</span>
+      </th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="2" colspan="1" scope="col" id="Total">Total</th>
+    </tr>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Control">Control</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Treatment">Treatment</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="label" class="gt_row gt_left">outcome</td>
+<td headers="stat_1" class="gt_row gt_center"></td>
+<td headers="stat_2" class="gt_row gt_center"></td>
+<td headers="stat_0" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;0</td>
+<td headers="stat_1" class="gt_row gt_center">176 (63%)</td>
+<td headers="stat_2" class="gt_row gt_center">196 (70%)</td>
+<td headers="stat_0" class="gt_row gt_center">372 (66%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;1</td>
+<td headers="stat_1" class="gt_row gt_center">104 (37%)</td>
+<td headers="stat_2" class="gt_row gt_center">84 (30%)</td>
+<td headers="stat_0" class="gt_row gt_center">188 (34%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">Total</td>
+<td headers="stat_1" class="gt_row gt_center">280 (100%)</td>
+<td headers="stat_2" class="gt_row gt_center">280 (100%)</td>
+<td headers="stat_0" class="gt_row gt_center">560 (100%)</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<p>Just looking at a table won’t convince anybody, though. At this point, our hypothetical researchers asked a statistician to help out<sup>10</sup>. The hypothetical statistician immediately realised the need to estimate the treatment effect in some way that also quantified its uncertainty. A binary logistic regression model seemed like a suitable way to examine the effect of the treatment on the outcome.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1">lrm_unadj <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">glm</span>(</span>
+<span id="cb3-2">  outcome <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> treatment,</span>
+<span id="cb3-3">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">family =</span> binomial,</span>
+<span id="cb3-4">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">data =</span> rct_data</span>
+<span id="cb3-5">)</span></code></pre></div>
+</div>
+<p>The table below shows the results of this logistic regression: an odds ratio of 0.73 (95% CI: 0.51 to 1.03). The odds ratio being less than 1 indicates that the treatment was beneficial (since the outcome occurring was bad, in this case) but the p-value of 0.074 indicates this effect is not statistically significant. The researchers were sad, their dreams of publishing in the British Medical Journal scuppered.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tbl_regression</span>(lrm_unadj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">exponentiate =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>)</span></code></pre></div>
+<div class="cell-output-display">
+
+<div id="nodnofzutd" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#nodnofzutd table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#nodnofzutd thead, #nodnofzutd tbody, #nodnofzutd tfoot, #nodnofzutd tr, #nodnofzutd td, #nodnofzutd th {
+  border-style: none;
+}
+
+#nodnofzutd p {
+  margin: 0;
+  padding: 0;
+}
+
+#nodnofzutd .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#nodnofzutd .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#nodnofzutd .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#nodnofzutd .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#nodnofzutd .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#nodnofzutd .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#nodnofzutd .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#nodnofzutd .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#nodnofzutd .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#nodnofzutd .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#nodnofzutd .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#nodnofzutd .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#nodnofzutd .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#nodnofzutd .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#nodnofzutd .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#nodnofzutd .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#nodnofzutd .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#nodnofzutd .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#nodnofzutd .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#nodnofzutd .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#nodnofzutd .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#nodnofzutd .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#nodnofzutd .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#nodnofzutd .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#nodnofzutd .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#nodnofzutd .gt_left {
+  text-align: left;
+}
+
+#nodnofzutd .gt_center {
+  text-align: center;
+}
+
+#nodnofzutd .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#nodnofzutd .gt_font_normal {
+  font-weight: normal;
+}
+
+#nodnofzutd .gt_font_bold {
+  font-weight: bold;
+}
+
+#nodnofzutd .gt_font_italic {
+  font-style: italic;
+}
+
+#nodnofzutd .gt_super {
+  font-size: 65%;
+}
+
+#nodnofzutd .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#nodnofzutd .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#nodnofzutd .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#nodnofzutd .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#nodnofzutd .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#nodnofzutd .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#nodnofzutd .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="<strong>Characteristic</strong>"><strong>Characteristic</strong></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="<strong>OR</strong><span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;><sup>1</sup></span>"><strong>OR</strong><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="<strong>95% CI</strong><span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;><sup>1</sup></span>"><strong>95% CI</strong><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="<strong>p-value</strong>"><strong>p-value</strong></th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="label" class="gt_row gt_left">treatment</td>
+<td headers="estimate" class="gt_row gt_center"></td>
+<td headers="ci" class="gt_row gt_center"></td>
+<td headers="p.value" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Control</td>
+<td headers="estimate" class="gt_row gt_center">—</td>
+<td headers="ci" class="gt_row gt_center">—</td>
+<td headers="p.value" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Treatment</td>
+<td headers="estimate" class="gt_row gt_center">0.73</td>
+<td headers="ci" class="gt_row gt_center">0.51, 1.03</td>
+<td headers="p.value" class="gt_row gt_center">0.074</td></tr>
+  </tbody>
+  
+  <tfoot class="gt_footnotes">
+    <tr>
+      <td class="gt_footnote" colspan="4"><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span> OR = Odds Ratio, CI = Confidence Interval</td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+</div>
+</div>
+</section>
+<section id="adding-a-covariate" class="level2">
+<h2 class="anchored" data-anchor-id="adding-a-covariate">Adding a covariate</h2>
+<p>Just as the statistician was finishing writing up the results, the researchers mentioned that the patients they recruited came from two different groups, one of which was known to have much worse outcomes than the other.</p>
+<p>“Does that matter?” they asked.</p>
+<p>“Well, using this information could improve your statistical power” said the statistician.</p>
+<p>The statistician made another 2-way table, stratified by the risk group. Through some fluke, exactly half of the trial sample was low risk and the other half high risk, perfectly balanced across treatment arms. It turned out that while only 14% of the low risk patients in the control arm experienced the worse outcome, 60% of the high risk patients in the control arm experienced that outcome.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tbl_strata</span>(rct_data, risk, tbl_cross, outcome, treatment, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">percent =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"column"</span>)</span></code></pre></div>
+<div class="cell-output-display">
+
+<div id="yluohciqyq" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#yluohciqyq table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#yluohciqyq thead, #yluohciqyq tbody, #yluohciqyq tfoot, #yluohciqyq tr, #yluohciqyq td, #yluohciqyq th {
+  border-style: none;
+}
+
+#yluohciqyq p {
+  margin: 0;
+  padding: 0;
+}
+
+#yluohciqyq .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#yluohciqyq .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#yluohciqyq .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#yluohciqyq .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#yluohciqyq .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#yluohciqyq .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#yluohciqyq .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#yluohciqyq .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#yluohciqyq .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#yluohciqyq .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#yluohciqyq .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#yluohciqyq .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#yluohciqyq .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#yluohciqyq .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#yluohciqyq .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yluohciqyq .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#yluohciqyq .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#yluohciqyq .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#yluohciqyq .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yluohciqyq .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#yluohciqyq .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yluohciqyq .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#yluohciqyq .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yluohciqyq .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#yluohciqyq .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#yluohciqyq .gt_left {
+  text-align: left;
+}
+
+#yluohciqyq .gt_center {
+  text-align: center;
+}
+
+#yluohciqyq .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#yluohciqyq .gt_font_normal {
+  font-weight: normal;
+}
+
+#yluohciqyq .gt_font_bold {
+  font-weight: bold;
+}
+
+#yluohciqyq .gt_font_italic {
+  font-style: italic;
+}
+
+#yluohciqyq .gt_super {
+  font-size: 65%;
+}
+
+#yluohciqyq .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#yluohciqyq .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#yluohciqyq .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#yluohciqyq .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#yluohciqyq .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#yluohciqyq .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#yluohciqyq .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings gt_spanner_row">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="2" colspan="1" scope="col" id=""></th>
+      <th class="gt_center gt_columns_top_border gt_column_spanner_outer" rowspan="1" colspan="3" scope="colgroup" id="<strong>Low risk</strong>">
+        <span class="gt_column_spanner"><strong>Low risk</strong></span>
+      </th>
+      <th class="gt_center gt_columns_top_border gt_column_spanner_outer" rowspan="1" colspan="3" scope="colgroup" id="<strong>High risk</strong>">
+        <span class="gt_column_spanner"><strong>High risk</strong></span>
+      </th>
+    </tr>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Control">Control</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Treatment">Treatment</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Total">Total</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Control">Control</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Treatment">Treatment</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Total">Total</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="label" class="gt_row gt_left">outcome</td>
+<td headers="stat_1_1" class="gt_row gt_center"></td>
+<td headers="stat_2_1" class="gt_row gt_center"></td>
+<td headers="stat_0_1" class="gt_row gt_center"></td>
+<td headers="stat_1_2" class="gt_row gt_center"></td>
+<td headers="stat_2_2" class="gt_row gt_center"></td>
+<td headers="stat_0_2" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;0</td>
+<td headers="stat_1_1" class="gt_row gt_center">120 (86%)</td>
+<td headers="stat_2_1" class="gt_row gt_center">126 (90%)</td>
+<td headers="stat_0_1" class="gt_row gt_center">246 (88%)</td>
+<td headers="stat_1_2" class="gt_row gt_center">56 (40%)</td>
+<td headers="stat_2_2" class="gt_row gt_center">70 (50%)</td>
+<td headers="stat_0_2" class="gt_row gt_center">126 (45%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;1</td>
+<td headers="stat_1_1" class="gt_row gt_center">20 (14%)</td>
+<td headers="stat_2_1" class="gt_row gt_center">14 (10%)</td>
+<td headers="stat_0_1" class="gt_row gt_center">34 (12%)</td>
+<td headers="stat_1_2" class="gt_row gt_center">84 (60%)</td>
+<td headers="stat_2_2" class="gt_row gt_center">70 (50%)</td>
+<td headers="stat_0_2" class="gt_row gt_center">154 (55%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">Total</td>
+<td headers="stat_1_1" class="gt_row gt_center">140 (100%)</td>
+<td headers="stat_2_1" class="gt_row gt_center">140 (100%)</td>
+<td headers="stat_0_1" class="gt_row gt_center">280 (100%)</td>
+<td headers="stat_1_2" class="gt_row gt_center">140 (100%)</td>
+<td headers="stat_2_2" class="gt_row gt_center">140 (100%)</td>
+<td headers="stat_0_2" class="gt_row gt_center">280 (100%)</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<p>The statistician decided to fit another logistic regression model, this time including risk as an additional variable in the model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1">lrm_adj <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">glm</span>(</span>
+<span id="cb6-2">  outcome <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> treatment <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> risk,</span>
+<span id="cb6-3">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">family =</span> binomial,</span>
+<span id="cb6-4">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">data =</span> rct_data</span>
+<span id="cb6-5">)</span></code></pre></div>
+</div>
+<p>Looking at the coefficients in this model, we can see that the estimated effect of treatment has increased: the odds ratio is further away from 1, now being 0.67 (95% CI: 0.45 to 0.99) instead of 0.73 (95% CI: 0.51 to 1.03). The p-value has decreased from 0.074 to 0.045, meaning that the treatment effect is now statistically significant.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tbl_regression</span>(lrm_adj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">exponentiate =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>)</span></code></pre></div>
+<div class="cell-output-display">
+
+<div id="ybwwssngrp" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#ybwwssngrp table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#ybwwssngrp thead, #ybwwssngrp tbody, #ybwwssngrp tfoot, #ybwwssngrp tr, #ybwwssngrp td, #ybwwssngrp th {
+  border-style: none;
+}
+
+#ybwwssngrp p {
+  margin: 0;
+  padding: 0;
+}
+
+#ybwwssngrp .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#ybwwssngrp .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#ybwwssngrp .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#ybwwssngrp .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#ybwwssngrp .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#ybwwssngrp .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#ybwwssngrp .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#ybwwssngrp .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#ybwwssngrp .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#ybwwssngrp .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#ybwwssngrp .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#ybwwssngrp .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#ybwwssngrp .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#ybwwssngrp .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#ybwwssngrp .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ybwwssngrp .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#ybwwssngrp .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#ybwwssngrp .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#ybwwssngrp .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ybwwssngrp .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#ybwwssngrp .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ybwwssngrp .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#ybwwssngrp .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ybwwssngrp .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ybwwssngrp .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ybwwssngrp .gt_left {
+  text-align: left;
+}
+
+#ybwwssngrp .gt_center {
+  text-align: center;
+}
+
+#ybwwssngrp .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#ybwwssngrp .gt_font_normal {
+  font-weight: normal;
+}
+
+#ybwwssngrp .gt_font_bold {
+  font-weight: bold;
+}
+
+#ybwwssngrp .gt_font_italic {
+  font-style: italic;
+}
+
+#ybwwssngrp .gt_super {
+  font-size: 65%;
+}
+
+#ybwwssngrp .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#ybwwssngrp .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#ybwwssngrp .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#ybwwssngrp .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#ybwwssngrp .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#ybwwssngrp .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#ybwwssngrp .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="<strong>Characteristic</strong>"><strong>Characteristic</strong></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="<strong>OR</strong><span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;><sup>1</sup></span>"><strong>OR</strong><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="<strong>95% CI</strong><span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;><sup>1</sup></span>"><strong>95% CI</strong><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="<strong>p-value</strong>"><strong>p-value</strong></th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="label" class="gt_row gt_left">treatment</td>
+<td headers="estimate" class="gt_row gt_center"></td>
+<td headers="ci" class="gt_row gt_center"></td>
+<td headers="p.value" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Control</td>
+<td headers="estimate" class="gt_row gt_center">—</td>
+<td headers="ci" class="gt_row gt_center">—</td>
+<td headers="p.value" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Treatment</td>
+<td headers="estimate" class="gt_row gt_center">0.67</td>
+<td headers="ci" class="gt_row gt_center">0.45, 0.99</td>
+<td headers="p.value" class="gt_row gt_center">0.045</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">risk</td>
+<td headers="estimate" class="gt_row gt_center"></td>
+<td headers="ci" class="gt_row gt_center"></td>
+<td headers="p.value" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;Low risk</td>
+<td headers="estimate" class="gt_row gt_center">—</td>
+<td headers="ci" class="gt_row gt_center">—</td>
+<td headers="p.value" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;High risk</td>
+<td headers="estimate" class="gt_row gt_center">9.00</td>
+<td headers="ci" class="gt_row gt_center">5.91, 14.0</td>
+<td headers="p.value" class="gt_row gt_center">&lt;0.001</td></tr>
+  </tbody>
+  
+  <tfoot class="gt_footnotes">
+    <tr>
+      <td class="gt_footnote" colspan="4"><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span> OR = Odds Ratio, CI = Confidence Interval</td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+</div>
+</div>
+<p>The researchers went home happy, dreaming once again of publishing in a high impact factor journal, but the statistician was left with a nagging feeling that something was not quite right. The covariate was balanced between treatment groups, with equal numbers of low risk and high risk assigned to each treatment. Undergraduate linear models courses taught that adding a covariate to the model in this scenario shouldn’t change the coefficient for treatment, only the standard error. Why, then, did the estimates change like that? Is logistic regression different from linear regression in this regard?</p>
+</section>
+<section id="hand-calculations-back-to-the-2-way-table" class="level2">
+<h2 class="anchored" data-anchor-id="hand-calculations-back-to-the-2-way-table">Hand calculations: back to the 2-way table</h2>
+<p>Let’s take another look at the 2-way table and do some hand calculations.</p>
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="qyofexnaqf" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#qyofexnaqf table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#qyofexnaqf thead, #qyofexnaqf tbody, #qyofexnaqf tfoot, #qyofexnaqf tr, #qyofexnaqf td, #qyofexnaqf th {
+  border-style: none;
+}
+
+#qyofexnaqf p {
+  margin: 0;
+  padding: 0;
+}
+
+#qyofexnaqf .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#qyofexnaqf .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#qyofexnaqf .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#qyofexnaqf .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#qyofexnaqf .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#qyofexnaqf .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#qyofexnaqf .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#qyofexnaqf .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#qyofexnaqf .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#qyofexnaqf .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#qyofexnaqf .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#qyofexnaqf .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#qyofexnaqf .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#qyofexnaqf .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#qyofexnaqf .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qyofexnaqf .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#qyofexnaqf .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#qyofexnaqf .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#qyofexnaqf .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qyofexnaqf .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#qyofexnaqf .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qyofexnaqf .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#qyofexnaqf .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qyofexnaqf .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#qyofexnaqf .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qyofexnaqf .gt_left {
+  text-align: left;
+}
+
+#qyofexnaqf .gt_center {
+  text-align: center;
+}
+
+#qyofexnaqf .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#qyofexnaqf .gt_font_normal {
+  font-weight: normal;
+}
+
+#qyofexnaqf .gt_font_bold {
+  font-weight: bold;
+}
+
+#qyofexnaqf .gt_font_italic {
+  font-style: italic;
+}
+
+#qyofexnaqf .gt_super {
+  font-size: 65%;
+}
+
+#qyofexnaqf .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#qyofexnaqf .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#qyofexnaqf .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#qyofexnaqf .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#qyofexnaqf .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#qyofexnaqf .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#qyofexnaqf .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings gt_spanner_row">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="2" colspan="1" scope="col" id=""></th>
+      <th class="gt_center gt_columns_top_border gt_column_spanner_outer" rowspan="1" colspan="2" scope="colgroup" id="treatment">
+        <span class="gt_column_spanner">treatment</span>
+      </th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="2" colspan="1" scope="col" id="Total">Total</th>
+    </tr>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Control">Control</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Treatment">Treatment</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="label" class="gt_row gt_left">outcome</td>
+<td headers="stat_1" class="gt_row gt_center"></td>
+<td headers="stat_2" class="gt_row gt_center"></td>
+<td headers="stat_0" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;0</td>
+<td headers="stat_1" class="gt_row gt_center">176 (63%)</td>
+<td headers="stat_2" class="gt_row gt_center">196 (70%)</td>
+<td headers="stat_0" class="gt_row gt_center">372 (66%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;1</td>
+<td headers="stat_1" class="gt_row gt_center">104 (37%)</td>
+<td headers="stat_2" class="gt_row gt_center">84 (30%)</td>
+<td headers="stat_0" class="gt_row gt_center">188 (34%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">Total</td>
+<td headers="stat_1" class="gt_row gt_center">280 (100%)</td>
+<td headers="stat_2" class="gt_row gt_center">280 (100%)</td>
+<td headers="stat_0" class="gt_row gt_center">560 (100%)</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<p>The marginal risk difference is the difference between treatment and control groups in the proportion of patients experiencing the outcome event. From the table above, ignoring the covariate, we can calculate a risk reduction of 0.071:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">104</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">280</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">84</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">280</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.07142857</code></pre>
+</div>
+</div>
+<p>The marginal odds ratio is the ratio of the oddses for treatment and the control group, where the odds is itself the number who experience the outcome event divided by the number who do not<sup>11</sup>. We can calculate the marginal odds ratio here as 0.73, the same as the unadjusted logistic regression:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1">(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">84</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">196</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">104</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">176</span>)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.7252747</code></pre>
+</div>
+</div>
+<p>Now let’s look at the table stratified by risk, and see how that affects our calculations.</p>
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="pnrjyzpwhk" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#pnrjyzpwhk table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#pnrjyzpwhk thead, #pnrjyzpwhk tbody, #pnrjyzpwhk tfoot, #pnrjyzpwhk tr, #pnrjyzpwhk td, #pnrjyzpwhk th {
+  border-style: none;
+}
+
+#pnrjyzpwhk p {
+  margin: 0;
+  padding: 0;
+}
+
+#pnrjyzpwhk .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#pnrjyzpwhk .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#pnrjyzpwhk .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#pnrjyzpwhk .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#pnrjyzpwhk .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#pnrjyzpwhk .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#pnrjyzpwhk .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#pnrjyzpwhk .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#pnrjyzpwhk .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#pnrjyzpwhk .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#pnrjyzpwhk .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#pnrjyzpwhk .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#pnrjyzpwhk .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#pnrjyzpwhk .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#pnrjyzpwhk .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pnrjyzpwhk .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#pnrjyzpwhk .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#pnrjyzpwhk .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#pnrjyzpwhk .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pnrjyzpwhk .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#pnrjyzpwhk .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pnrjyzpwhk .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#pnrjyzpwhk .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pnrjyzpwhk .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#pnrjyzpwhk .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pnrjyzpwhk .gt_left {
+  text-align: left;
+}
+
+#pnrjyzpwhk .gt_center {
+  text-align: center;
+}
+
+#pnrjyzpwhk .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#pnrjyzpwhk .gt_font_normal {
+  font-weight: normal;
+}
+
+#pnrjyzpwhk .gt_font_bold {
+  font-weight: bold;
+}
+
+#pnrjyzpwhk .gt_font_italic {
+  font-style: italic;
+}
+
+#pnrjyzpwhk .gt_super {
+  font-size: 65%;
+}
+
+#pnrjyzpwhk .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#pnrjyzpwhk .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#pnrjyzpwhk .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#pnrjyzpwhk .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#pnrjyzpwhk .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#pnrjyzpwhk .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#pnrjyzpwhk .gt_indent_5 {
+  text-indent: 25px;
+}
+</style>
+<table class="gt_table" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <thead>
+    
+    <tr class="gt_col_headings gt_spanner_row">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="2" colspan="1" scope="col" id=""></th>
+      <th class="gt_center gt_columns_top_border gt_column_spanner_outer" rowspan="1" colspan="3" scope="colgroup" id="<strong>Low risk</strong>">
+        <span class="gt_column_spanner"><strong>Low risk</strong></span>
+      </th>
+      <th class="gt_center gt_columns_top_border gt_column_spanner_outer" rowspan="1" colspan="3" scope="colgroup" id="<strong>High risk</strong>">
+        <span class="gt_column_spanner"><strong>High risk</strong></span>
+      </th>
+    </tr>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Control">Control</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Treatment">Treatment</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Total">Total</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Control">Control</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Treatment">Treatment</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" scope="col" id="Total">Total</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td headers="label" class="gt_row gt_left">outcome</td>
+<td headers="stat_1_1" class="gt_row gt_center"></td>
+<td headers="stat_2_1" class="gt_row gt_center"></td>
+<td headers="stat_0_1" class="gt_row gt_center"></td>
+<td headers="stat_1_2" class="gt_row gt_center"></td>
+<td headers="stat_2_2" class="gt_row gt_center"></td>
+<td headers="stat_0_2" class="gt_row gt_center"></td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;0</td>
+<td headers="stat_1_1" class="gt_row gt_center">120 (86%)</td>
+<td headers="stat_2_1" class="gt_row gt_center">126 (90%)</td>
+<td headers="stat_0_1" class="gt_row gt_center">246 (88%)</td>
+<td headers="stat_1_2" class="gt_row gt_center">56 (40%)</td>
+<td headers="stat_2_2" class="gt_row gt_center">70 (50%)</td>
+<td headers="stat_0_2" class="gt_row gt_center">126 (45%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">&nbsp;&nbsp;&nbsp;&nbsp;1</td>
+<td headers="stat_1_1" class="gt_row gt_center">20 (14%)</td>
+<td headers="stat_2_1" class="gt_row gt_center">14 (10%)</td>
+<td headers="stat_0_1" class="gt_row gt_center">34 (12%)</td>
+<td headers="stat_1_2" class="gt_row gt_center">84 (60%)</td>
+<td headers="stat_2_2" class="gt_row gt_center">70 (50%)</td>
+<td headers="stat_0_2" class="gt_row gt_center">154 (55%)</td></tr>
+    <tr><td headers="label" class="gt_row gt_left">Total</td>
+<td headers="stat_1_1" class="gt_row gt_center">140 (100%)</td>
+<td headers="stat_2_1" class="gt_row gt_center">140 (100%)</td>
+<td headers="stat_0_1" class="gt_row gt_center">280 (100%)</td>
+<td headers="stat_1_2" class="gt_row gt_center">140 (100%)</td>
+<td headers="stat_2_2" class="gt_row gt_center">140 (100%)</td>
+<td headers="stat_0_2" class="gt_row gt_center">280 (100%)</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+<p>Using the same formula as before, we can calculate a risk difference of 0.043 in the low risk group, 0.100 in the high risk group, and the equally-weighted average of those two (because the two risk groups are equally common in this example) is 0.071, same as the marginal risk difference calculated above.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># conditional risk difference in the low risk group</span></span>
+<span id="cb12-2"><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">20</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">140</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">14</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">140</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.04285714</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># conditional risk difference in the high risk group</span></span>
+<span id="cb14-2"><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">84</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">140</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">70</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">140</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.1</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># average of conditional risk differences is the marginal risk difference</span></span>
+<span id="cb16-2"><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>((<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">20</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">140</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">14</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">140</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">84</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">140</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">70</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">140</span>))</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.07142857</code></pre>
+</div>
+</div>
+<p>Using the formula for odds ratios, we can calculate an odds ratio of 0.67 in the low risk group and 0.67 in the high risk group. The conditional odds ratios in both groups are equal, and equal to the conditional odds ratio from the adjusted logistic regression, but are different from the marginal odds ratio. This is noncollapsibility in action.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># conditional odds ratio in the low risk group</span></span>
+<span id="cb18-2">(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">14</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">126</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">20</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">120</span>)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.6666667</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb20" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># conditional odds ratio in the high risk group</span></span>
+<span id="cb20-2">(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">70</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">70</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">84</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">56</span>)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.6666667</code></pre>
+</div>
+</div>
+<p>In this example, we observed a treatment-by-risk-group interaction on the risk difference scale (absolute risk reduction of 0.041 in the low-risk group, absolute risk reduction of 0.100 in the high-risk group) but not on the odds ratio scale (conditional odds ratio of 0.67 in both groups). There is no mathematical requirement for the odds ratio scale to have a smaller interaction than other scales, but it is mathematically impossible for there to be no interaction on <em>any</em> scale unless the effect size is zero. This issue is discussed in detail from the perspective of psychological research in <span class="citation" data-cites="rohrer2021preciseanswersvague">Rohrer &amp; Arslan (2021)</span>.</p>
+</section>
+<section id="calculating-risk-difference-and-relative-risks-using-the-marginaleffects-package" class="level2">
+<h2 class="anchored" data-anchor-id="calculating-risk-difference-and-relative-risks-using-the-marginaleffects-package">Calculating risk difference and relative risks using the marginaleffects package</h2>
+<p>The researchers returned to the statistician, requesting adjusted and unadjusted risk differences and relative risks to report in their paper. Fortunately, the statistician was familiar with the <code>marginaleffects</code> package, which makes it fairly easy to calculate risk differences from logistic regression models<sup>12</sup>.</p>
+<section id="risk-differences" class="level3">
+<h3 class="anchored" data-anchor-id="risk-differences">Risk differences</h3>
+<p>The <code>avg_comparisons()</code> function calculates differences in one variable, averaged across the observed distribution of the other variables. By default it does this calculation on the response scale, i.e.&nbsp;predicted probability, which is what we want for a risk difference. For the unadjusted model, we get an average risk reduction of 7.1% (95% CI: -0.1% to 14.9%).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">avg_comparisons</span>(lrm_unadj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">variables =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatment"</span>)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+      Term Contrast Estimate Std. Error     z Pr(&gt;|z|)   S  2.5 %  97.5 %
+ treatment    T - C  -0.0714     0.0398 -1.79   0.0727 3.8 -0.149 0.00657
+
+Columns: term, contrast, estimate, std.error, statistic, p.value, s.value, conf.low, conf.high </code></pre>
+</div>
+</div>
+<p>For the adjusted model, we get an average risk reduction of 7.1% (95% CI: 0.0% to 14.1%).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">avg_comparisons</span>(lrm_adj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">variables =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatment"</span>)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+      Term Contrast Estimate Std. Error     z Pr(&gt;|z|)   S  2.5 %   97.5 %
+ treatment    T - C  -0.0714     0.0354 -2.02   0.0437 4.5 -0.141 -0.00201
+
+Columns: term, contrast, estimate, std.error, statistic, p.value, s.value, conf.low, conf.high </code></pre>
+</div>
+</div>
+<p>Unlike the odds ratio, the point estimate of the risk difference didn’t change when we added the covariate, but its estimate got more precise: the confidence interval shrank.</p>
+</section>
+<section id="relative-risks" class="level3">
+<h3 class="anchored" data-anchor-id="relative-risks">Relative risks</h3>
+<p>To get relative risks using <code>avg_comparisons()</code>, we need to ask for the average of the log of the ratio between treatment conditions (<code>lnratioavg</code> in the code below), and then exponentiate that.</p>
+<p>For the unadjusted model, the relative risk is 0.81 (95% CI: 0.64 to 1.02).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">avg_comparisons</span>(lrm_unadj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">variables =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatment"</span>,</span>
+<span id="cb26-2">                <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">comparison =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"lnratioavg"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">transform =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"exp"</span>)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+      Term              Contrast Estimate Pr(&gt;|z|)   S 2.5 % 97.5 %
+ treatment ln(mean(T) / mean(C))    0.808   0.0749 3.7 0.639   1.02
+
+Columns: term, contrast, estimate, p.value, s.value, conf.low, conf.high, predicted, predicted_hi, predicted_lo </code></pre>
+</div>
+</div>
+<p>For the adjusted model, the relative risk is 0.81 (95% CI: 0.65 to 1.00).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">avg_comparisons</span>(lrm_adj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">variables =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatment"</span>,</span>
+<span id="cb28-2">                <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">comparison =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"lnratioavg"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">transform =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"exp"</span>)</span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+      Term              Contrast Estimate Pr(&gt;|z|)   S 2.5 % 97.5 %
+ treatment ln(mean(T) / mean(C))    0.808   0.0458 4.4 0.655  0.996
+
+Columns: term, contrast, estimate, p.value, s.value, conf.low, conf.high, predicted, predicted_hi, predicted_lo </code></pre>
+</div>
+</div>
+<p>Compared to the unadjusted model, the point estimate hasn’t changed but the confidence interval shrank. Like risk differences, and unlike odds ratios, relative risks are collapsible.</p>
+</section>
+</section>
+<section id="in-pictures" class="level2">
+<h2 class="anchored" data-anchor-id="in-pictures">In pictures</h2>
+<p>One last way of showing the same thing: below is a plot of unadjusted and adjusted odds ratios, risk differences, and relative risks. You can see that for the odds ratio, the adjustment has moved the point estimate but not made the confidence interval narrower, whereas for the other measures, the point estimate has not changed but the confidence intervals are narrower for the adjusted estimate.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb30" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># odds ratio estimates</span></span>
+<span id="cb30-2">or_estimates <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">bind_rows</span>(</span>
+<span id="cb30-3">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Unadjusted"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> </span>
+<span id="cb30-4">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tidy</span>(lrm_unadj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">conf.int =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">exponentiate =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb30-5">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">filter</span>(term <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatmentT"</span>),</span>
+<span id="cb30-6">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Adjusted"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> </span>
+<span id="cb30-7">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tidy</span>(lrm_adj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">conf.int =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">exponentiate =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb30-8">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">filter</span>(term <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatmentT"</span>),</span>
+<span id="cb30-9">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">.id =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"model"</span></span>
+<span id="cb30-10">) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb30-11">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">select</span>(model, estimate, conf.low, conf.high)</span>
+<span id="cb30-12"></span>
+<span id="cb30-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># risk difference estimates</span></span>
+<span id="cb30-14">rd_estimates <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">bind_rows</span>(</span>
+<span id="cb30-15">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Unadjusted"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span></span>
+<span id="cb30-16">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">avg_comparisons</span>(lrm_unadj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">variables =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatment"</span>),</span>
+<span id="cb30-17">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Adjusted"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span></span>
+<span id="cb30-18">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">avg_comparisons</span>(lrm_adj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">variables =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatment"</span>),</span>
+<span id="cb30-19">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">.id =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"model"</span></span>
+<span id="cb30-20">) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb30-21">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">select</span>(model, estimate, conf.low, conf.high)</span>
+<span id="cb30-22"></span>
+<span id="cb30-23"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># relative risk estimates</span></span>
+<span id="cb30-24">rr_estimates <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">bind_rows</span>(</span>
+<span id="cb30-25">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Unadjusted"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span></span>
+<span id="cb30-26">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">avg_comparisons</span>(lrm_unadj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">variables =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatment"</span>,</span>
+<span id="cb30-27">                    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">comparison =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"lnratioavg"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">transform =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"exp"</span>),</span>
+<span id="cb30-28">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Adjusted"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span></span>
+<span id="cb30-29">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">avg_comparisons</span>(lrm_adj, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">variables =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"treatment"</span>,</span>
+<span id="cb30-30">                    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">comparison =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"lnratioavg"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">transform =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"exp"</span>),</span>
+<span id="cb30-31">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">.id =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"model"</span></span>
+<span id="cb30-32">) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb30-33">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">select</span>(model, estimate, conf.low, conf.high)</span>
+<span id="cb30-34"></span>
+<span id="cb30-35"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># combine all estimands into a single data frame</span></span>
+<span id="cb30-36">all_estimates <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">bind_rows</span>(</span>
+<span id="cb30-37">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Odds ratio"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> or_estimates,</span>
+<span id="cb30-38">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Risk difference"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> rd_estimates,</span>
+<span id="cb30-39">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Relative risk"</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> rr_estimates,</span>
+<span id="cb30-40">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">.id =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"estimand"</span></span>
+<span id="cb30-41">)</span>
+<span id="cb30-42"></span>
+<span id="cb30-43"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># plot!</span></span>
+<span id="cb30-44">all_estimates <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb30-45">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">model =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fct_inorder</span>(model), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">estimand =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fct_inorder</span>(estimand)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%&gt;%</span></span>
+<span id="cb30-46">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ggplot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> estimate, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmin =</span> conf.low, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xmax =</span> conf.high,</span>
+<span id="cb30-47">             <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> model)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb30-48">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_pointrange</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb30-49">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">scale_y_discrete</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> rev) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb30-50">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">facet_wrap</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vars</span>(estimand), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nrow =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">scales =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"free"</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb30-51">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">panel_border</span>() <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb30-52">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">labs</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Estimate (95% CI)"</span>)</span></code></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="https://cameronpatrick.com/post/2023/07/logit-rd-rr/index_files/figure-html/coef-plot-1.png" class="img-fluid" width="780"></p>
+</div>
+</div>
+</section>
+<section id="acknowledgements" class="level2">
+<h2 class="anchored" data-anchor-id="acknowledgements">Acknowledgements</h2>
+<p>Thanks to those who provided feedback on earlier versions of this post, some which resulted in substantial revisions and improvements:</p>
+<ul>
+<li>Isabella Ghement</li>
+<li>Lachlan Cribb</li>
+<li>Solomon Kurz</li>
+</ul>
+<p>This does not represent an endorsement of this post by any of the above. Mistakes and opinions are entirely my own.</p>
+<p>Feedback welcome, especially any corrections in cases where I may have misunderstood or misattributed arguments, or made clear factual errors.</p>
+</section>
+<section id="references" class="level2">
+
+
+
+
+</section>
+
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-line-spacing="2">
+<div id="ref-altman1998oddsratiosshould" class="csl-entry">
+Altman, D. G., Deeks, J. J., &amp; Sackett, D. L. (1998). Odds ratios should be avoided when events are common. <em>BMJ</em>, <em>317</em>(7168), 1318–1318. <a href="https://doi.org/10.1136/bmj.317.7168.1318">https://doi.org/10.1136/bmj.317.7168.1318</a>
+</div>
+<div id="ref-daniel2021makingapplesoranges" class="csl-entry">
+Daniel, R., Zhang, J., &amp; Farewell, D. (2021). Making apples from oranges: Comparing noncollapsible effect estimators and their standard errors after adjustment for different covariate sets. <em>Biometrical Journal</em>, <em>63</em>(3), 528–557. <a href="https://doi.org/10.1002/bimj.201900297">https://doi.org/10.1002/bimj.201900297</a>
+</div>
+<div id="ref-doi2022controversydebatequestionable" class="csl-entry">
+Doi, S. A., Furuya-Kanamori, L., Xu, C., Lin, L., Chivese, T., &amp; Thalib, L. (2022). Controversy and Debate: Questionable utility of the relative risk in clinical research: Paper 1: A call for change to practice. <em>Journal of Clinical Epidemiology</em>, <em>142</em>, 271–279. <a href="https://doi.org/10.1016/j.jclinepi.2020.08.019">https://doi.org/10.1016/j.jclinepi.2020.08.019</a>
+</div>
+<div id="ref-greenland1999confoundingcollapsibilitycausal" class="csl-entry">
+Greenland, S., Pearl, J., &amp; Robins, J. M. (1999). Confounding and Collapsibility in Causal Inference. <em>Statistical Science</em>, <em>14</em>(1). <a href="https://doi.org/10.1214/ss/1009211805">https://doi.org/10.1214/ss/1009211805</a>
+</div>
+<div id="ref-moher2010consort2010explanation" class="csl-entry">
+Moher, D., Hopewell, S., Schulz, K. F., Montori, V., Gotzsche, P. C., Devereaux, P. J., Elbourne, D., Egger, M., &amp; Altman, D. G. (2010). CONSORT 2010 Explanation and Elaboration: updated guidelines for reporting parallel group randomised trials. <em>BMJ</em>, <em>340</em>(mar23 1), c869–c869. <a href="https://doi.org/10.1136/bmj.c869">https://doi.org/10.1136/bmj.c869</a>
+</div>
+<div id="ref-morris2022planningmethodcovariate" class="csl-entry">
+Morris, T. P., Walker, A. S., Williamson, E. J., &amp; White, I. R. (2022). Planning a method for covariate adjustment in individually randomised trials: a practical guide. <em>Trials</em>, <em>23</em>(1), 328. <a href="https://doi.org/10.1186/s13063-022-06097-z">https://doi.org/10.1186/s13063-022-06097-z</a>
+</div>
+<div id="ref-permutt2020covariateschangeestimand" class="csl-entry">
+Permutt, T. (2020). Do Covariates Change the Estimand? <em>Statistics in Biopharmaceutical Research</em>, <em>12</em>(1), 45–53. <a href="https://doi.org/10.1080/19466315.2019.1647874">https://doi.org/10.1080/19466315.2019.1647874</a>
+</div>
+<div id="ref-rohrer2021preciseanswersvague" class="csl-entry">
+Rohrer, J. M., &amp; Arslan, R. C. (2021). Precise Answers to Vague Questions: Issues With Interactions. <em>Advances in Methods and Practices in Psychological Science</em>, <em>4</em>(2), 251524592110073. <a href="https://doi.org/10.1177/25152459211007368">https://doi.org/10.1177/25152459211007368</a>
+</div>
+<div id="ref-senn2011uneasereasonsmistrusting" class="csl-entry">
+Senn, S. (2011). U is for Unease: Reasons for Mistrusting Overlap Measures for Reporting Clinical Trials. <em>Statistics in Biopharmaceutical Research</em>, <em>3</em>(2), 302–309. <a href="https://doi.org/10.1198/sbr.2010.10024">https://doi.org/10.1198/sbr.2010.10024</a>
+</div>
+<div id="ref-white2021covariateadjustmentrandomised" class="csl-entry">
+White, I. R., Morris, T. P., &amp; Williamson, E. (2021). <em>Covariate adjustment in randomised trials: canonical link functions protect against model mis-specification</em>. <a href="https://doi.org/10.48550/ARXIV.2107.07278">https://doi.org/10.48550/ARXIV.2107.07278</a>
+</div>
+<div id="ref-zipkin2014evidencebasedriskcommunication" class="csl-entry">
+Zipkin, D. A., Umscheid, C. A., Keating, N. L., Allen, E., Aung, K., Beyth, R., Kaatz, S., Mann, D. M., Sussman, J. B., Korenstein, D., Schardt, C., Nagi, A., Sloane, R., &amp; Feldstein, D. A. (2014). Evidence-Based Risk Communication: A Systematic Review. <em>Annals of Internal Medicine</em>, <em>161</em>(4), 270. <a href="https://doi.org/10.7326/M14-0295">https://doi.org/10.7326/M14-0295</a>
+</div>
+</div></section><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>This plural form is non-standard but I’m trying to make it happen.↩︎</p></li>
+<li id="fn2"><p>For a recent example, see <a href="https://thestatsgeek.com/2023/06/23/is-the-ich-e9-estimand-addendum-compatible-with-model-based-estimands/">this talk by Jonathan Bartlett</a>.↩︎</p></li>
+<li id="fn3"><p>Statisticians.↩︎</p></li>
+<li id="fn4"><p>Statisticians use the word “marginal” to refer to a population-level average, or an integral. Economists, on the other hand, use the word “marginal” to refer to a change in a quantity, or a derivative. These opposite meanings can potentially cause a lot of confusion.↩︎</p></li>
+<li id="fn5"><p>This issue is also sometimes raised in longitudinal studies, where it is said that generalised linear mixed models (GLMMs) target conditional odds ratios while generalised estimating equations (GEEs) target marginal odds ratios. This has led to an epidemic of epidemiologists applying GEEs to their data. As far as I understand it, this claim is only half true: odds ratios from GEEs target what you’d get from a GLMM after marginalising over random effects, but are still conditional on other covariates in the model (fixed effects in a GLMM). Confused yet? Probably not nearly as confused as you should be.↩︎</p></li>
+<li id="fn6"><p>Neither is the hazard ratio, which means — despite its ubiquity — Cox regression for survival analysis is technically not allowed by the estimand framework.↩︎</p></li>
+<li id="fn7"><p>Technically, logistic regression directly estimates a conditional difference of log-odds. The difference on the log scale is usually exponentiated and reported as an odds ratio.↩︎</p></li>
+<li id="fn8"><p>Or even an additive model — exactly the same point applies to Generalised Additive Models (GAMs).↩︎</p></li>
+<li id="fn9"><p>At this point you may find yourself inclined to avoid logistic regression purely to spite the mathematicians. I don’t blame you.↩︎</p></li>
+<li id="fn10"><p>Statisticians love being asked to help at the last minute.↩︎</p></li>
+<li id="fn11"><p>The odds ratio is a ratio of ratios, no wonder nobody understands them.↩︎</p></li>
+<li id="fn12"><p>One thing to be aware of is that the standard errors are derived using the delta method, which is a large-sample approximation. There is experimental support for bootstrapping and simulation-based inference in the <code>marginaleffects</code> package to get more accurate estimates in small samples, but this blog post isn’t going there.↩︎</p></li>
+</ol>
+</section></div> ]]></description>
+  <category>r</category>
+  <category>statistics</category>
+  <guid>https://cameronpatrick.com/post/2023/07/logit-rd-rr/index.html</guid>
+  <pubDate>Thu, 13 Jul 2023 14:00:00 GMT</pubDate>
+</item>
 <item>
   <title>Understanding missing data mechanisms using causal DAGs</title>
   <dc:creator>Cameron Patrick</dc:creator>

@@ -1,35 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>https://cameronpatrick.com/post/2023/07/logit-rd-rr/index.html</loc>
+    <lastmod>2023-07-14T08:41:37.211Z</lastmod>
+  </url>
+  <url>
     <loc>https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html</loc>
-    <lastmod>2023-07-14T06:36:08.913Z</lastmod>
+    <lastmod>2023-07-14T08:41:37.852Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index.html</loc>
-    <lastmod>2023-07-14T06:36:09.887Z</lastmod>
+    <lastmod>2023-07-14T08:41:38.832Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index.html</loc>
-    <lastmod>2023-07-14T06:36:10.332Z</lastmod>
+    <lastmod>2023-07-14T08:41:39.306Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2019/12/equivalent-to-t-test/index.html</loc>
-    <lastmod>2023-07-14T06:36:10.637Z</lastmod>
+    <lastmod>2023-07-14T08:41:39.619Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2019/12/understanding-levels-variation/index.html</loc>
-    <lastmod>2023-07-14T06:36:10.974Z</lastmod>
+    <lastmod>2023-07-14T08:41:39.970Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index.html</loc>
-    <lastmod>2023-07-14T06:36:11.532Z</lastmod>
+    <lastmod>2023-07-14T08:41:40.509Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/index.html</loc>
-    <lastmod>2023-07-14T06:49:34.967Z</lastmod>
+    <lastmod>2023-07-14T08:41:40.872Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/blog.html</loc>
-    <lastmod>2023-07-14T06:49:35.423Z</lastmod>
+    <lastmod>2023-07-14T08:41:41.356Z</lastmod>
   </url>
 </urlset>
