@@ -28,7 +28,7 @@ knitr::opts_chunk$set(
 
 When summarising the effect of a treatment or intervention on an outcome measured on a continuous scale, it's almost ubiquitous to represent the Average Treatment Effect (ATE) in the form of a difference of means between the treatment and control groups. When the outcome is binary (yes or no, event occurred or event did not occur), there are three commonly-used measures. The risk difference, also known as absolute risk reduction or difference in proportions, is an absolute measure of effect size: the proportion in one group minus the proportion in the other group. The relative risk, also known as the risk ratio, is a relative measure of effect size: the proportion in one group divided by the proportion in the other group. Finally, there is the odds ratio, another relative measure of effect: the odds in one group divided by the odds in the other group. The odds ratio is the odd (ha!) one out in a few ways, and a bit more controversial.
 
-In the first half of this post, I'll dive into the controversy. In the middle, I'll summarise the arguments using a meme. In the second half, I'll work through an example of estimating odds ratios, risk differences, and relative risks in a fictional randomised controlled trial, showing R code examples and hand-calculations.
+In the first half of this post, I'll dive into the controversy. In the middle, I'll summarise the arguments using a meme. In the second half, I'll work through an example of estimating odds ratios, risk differences, and relative risks in a fictional randomised controlled trial, showing R code examples and hand-calculations. I'm taking a particular interest in the application to randomised controlled trials (RCTs) but most of the issues discussed here apply more broadly.
 
 ::: {.callout-note}
 ## What's an odds, anyway?
@@ -51,7 +51,7 @@ In recent years, people[^stat] have become more aware of the mathematical fact o
 
 [^longitudinal]: This issue is also sometimes raised in longitudinal studies, where it is said that generalised linear mixed models (GLMMs) target conditional odds ratios while generalised estimating equations (GEEs) target marginal odds ratios. This has led to an epidemic of epidemiologists applying GEEs to their data. As far as I understand it, this claim is only half true: odds ratios from GEEs target what you'd get from a GLMM after marginalising over random effects, but are still conditional on other covariates in the model (fixed effects in a GLMM). Confused yet? Probably not nearly as confused as you should be.
 
-The problem of noncollapsibility is relevant to the analysis and reporting of randomised clinical trials. The [ICH E9(R1) estimand framework for clinical trials](https://database.ich.org/sites/default/files/E9-R1_Step4_Guideline_2019_1203.pdf) requires a "population-level summary" be defined for each outcome without reference to method used to estimate it. In the language of causal inference, that's describing an Average Treatment Effect (ATE), and the odds ratio isn't one[^coxreg].
+The problem of noncollapsibility is relevant to the analysis and reporting of randomised controlled trials. The [ICH E9(R1) estimand framework for clinical trials](https://database.ich.org/sites/default/files/E9-R1_Step4_Guideline_2019_1203.pdf) requires a "population-level summary" be defined for each outcome without reference to method used to estimate it. In the language of causal inference, that's describing an Average Treatment Effect (ATE), and the odds ratio isn't one[^coxreg].
 
 [^coxreg]: Neither is the hazard ratio, which means --- despite its ubiquity --- Cox regression for survival analysis is technically not allowed by the estimand framework.
 
@@ -149,7 +149,7 @@ Looking at a 2-way table of our hypothetical trial, we can see that the worse ou
 tbl_cross(rct_data, outcome, treatment, percent = "column")
 ```
 
-Just looking at a table won't convince anybody, though. At this point, our hypothetical trialists asked a statistician to help out[^lastminute]. Taking the role of the hypothetical statistician, we'll need to estimate the treatment effect in some way that also quantifies our uncertainty. Let's fit a binary logistic regression model to this data to examine the effect our treatment had on the outcome.
+Just looking at a table won't convince anybody, though. At this point, our hypothetical researchers asked a statistician to help out[^lastminute]. The hypothetical statistician immediately realised the need to estimate the treatment effect in some way that also quantified its uncertainty. A binary logistic regression model seemed like a suitable way to examine the effect of the treatment on the outcome.
 
 [^lastminute]: Statisticians love being asked to help at the last minute.
 
@@ -161,7 +161,7 @@ lrm_unadj <- glm(
 )
 ```
 
-The table below shows the results of this logistic regression: an odds ratio of 0.73 (95% CI: 0.51 to 1.03). The odds ratio being less than 1 indicates that the treatment was beneficial (since the outcome occurring was bad, in this case) but the p-value of 0.074 indicates this effect is not statistically significant. The trialists were sad, their dreams of publishing in the British Medical Journal scuppered.
+The table below shows the results of this logistic regression: an odds ratio of 0.73 (95% CI: 0.51 to 1.03). The odds ratio being less than 1 indicates that the treatment was beneficial (since the outcome occurring was bad, in this case) but the p-value of 0.074 indicates this effect is not statistically significant. The researchers were sad, their dreams of publishing in the British Medical Journal scuppered.
 
 ```{r}
 tbl_regression(lrm_unadj, exponentiate = TRUE)
@@ -169,7 +169,7 @@ tbl_regression(lrm_unadj, exponentiate = TRUE)
 
 ## Adding a covariate
 
-Just as the statistician was finishing writing up the results, the trialists mentioned that the patients they recruited came from two different groups, one of which was known to have much worse outcomes than the other. 
+Just as the statistician was finishing writing up the results, the researchers mentioned that the patients they recruited came from two different groups, one of which was known to have much worse outcomes than the other. 
 
 "Does that matter?" they asked. 
 
@@ -197,7 +197,7 @@ Looking at the coefficients in this model, we can see that the estimated effect 
 tbl_regression(lrm_adj, exponentiate = TRUE)
 ```
 
-The trialists went home happy, dreaming once again of publishing in a high impact factor journal, but the statistician was left with a nagging feeling that something was not quite right. The covariate was balanced between treatment groups, with equal numbers of low risk and high risk assigned to each treatment. Undergraduate linear models courses taught that adding a covariate to the model in this scenario shouldn't change the coefficient for treatment, only the standard error. Why, then, did the estimates change like that? Is logistic regression different from linear regression in this regard?
+The researchers went home happy, dreaming once again of publishing in a high impact factor journal, but the statistician was left with a nagging feeling that something was not quite right. The covariate was balanced between treatment groups, with equal numbers of low risk and high risk assigned to each treatment. Undergraduate linear models courses taught that adding a covariate to the model in this scenario shouldn't change the coefficient for treatment, only the standard error. Why, then, did the estimates change like that? Is logistic regression different from linear regression in this regard?
 
 ## Hand calculations: back to the 2-way table
 
@@ -270,7 +270,7 @@ lrm_adj <- glm(
 )
 ```
 
-The trialists returned to the statistician, requesting adjusted and unadjusted risk differences and relative risks to report in their paper. Fortunately, the statistician was familiar with the `marginaleffects` package, which makes it fairly easy to calculate risk differences from logistic regression models[^stderr].
+The researchers returned to the statistician, requesting adjusted and unadjusted risk differences and relative risks to report in their paper. Fortunately, the statistician was familiar with the `marginaleffects` package, which makes it fairly easy to calculate risk differences from logistic regression models[^stderr].
 
 [^stderr]: One thing to be aware of is that the standard errors are derived using the delta method, which is a large-sample approximation. There is experimental support for bootstrapping and simulation-based inference in the `marginaleffects` package to get more accurate estimates in small samples, but this blog post isn't going there.
 
