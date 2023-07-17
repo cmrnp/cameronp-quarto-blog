@@ -20,7 +20,7 @@
 
 
 
-<p>I decided to write my PhD thesis in <a href="https://quarto.org/">Quarto</a>. Between my idiosyncratic standards for the PDF output and the university’s rigid requirements for what a PhD thesis ought to look like, I know that some degree of tweaking the formatting settings would be required. I’ve never really used Quarto for PDF output before, but since I’m fairly confident using LaTeX, I figured “how hard could it possibly be”.</p>
+<p>I decided to write my PhD thesis in <a href="https://quarto.org/">Quarto</a>. Between my idiosyncratic standards for the PDF output and the university’s rigid requirements for what a PhD thesis ought to look like, I knew that some degree of tweaking the formatting settings would be required. I’ve never really used Quarto for PDF output before, but since I’m fairly confident using LaTeX, I figured “how hard could it possibly be”.</p>
 <p>This post is a slightly elaborated version of the notes I made for myself during the process, shared in the hope that it may be useful for others who want to use Quarto to write reports or theses with idiosyncratic styling.</p>
 <p>The one piece of this post that I haven’t seen spelled out anywhere else on the web is the section on additional front matter before and after the table of contents, which took a bit of LaTeX trickery to achieve. The solution I found is better than the other alternatives I’ve seen (for my purposes, anyway), because it allows you to write the front matter in Markdown instead of LaTeX and have it present in the HTML output as well as PDF.</p>
 <section id="basic-principles" class="level2">
