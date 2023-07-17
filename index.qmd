@@ -1,11 +1,13 @@
 ---
 title: "Cameron Patrick"
+comments: false
 about:
   template: trestles
   image-shape: round
   image: "Cam_headshot_small.jpg"
   links:
-    - blog.qmd
+    - text: Blog
+      file: blog.qmd
     - icon: twitter
       href: https://twitter.com/camjpatrick
     - icon: mastodon

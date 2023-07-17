@@ -1,5 +1,6 @@
 ---
-title: "Blog"
+title: "Cameron Patrick's Blog"
+comments: false
 listing:
   contents: post
   sort: "date desc"

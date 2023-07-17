@@ -226,7 +226,7 @@
   {
     "objectID": "blog.html",
     "href": "blog.html",
-    "title": "Blog",
+    "title": "Cameron Patrick’s Blog",
     "section": "",
     "text": "You are what you ATE: Choosing an effect size measure for binary outcomes\n\n\n\n\n\n\n\nr\n\n\nstatistics\n\n\n\n\nWherein I try to make sense of ongoing debates in the statistical community about how to analyse and report clinical trials targeting binary outcomes, and then write some R code to practice what I hesitantly preach.\n\n\n\n\n\n\n14 July, 2023\n\n\nCameron Patrick\n\n\n\n\n\n\n  \n\n\n\n\nUnderstanding missing data mechanisms using causal DAGs\n\n\n\n\n\n\n\nmissing-data\n\n\nstatistics\n\n\n\n\n\n\n\n\n\n\n\n28 June, 2023\n\n\nCameron Patrick\n\n\n\n\n\n\n  \n\n\n\n\nFitting many statistical models at once using dplyr\n\n\n\n\n\n\n\nr\n\n\nstatistical-models\n\n\n\n\n\n\n\n\n\n\n\n8 June, 2023\n\n\nCameron Patrick\n\n\n\n\n\n\n  \n\n\n\n\nMaking beautiful bar charts with ggplot\n\n\n\n\n\n\n\nr\n\n\nggplot2\n\n\n\n\n\n\n\n\n\n\n\n15 March, 2020\n\n\nCameron Patrick\n\n\n\n\n\n\n  \n\n\n\n\nThings which are equivalent to t-tests\n\n\n\n\n\n\n\nstatistics\n\n\nt-test\n\n\n\n\n\n\n\n\n\n\n\n16 December, 2019\n\n\nCameron Patrick\n\n\n\n\n\n\n  \n\n\n\n\nUnderstanding levels of variation and mixed models\n\n\n\n\n\n\n\nstatistics\n\n\nmixed-models\n\n\n\n\n\n\n\n\n\n\n\n10 December, 2019\n\n\nCameron Patrick\n\n\n\n\n\n\n  \n\n\n\n\nPlotting multiple variables at once using ggplot2 and tidyr\n\n\n\n\n\n\n\nr\n\n\nggplot\n\n\n\n\n\n\n\n\n\n\n\n26 November, 2019\n\n\nCameron Patrick\n\n\n\n\n\n\nNo matching items"
   }

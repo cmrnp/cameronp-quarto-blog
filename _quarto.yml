@@ -17,7 +17,8 @@ website:
 #    foreground: "#565e59"
     foreground: "#dce3da"
     right:
-      - blog.qmd
+      - text: Blog
+        file: blog.qmd
       - icon: twitter
         href: https://twitter.com/camjpatrick
       - icon: mastodon
@@ -31,14 +32,18 @@ format:
     css: styles.css
     fontsize: 1.2em
     linestretch: 1.7
-    mainfont: Helvetica, Arial, sans
-    monofont: Cascadia Mono, Menlo, Courier New
+    mainfont: Helvetica Neue, Helvetica, Arial, sans
+    monofont: Cascadia Mono, Menlo, Consolas, Courier Prime, Courier New, Courier
     backgroundcolor: "white"
 #    backgroundcolor: "#fafbf9"
     fontcolor: "#323331"
     knitr:
       opts_chunk:
         dev: "ragg_png"
+
+comments:
+  giscus:
+    repo: cmrnp/cameronp-quarto-blog
 
 date-format: "D MMMM, YYYY"
 
