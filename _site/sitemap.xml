@@ -1,39 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>https://cameronpatrick.com/post/2023/07/quarto-thesis-formatting/index.html</loc>
+    <lastmod>2023-07-17T15:27:44.771Z</lastmod>
+  </url>
+  <url>
     <loc>https://cameronpatrick.com/post/2023/07/logit-rd-rr/index.html</loc>
-    <lastmod>2023-07-17T10:56:50.051Z</lastmod>
+    <lastmod>2023-07-17T15:27:46.874Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html</loc>
-    <lastmod>2023-07-17T10:56:51.398Z</lastmod>
+    <lastmod>2023-07-17T15:27:48.125Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index.html</loc>
-    <lastmod>2023-07-17T10:56:53.249Z</lastmod>
+    <lastmod>2023-07-17T15:27:49.745Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index.html</loc>
-    <lastmod>2023-07-17T10:56:54.385Z</lastmod>
+    <lastmod>2023-07-17T15:27:50.723Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2019/12/equivalent-to-t-test/index.html</loc>
-    <lastmod>2023-07-17T10:56:55.456Z</lastmod>
+    <lastmod>2023-07-17T15:27:51.629Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2019/12/understanding-levels-variation/index.html</loc>
-    <lastmod>2023-07-17T10:56:56.309Z</lastmod>
+    <lastmod>2023-07-17T15:27:52.662Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index.html</loc>
-    <lastmod>2023-07-17T10:56:57.494Z</lastmod>
+    <lastmod>2023-07-17T15:27:53.901Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/index.html</loc>
-    <lastmod>2023-07-17T10:56:57.849Z</lastmod>
+    <lastmod>2023-07-17T15:27:54.264Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/blog.html</loc>
-    <lastmod>2023-07-17T10:56:58.333Z</lastmod>
+    <lastmod>2023-07-17T15:27:54.787Z</lastmod>
   </url>
 </urlset>
