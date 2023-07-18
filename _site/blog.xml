@@ -90,7 +90,7 @@ font-style: inherit;"> source</span></span></code></pre></div>
 <p>All of these go inside the <code>format:</code> → <code>pdf:</code> chunk of the YAML. They’re documented in the Quarto manual but that’s very long and sometimes unclear (partly because Quarto can produce PDF output both via LaTeX and via HTML, and different options apply to each). Here’s what I cared about enough to mess with:</p>
 <ul>
 <li>LaTeX document class: Quarto’s default templates will take advantage of the KOMA Script classes if you use those, and they seem to make some customisation nicer than the LaTeX packages I’ve used previously. So <code>documentclass: scrbook</code> for two-sided or <code>documentclass: scrreprt</code> for single-sided (note the lack of “o” in “scrreprt”)</li>
-<li>You can change the name of the PDF file produced, e.g.&nbsp;<code>output-file: "FirstnameLastname_thesis.pdf"</code></li>
+<li>You can change the name of the PDF file produced, e.g.&nbsp;<code>output-file: "FirstnameLastname_thesis.pdf"</code> (this one goes under the <code>book:</code> top-level YAML section, not under <code>format: pdf:</code>)</li>
 <li>Set <code>keep-tex: true</code> so you can take a squiz at the generated TeX file. I found this helped when figuring out what I needed to change to bend the output to my whims</li>
 <li>Enable Table of Contents, List of Figures, List of Tables; <code>toc-depth</code> of three means that the Table of Contents will show up to <code>\subsection</code> (or <code>###</code> headings in Markdown):</li>
 </ul>

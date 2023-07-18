@@ -75,7 +75,7 @@ Instead of `editor: visual`. Or vice versa, if you prefer the visual editor.
 All of these go inside the `format:` → `pdf:` chunk of the YAML. They're documented in the Quarto manual but that's very long and sometimes unclear (partly because Quarto can produce PDF output both via LaTeX and via HTML, and different options apply to each). Here's what I cared about enough to mess with:
 
 - LaTeX document class: Quarto's default templates will take advantage of the KOMA Script classes if you use those, and they seem to make some customisation nicer than the LaTeX packages I've used previously. So `documentclass: scrbook` for two-sided or `documentclass: scrreprt` for single-sided (note the lack of "o" in "scrreprt")
-- You can change the name of the PDF file produced, e.g. `output-file: "FirstnameLastname_thesis.pdf"`
+- You can change the name of the PDF file produced, e.g. `output-file: "FirstnameLastname_thesis.pdf"` (this one goes under the `book:` top-level YAML section, not under `format: pdf:`)
 - Set `keep-tex: true` so you can take a squiz at the generated TeX file. I found this helped when figuring out what I needed to change to bend the output to my whims
 - Enable Table of Contents, List of Figures, List of Tables; `toc-depth` of three means that the Table of Contents will show up to `\subsection` (or `###` headings in Markdown):
 ```yaml
