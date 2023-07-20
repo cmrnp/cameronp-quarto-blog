@@ -8,11 +8,15 @@ about:
   links:
     - text: Blog
       file: blog.qmd
-    - icon: twitter
-      href: https://twitter.com/camjpatrick
     - icon: mastodon
+      text: Mastodon
       href: "https://fosstodon.org/@cameronpat"
+      rel: "me"
+    - icon: twitter
+      text: Twitter
+      href: https://twitter.com/camjpatrick
     - icon: github
+      text: GitHub
       href: https://github.com/cmrnp
 format:
   html:
