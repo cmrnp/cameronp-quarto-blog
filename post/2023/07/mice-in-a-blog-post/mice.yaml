@@ -1,0 +1,107 @@
+---
+references:
+- id: gelman2014bayesiandataanalysis
+  abstract: >-
+    "Preface This book is intended to have three roles and to serve three
+    associated audiences: an introductory text on Bayesian inference starting
+    from first principles, a graduate text on effective current approaches to
+    Bayesian modeling and computation in statistics and related fields, and a
+    handbook of Bayesian methods in applied statistics for general users of and
+    researchers in applied statistics. Although introductory in its early
+    sections, the book is definitely not elementary in the sense of a first text
+    in statistics. The mathematics used in our book is basic probability and
+    statistics, elementary calculus, and linear algebra. A review of probability
+    notation is given in Chapter 1 along with a more detailed list of topics
+    assumed to have been studied. The practical orientation of the book means
+    that the reader's previous experience in probability, statistics, and linear
+    algebra should ideally have included strong computational components. To
+    write an introductory text alone would leave many readers with only a taste
+    of the conceptual elements but no guidance for venturing into genuine
+    practical applications, beyond those where Bayesian methods agree
+    essentially with standard non-Bayesian analyses. On the other hand, we feel
+    it would be a mistake to present the advanced methods without first
+    introducing the basic concepts from our data-analytic perspective.
+    Furthermore, due to the nature of applied statistics, a text on current
+    Bayesian methodology would be incomplete without a variety of worked
+    examples drawn from real applications. To avoid cluttering the main
+    narrative, there are bibliographic notes at the end of each chapter and
+    references at the end of the book"--
+  author:
+    - family: Gelman
+      given: Andrew
+    - family: Carlin
+      given: John B.
+    - family: Stern
+      given: Hal S.
+    - family: Dunson
+      given: David B.
+    - family: Vehtari
+      given: Aki
+    - family: Rubin
+      given: Donald B.
+  call-number: QA279.5 .G45 2014
+  citation-key: gelman2014bayesiandataanalysis
+  collection-title: Chapman & Hall/CRC texts in statistical science
+  edition: Third edition
+  event-place: Boca Raton
+  ISBN: 978-1-4398-4095-5
+  issued:
+    - year: 2014
+  number-of-pages: '661'
+  publisher: CRC Press
+  publisher-place: Boca Raton
+  source: Library of Congress ISBN
+  title: Bayesian data analysis
+  type: book
+
+- id: vanbuuren2007multipleimputationdiscrete
+  abstract: >-
+    The goal of multiple imputation is to provide valid inferences for
+    statistical estimates from incomplete data. To achieve that goal, imputed
+    values should preserve the structure in the data, as well as the uncertainty
+    about this structure, and include any knowledge about the process that
+    generated the missing data. Two approaches for imputing multivariate data
+    exist: joint modeling (JM) and fully conditional specification (FCS). JM is
+    based on parametric statistical theory, and leads to imputation procedures
+    whose statistical properties are known. JM is theoretically sound, but the
+    joint model may lack flexibility needed to represent typical data features,
+    potentially leading to bias. FCS is a semi-parametric and flexible
+    alternative that specifies the multivariate model by a series of conditional
+    models, one for each incomplete variable. FCS provides tremendous
+    flexibility and is easy to apply, but its statistical properties are
+    difficult to establish. Simulation work shows that FCS behaves very well in
+    the cases studied. The present paper reviews and compares the approaches. JM
+    and FCS were applied to pubertal development data of 3801 Dutch girls that
+    had missing data on menarche (two categories), breast development (five
+    categories) and pubic hair development (six stages). Imputations for these
+    data were created under two models: a multivariate normal model with
+    rounding and a conditionally specified discrete model. The JM approach
+    introduced biases in the reference curves, whereas FCS did not. The paper
+    concludes that FCS is a useful and easily applied flexible alternative to JM
+    when no convenient and realistic joint distribution can be specified.
+  accessed:
+    - year: 2023
+      month: 5
+      day: 31
+  author:
+    - family: Van Buuren
+      given: Stef
+  citation-key: vanbuuren2007multipleimputationdiscrete
+  container-title: Statistical Methods in Medical Research
+  container-title-short: Stat Methods Med Res
+  DOI: 10.1177/0962280206074463
+  ISSN: 0962-2802, 1477-0334
+  issue: '3'
+  issued:
+    - year: 2007
+      month: 6
+  language: en
+  page: 219-242
+  source: DOI.org (Crossref)
+  title: >-
+    Multiple imputation of discrete and continuous data by fully conditional
+    specification
+  type: article-journal
+  URL: http://journals.sagepub.com/doi/10.1177/0962280206074463
+  volume: '16'
+...

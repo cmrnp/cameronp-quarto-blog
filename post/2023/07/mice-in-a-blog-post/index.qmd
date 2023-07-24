@@ -1,0 +1,264 @@
+---
+title: "Dirty imputation done dirt cheap: implementing Multiple Imputation by Chained Equations in one blog post"
+author: "Cameron Patrick"
+date: "2023-07-24"
+draft: true
+categories: [r, statistics]
+csl: apa.csl
+bibliography: mice.yaml
+format:
+  html:
+    toc: true
+abstract: |
+  An attempt to understand in detail how Multiple Imputation by Chained
+  Equations (MICE) works, by coding it up from scratch.
+execute:
+  echo: true
+  message: false
+  warning: false
+fig-width: 5.5
+fig-height: 3.5
+fig-dpi: 130
+---
+
+## Introduction
+
+Coding up an algorithm is a great way to make sure you really understand how the details work. In this post I'm going to implement multiple imputation and the MICE algorithm [@vanbuuren2007multipleimputationdiscrete], albeit in much simplified form: only considering numeric variables, only using Normal-distribution Bayesian linear regression to generate the imputed data, no concern about robustness.
+
+## Bayesian linear regression
+
+We will be imputing each individual variable with missing data using Bayesian linear regression with uninformative Jeffreys priors. For this choice of prior, the posterior distribution of the parameters has an easily computable analytic distribution. This approach is explained in detail in @gelman2014bayesiandataanalysis, chapter 14.
+
+The regression equation is given by $E(Y|X) = X^T \beta$, where $Y$ is a column vector of observations, $X$ is the design matrix, and $\beta$ is a column vector of regression coefficients. We assume independent normally distributed errors with equal standard deviation: $Y|X \sim \mathrm{MVN}(0, \sigma^2 I)$. In other words, the usual classical linear regression.
+
+### Obtaining parameter estimates from Jeffreys priors
+
+The simplest choice of prior (in terms of easily obtaining a posterior distribution) is the Jeffreys prior, which is an improper uninformative prior: uniform over $(\beta, \log \sigma)$. In this case, the posterior distribution of $\beta$ is multivariate normal: $\beta \sim \mathrm{MVN}(\hat\beta, V)$. Here $\hat\beta = (X^T X)^{-1} X^T Y$ is the frequentist maximum likelihood estimate (ordinary least squares regression) and $V = \sigma^2 (X^T X)^{-1}$ is the usual linear regression variance-covariance matrix.
+
+The posterior distribution of $\sigma^2$ is $\mathrm{Inverse-}\chi^2(n-k, s^2)$ where $s^2$ is the standard frequentist estimate of the residual variance [@gelman2014bayesiandataanalysis, p. 355]. This scaled inverse $\chi^2$ distribution was a new one to me[^ugbayes]. We say a random variable $U \sim \mathrm{Inverse-}\chi^2(\nu, \mu)$ if $V \sim \chi^2(\nu)$ and $U = \nu\mu/V$ [@gelman2014bayesiandataanalysis, p. 581].
+
+[^ugbayes]: Well, I probably met it and forgot about it long ago in undergrad Bayes class.
+
+We could just use the built-in R `lm` function, but it's been a long time since I last implemented linear regression from scratch, so thought I'd give it a go here. If you're not interested in seeing this, scroll to the next section.
+
+```{r}
+# estimate_bayes_lm_jeffreys(Y, X): obtain Bayesian linear regression parameter
+# estimates from design matrix X and observations Y, using a Jeffreys prior.
+# Should produce the same output as lm().
+estimate_bayes_lm_jeffreys <- function(Y, X) {
+  stopifnot(is.matrix(X) & is.numeric(X) & !any(is.na(X)))
+  stopifnot(is.vector(Y) & is.numeric(Y) & !any(is.na(Y)))
+  stopifnot(nrow(X) == length(Y))
+
+  # crossprod(X) computes X^T X
+  # solve(X, Y) computes X^-1 Y
+  # Some fiddling is needed since we want our vector outputs to be R vectors,
+  # not R matrices
+  xtx <- crossprod(X)
+  beta <- as.vector(solve(xtx, t(X) %*% Y))
+  df <- nrow(X) - ncol(X)
+  s2 <- as.vector(crossprod(Y - X %*% beta) / df)
+  V <- s2 * solve(xtx)
+
+  # Attach variable names to regression coefficients
+  names(beta) <- colnames(X)
+
+  res <- list(X = X, Y = Y, beta = beta, V = V, df = df, s2 = s2)
+  class(res) <- "bayeslm"
+  res
+}
+```
+
+This function expects a vector of observations and a design matrix containing the predictors, but that's not very convenient in practice. To make this easier to use, let's write a function that implements a formula interface closer to the standard R `lm` function. This takes advantage of two base R functions: `model.frame` takes a model formula and prepares a data frame with the variables mentioned in it, with the outcome variable first, omitting missing values, and providing the option to only include a subset of rows; and `model.matrix` which creates a design matrix from a formula and a data frame, adding an intercept and creating dummy variables for categorical variables if needed.
+
+```{r}
+bayes_lm <- function(
+  formula, data = NULL, subset = NULL, 
+  na.action = getOption("na.action"),
+  estimator = estimate_bayes_lm_jeffreys
+) {
+  if (is.character(na.action)) {
+    na.action <- get(na.action)
+  }
+  mf_args <- list(formula = formula, data = data,
+                  subset = subset, na.action = na.action)
+  model_frame <- do.call(stats::model.frame, mf_args)
+  model_matrix <- model.matrix(formula, model_frame)
+  estimator(model_frame[[1]], model_matrix)
+}
+```
+
+To make the objects that we've created behave a bit more like standard R `lm` objects, we can implement some S3 methods for our new type of object:
+
+```{r}
+coef.bayeslm <- function(m) m$beta
+vcov.bayeslm <- function(m) m$V
+sigma.bayeslm <- function(m) sqrt(m$s2)
+df.residual.bayeslm <- function(m) m$df
+resid.bayeslm <- function(m) (m$Y - m$X %*% t(m$beta))
+print.bayeslm <- function(m, digits = 3) {
+  cat("Coefficients:\n")
+  print(format(m$beta, digits = digits), quote = FALSE)
+}
+summary.bayeslm <- function(m)
+  data.frame(
+    term = names(m$beta),
+    estimate = m$beta,
+    std.error = sqrt(diag(m$V)),
+    conf.low = m$beta - qt(0.975, m$df) * sqrt(diag(m$V)),
+    conf.high = m$beta + qt(0.975, m$df) * sqrt(diag(m$V)),
+    row.names = seq_along(m$beta)
+  )
+```
+
+Let's make sure this works as expected, using the `penguins` data from the `palmerpenguins` package:
+
+```{r}
+library(palmerpenguins)
+data(penguins)
+```
+
+Fit two models, one using `lm` and one using `bayes_lm`, to predict bill length from flipper length:
+
+```{r}
+penguins_lm <- lm(
+  bill_length_mm ~ flipper_length_mm , 
+  data = penguins
+)
+penguins_blm <- bayes_lm(
+  bill_length_mm ~ flipper_length_mm,
+  data = penguins
+)
+```
+
+Check that the regression coefficients are the same for both models:
+
+```{r}
+summary(penguins_lm)
+summary(penguins_blm)
+```
+
+### Drawing from the posterior predictive distribution
+
+To sample from the posterior predictive distribution, we use a two-stage process. First, draw from the posterior distribution of the parameters (regression coefficients and residual variance). As previously discussed, the regression coefficients have a multivariate normal distribution and the residual variance has an $\mathrm{Inverse-}\chi^2$ distribution. Secondly, draw posterior predictions conditional on those parameter estimates, using $Y|X,\beta,\sigma^2 \sim \mathrm{N}(X^T \beta, \sigma^2)$.
+
+The function below does the first stage, drawing from the posterior distribution of the model parameters. It doesn't require the model to be fit using the code from above, this should work for any `lm` model.
+
+```{r}
+draw_bayes_lm_params <- function(m, ndraw = 1) {
+  stopifnot(inherits(m, c("lm", "bayeslm")))
+  stopifnot(is.numeric(ndraw) & length(ndraw) == 1 & ndraw >= 1)
+
+  # Draw from the posterior distribution of parameters
+  draw_beta <- mvtnorm::rmvnorm(ndraw, coef(m), vcov(m))
+  df <- df.residual(m)
+  draw_sigma <- sigma(m) * sqrt(df / rchisq(ndraw, df))
+  list(beta = draw_beta, sigma = draw_sigma)
+}
+```
+
+```{r}
+#| include: false
+library(tidyverse)
+library(ggdist)
+library(cowplot)
+theme_set(theme_cowplot(font_size = 11, rel_small = 1, rel_tiny = 1, rel_large = 1))
+set.seed(12345)
+```
+
+To get some idea if this is working, let's plot the posterior distribution of our parmaeters. They look like what we might expect - normally distributed about the parameter estimates shown above. In fact the distribution of sigma looks far closer to normal than I expected, given it's actually a scaled inverse Chi squared distribution!
+
+```{r, posterior-param-dists}
+#| code-fold: true
+#| fig-width: 5.5
+#| fig-height: 2
+#| fig-align: center
+penguins_blm %>%
+  draw_bayes_lm_params(1000) %>%
+  map(as_tibble) %>%
+  bind_cols() %>%
+  rename(sigma = value) %>%
+  pivot_longer(everything(), names_to = "var", values_to = "value") %>%
+  ggplot(aes(x = value)) +
+  stat_slabinterval(normalize = "panels") +
+  scale_y_continuous(breaks = NULL) +
+  facet_wrap(vars(var), scales = "free") +
+  labs(x = "value", y = "density") +
+  panel_border() +
+  theme(axis.text.x = element_text(size = rel(9/11)))
+```
+
+The regression coefficients for flipper length and intercept are negatively correlated, as we might expect:
+
+```{r, posterior-param-corr}
+#| code-fold: true
+#| fig-align: center
+penguins_blm %>%
+  draw_bayes_lm_params(100) %>%
+  pluck("beta") %>%
+  as_tibble() %>%
+  ggplot(aes(x = flipper_length_mm, y = `(Intercept)`)) +
+  geom_point(pch = 1)
+```
+
+Now we're more confident that seemed to work, we can write another function to estimate the posterior predictive distribution of a bunch of new observations, given their X values. This works by drawing a set of $\beta$ parameters, calculating Y values from those, and adding some normally-distributed random noise based on $\sigma^2$. This results in the model-predicted distribution of new observations.
+
+```{r}
+draw_bayes_lm_ppred <- function(m, X = m$X, ndraw = 1) {
+  stopifnot(inherits(m, c("lm", "bayeslm")))
+  stopifnot(is.matrix(X) & is.numeric(X) & !any(is.na(X)))
+  stopifnot(ncol(X) == length(m$beta))
+
+  params <- draw_bayes_lm_params(m, ndraw = ndraw)
+  X %*% t(params$beta) + matrix(
+    rnorm(nrow(X) * ndraw, 0, rep(params$sigma, each = nrow(X))),
+    nrow = nrow(X)
+  )
+}
+```
+
+To demonstrate this in action, the plot below shows a subset of the penguins data, the regression line (grey), the observed data (solid blue points), and 10 draws from the posterior predictive distribution (red circles):
+
+```{r, posterior-ppred-plot}
+#| code-fold: true
+#| fig-align: center
+set.seed(42)
+penguins_subset <- penguins %>%
+  select(bill_length_mm, flipper_length_mm) %>%
+  drop_na() %>%
+  sample_n(30)
+penguins_subset_ppred <- draw_bayes_lm_ppred(
+  penguins_blm, 
+  model.matrix(bill_length_mm ~ flipper_length_mm, data = penguins_subset), 
+  ndraw = 10
+)
+penguins_subset_ppred_dat <- penguins_subset_ppred %>%
+  as_tibble(.name_repair = "unique") %>%
+  bind_cols(flipper_length_mm = penguins_subset$flipper_length_mm) %>%
+  pivot_longer(-flipper_length_mm, 
+               names_to = "rep",
+               values_to = "bill_length_mm")
+ggplot(penguins_subset, aes(x = flipper_length_mm, y = bill_length_mm)) +
+  geom_abline(intercept = coef(penguins_blm)[1],
+              slope = coef(penguins_blm)[2],
+              colour = "black",
+              linewidth = 1.5,
+              alpha = 0.5) +
+  geom_point(colour = "dodgerblue4", size = 4, alpha = 0.5, stroke = NA) +
+  geom_point(colour = "firebrick4", size = 1, pch = 1,
+             data = penguins_subset_ppred_dat, alpha = 0.5)
+```
+
+## Creating imputations by chained equations
+
+### The first iteration of imputed data
+
+### Creating subsequent iterations
+
+## Pooling imputations using Rubin's rules
+
+## Taking it for a test ride
+
+## Acknowledgements
+
+## References
