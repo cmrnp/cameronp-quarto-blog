@@ -259,7 +259,7 @@ Now we have a function to draw from the posterior of a Bayesian linear regressio
 
 1. Create an initial dataset with complete values for all variables. (In this simple implementation, I will replace all missing values with the mean of the observed values.)
 
-2. For each incomplete variable, take the most recent iteration fit an appropriate linear regression to the subset of the observations for which that variable has been observed. Draw from the posterior predictive distribution to fill in new values for the observations where that variable was not observed.
+2. For each incomplete variable, take the most recent iteration and fit an appropriate linear regression to the subset of the observations for which that variable has been observed. Draw from the posterior predictive distribution to fill in new values for the observations where that variable was not observed.
 
 3. Repeat step 2 a fixed number of terms (`iter` in our example implementation).
 
@@ -484,7 +484,7 @@ The `dunnart_all_iters_long()` function does similar, but includes all intermedi
 ```{r}
 dunnart_all_iters_long <- function(obj) {
   stopifnot(inherits(obj, "dunnart"))
-  iters <- seq_len(obj$iter + 1) - 1
+  iters <- 0:obj$iter
   bind_rows(
     map(iters, \(i) dunnart_complete_long(obj, i)) %>%
       set_names(iters),
