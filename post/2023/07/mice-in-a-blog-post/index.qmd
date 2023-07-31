@@ -33,7 +33,7 @@ If the standard version of this method is called MICE, think of this as a smalle
 
 We will be imputing each individual variable with missing data using Bayesian linear regression with uninformative Jeffreys priors. For this choice of prior, the posterior distribution of the parameters has an easily computable analytic distribution. This approach is explained in detail in @gelman2014bayesiandataanalysis, chapter 14.
 
-The regression equation is given by $E(Y|X) = X^T \beta$, where $Y$ is a column vector of observations, $X$ is the design matrix, and $\beta$ is a column vector of regression coefficients. We assume independent normally distributed errors with equal standard deviation: $Y|X \sim \mathrm{MVN}(X^T \beta, \sigma^2 I)$. In other words, the usual classical linear regression.
+The regression equation is given by $E(Y|X) = X \beta$, where $Y$ is a column vector of observations, $X$ is the design matrix, and $\beta$ is a column vector of regression coefficients. We assume independent normally distributed errors with equal standard deviation: $Y|X \sim \mathrm{MVN}(X \beta, \sigma^2 I)$. In other words, the usual classical linear regression.
 
 ### Obtaining parameter estimates from Jeffreys priors
 
@@ -142,7 +142,7 @@ summary(penguins_blm)
 
 ### Drawing from the posterior predictive distribution {#sec-drawing-posterior}
 
-To sample from the posterior predictive distribution, we use a two-stage process. First, draw from the posterior distribution of the parameters (regression coefficients and residual variance). As previously discussed, the regression coefficients have a multivariate normal distribution and the residual variance has an $\mathrm{Inverse-}\chi^2$ distribution. Secondly, draw posterior predictions conditional on those parameter estimates, using $Y|X,\beta,\sigma^2 \sim \mathrm{N}(X^T \beta, \sigma^2)$.
+To sample from the posterior predictive distribution, we use a two-stage process. First, draw from the posterior distribution of the parameters (regression coefficients and residual variance). As previously discussed, the regression coefficients have a multivariate normal distribution and the residual variance has an $\mathrm{Inverse-}\chi^2$ distribution. Secondly, draw posterior predictions conditional on those parameter estimates, using $Y|X,\beta,\sigma^2 \sim \mathrm{N}(X \beta, \sigma^2)$.
 
 The function below does the first stage, drawing from the posterior distribution of the model parameters. It doesn't require the model to be fit using the code from above, this should work for any `lm` model.
 
