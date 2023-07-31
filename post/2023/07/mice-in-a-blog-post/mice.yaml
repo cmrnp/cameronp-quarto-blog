@@ -95,6 +95,31 @@ references:
   title: Statistical Rethinking
   type: book
 
+- id: rubin1996multipleimputation18
+  accessed:
+    - year: 2023
+      month: 5
+      day: 31
+  author:
+    - family: Rubin
+      given: Donald B.
+  citation-key: rubin1996multipleimputation18
+  container-title: Journal of the American Statistical Association
+  container-title-short: Journal of the American Statistical Association
+  DOI: 10.1080/01621459.1996.10476908
+  ISSN: 0162-1459, 1537-274X
+  issue: '434'
+  issued:
+    - year: 1996
+      month: 6
+  language: en
+  page: 473-489
+  source: DOI.org (Crossref)
+  title: Multiple Imputation after 18+ Years
+  type: article-journal
+  URL: http://www.tandfonline.com/doi/abs/10.1080/01621459.1996.10476908
+  volume: '91'
+
 - id: vanbuuren2007multipleimputationdiscrete
   abstract: >-
     The goal of multiple imputation is to provide valid inferences for

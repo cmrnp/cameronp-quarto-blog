@@ -230,6 +230,7 @@ div.csl-indent {
   <ul class="collapse">
   <li><a href="#the-first-iteration-of-imputed-data" id="toc-the-first-iteration-of-imputed-data" class="nav-link" data-scroll-target="#the-first-iteration-of-imputed-data">The first iteration of imputed data</a></li>
   <li><a href="#creating-subsequent-iterations" id="toc-creating-subsequent-iterations" class="nav-link" data-scroll-target="#creating-subsequent-iterations">Creating subsequent iterations</a></li>
+  <li><a href="#creating-multiple-imputed-datasets" id="toc-creating-multiple-imputed-datasets" class="nav-link" data-scroll-target="#creating-multiple-imputed-datasets">Creating multiple imputed datasets</a></li>
   <li><a href="#functions-for-extracting-imputed-data" id="toc-functions-for-extracting-imputed-data" class="nav-link" data-scroll-target="#functions-for-extracting-imputed-data">Functions for extracting imputed data</a></li>
   </ul></li>
   <li><a href="#taking-it-for-a-test-ride" id="toc-taking-it-for-a-test-ride" class="nav-link" data-scroll-target="#taking-it-for-a-test-ride">Taking it for a test ride</a>
@@ -328,10 +329,8 @@ div.csl-indent {
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">term =</span> <span class="fu">names</span>(m<span class="sc">$</span>beta),</span>
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> m<span class="sc">$</span>beta,</span>
 <span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">std.error =</span> <span class="fu">sqrt</span>(<span class="fu">diag</span>(m<span class="sc">$</span>V)),</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">conf.low =</span> m<span class="sc">$</span>beta <span class="sc">-</span> <span class="fu">qt</span>(<span class="fl">0.975</span>, m<span class="sc">$</span>df) <span class="sc">*</span> <span class="fu">sqrt</span>(<span class="fu">diag</span>(m<span class="sc">$</span>V)),</span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">conf.high =</span> m<span class="sc">$</span>beta <span class="sc">+</span> <span class="fu">qt</span>(<span class="fl">0.975</span>, m<span class="sc">$</span>df) <span class="sc">*</span> <span class="fu">sqrt</span>(<span class="fu">diag</span>(m<span class="sc">$</span>V)),</span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">row.names =</span> <span class="fu">seq_along</span>(m<span class="sc">$</span>beta)</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">row.names =</span> <span class="fu">seq_along</span>(m<span class="sc">$</span>beta)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Let’s make sure this works as expected, using the <code>penguins</code> data from the <code>palmerpenguins</code> package:</p>
 <div class="cell">
@@ -349,7 +348,7 @@ div.csl-indent {
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> penguins</span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Check that the regression coefficients are the same for both models:</p>
+<p>Check that the regression coefficients and standard errors are the same for both models:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(penguins_lm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -375,9 +374,9 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(penguins_blm)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>               term   estimate  std.error    conf.low  conf.high
-1       (Intercept) -7.2648678 3.20015684 -13.5594666 -0.9702689
-2 flipper_length_mm  0.2547682 0.01588914   0.2235148  0.2860216</code></pre>
+<pre><code>               term   estimate  std.error
+1       (Intercept) -7.2648678 3.20015684
+2 flipper_length_mm  0.2547682 0.01588914</code></pre>
 </div>
 </div>
 </section>
@@ -500,51 +499,81 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 </section>
 <section id="creating-imputations-by-chained-equations" class="level2">
 <h2 class="anchored" data-anchor-id="creating-imputations-by-chained-equations">Creating imputations by chained equations</h2>
+<p>Now we have a function to draw from the posterior of a Bayesian linear regression, we can apply it iteratively to each incomplete variable to produce multiple imputed datasets. The MICE algorithm works something like this:</p>
+<ol type="1">
+<li><p>Create an initial dataset with complete values for all variables. (In this simple implementation, I will replace all missing values with the mean of the observed values.)</p></li>
+<li><p>For each incomplete variable, take the most recent iteration fit an appropriate linear regression to the subset of the observations for which that variable has been observed. Draw from the posterior predictive distribution to fill in new values for the observations where that variable was not observed.</p></li>
+<li><p>Repeat step 2 a fixed number of terms (<code>iter</code> in our example implementation).</p></li>
+<li><p>Repeat the entire procedure (steps 1 to 3) <code>m</code> times to produce <code>m</code> imputed datasets.</p></li>
+</ol>
+<p>This section of the blog will reimplement a simple version of this algorithm, which I have named dunnart (a smaller, cuter <del>MICE</del> mouse). It only supports imputation of numerical variables, and only using linear regression. Rather than the comprehensive inputs <code>mice</code> uses to control the imputation algorithm, the main input will be a list of regression formulas, one for each variable to impute.</p>
 <section id="the-first-iteration-of-imputed-data" class="level3">
 <h3 class="anchored" data-anchor-id="the-first-iteration-of-imputed-data">The first iteration of imputed data</h3>
+<p>For the initial iteration of imputation, we will replace all missing values with the mean of the non-missing values. The function below does some error checking (ensures that at it is being called on a numeric variable with at least one missing value and at least one observed value) and then uses <code>replace_na()</code> from the <code>tidyr</code> package to do the actual work.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>dunnart_initial_imputation_for_var <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">is.vector</span>(x) <span class="sc">&amp;</span> <span class="fu">is.numeric</span>(x))</span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="sc">!</span><span class="fu">all</span>(<span class="fu">is.na</span>(x)))</span>
 <span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">any</span>(<span class="fu">is.na</span>(x)))</span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">replace_na</span>(x, <span class="fu">mean</span>(x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>  <span class="co"># replace missing values with the mean of the non-missing values</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">replace_na</span>(x, <span class="fu">mean</span>(x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>The function below applies <code>dunnart_initial_imputation_for_var</code> to several variables in a data frame, selected based on them appearing as outcome variables in a list of regression formulas.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>dunnart_initial_imputation_for_df <span class="ot">&lt;-</span> <span class="cf">function</span>(dat, formula_list) {</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">is.data.frame</span>(dat))</span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">is.list</span>(formula_list))</span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  vars <span class="ot">&lt;-</span> <span class="fu">map_chr</span>(formula_list, \(f) <span class="fu">all.vars</span>(f)[<span class="dv">1</span>])</span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(dat, <span class="fu">across</span>(<span class="fu">all_of</span>(vars), dunnart_initial_imputation_for_var))</span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># find the outcome variable in each formula in formula_list</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  vars <span class="ot">&lt;-</span> <span class="fu">map_chr</span>(formula_list, \(f) <span class="fu">all.vars</span>(f)[<span class="dv">1</span>])</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># do the initial imputation for each of those variables</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(dat, <span class="fu">across</span>(<span class="fu">all_of</span>(vars), dunnart_initial_imputation_for_var))</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="creating-subsequent-iterations" class="level3">
 <h3 class="anchored" data-anchor-id="creating-subsequent-iterations">Creating subsequent iterations</h3>
+<p>The function below, <code>dunnart_impute_var</code>, is really the heart of the multiple imputation algorithm. It takes the original data frame with incomplete data <code>dat_orig</code>, the current working iteration of the imputed data <code>dat_cur</code>, and a regression formula <code>formula</code> to specify which predictors are used for the imputation. There’s an additional flag <code>verbose</code> which controls how much diagnostic information is printed to the console (the default emulates the output of <code>mice</code> as it runs).</p>
+<p>The steps are as follows:</p>
+<ol type="1">
+<li><p>Determine which variable we’re imputing, based on the outcome variable of the regression formula.</p></li>
+<li><p>Determine which observations we need to impute (and the inverse: which observations we should fit the regression model to), based on the original incomplete data frame.</p></li>
+<li><p>Fit a linear regression using the provided model formula to the observations of current imputation-in-progress data frame chosen above.</p></li>
+<li><p>Draw from the posterior predictive distribution of the observations which were not used to fit that model and use them to replace the corresponding observations of the variable we’re imputing.</p></li>
+</ol>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>dunnart_impute_var <span class="ot">&lt;-</span> <span class="cf">function</span>(dat_orig, dat_cur, formula, <span class="at">verbose =</span> <span class="cn">TRUE</span>) {</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">is.data.frame</span>(dat_orig) <span class="sc">&amp;</span> <span class="fu">is.data.frame</span>(dat_cur) <span class="sc">&amp;</span></span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>            <span class="fu">inherits</span>(formula, <span class="st">"formula"</span>))</span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="co"># find the variable we're imputing</span></span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  out_var <span class="ot">&lt;-</span> <span class="fu">all.vars</span>(formula)[<span class="dv">1</span>]</span>
-<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (verbose <span class="sc">&gt;=</span> <span class="dv">2</span>) {</span>
-<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"    imputing using"</span>, <span class="fu">deparse1</span>(formula), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
-<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (verbose <span class="sc">&gt;=</span> <span class="dv">1</span>) {</span>
-<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">" "</span>, out_var)</span>
-<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># which rows have missing data in the original data frame?</span></span>
-<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>  miss_rows <span class="ot">&lt;-</span> <span class="fu">is.na</span>(dat_orig[[out_var]])</span>
-<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>  <span class="co"># fit a regression model to the rows that didn't have missing values in</span></span>
-<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># the original data</span></span>
-<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>  mod <span class="ot">&lt;-</span> <span class="fu">lm</span>(formula, <span class="at">data =</span> dat_cur[<span class="sc">!</span>miss_rows, ])</span>
-<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>  <span class="co"># draw predictions for the rows with missing values</span></span>
-<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>  mf <span class="ot">&lt;-</span> <span class="fu">model.frame</span>(formula, <span class="at">data =</span> dat_cur[miss_rows, ])</span>
-<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>  mat <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(formula, <span class="at">data =</span> mf)</span>
-<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>  dat_cur[miss_rows, out_var] <span class="ot">&lt;-</span> <span class="fu">draw_bayes_lm_ppred</span>(mod, mat)</span>
-<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>  <span class="co"># return updated data frame</span></span>
-<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>  dat_cur</span>
-<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># find the variable we're imputing</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  out_var <span class="ot">&lt;-</span> <span class="fu">all.vars</span>(formula)[<span class="dv">1</span>]</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (verbose <span class="sc">&gt;=</span> <span class="dv">2</span>) {</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"    imputing using"</span>, <span class="fu">deparse1</span>(formula), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (verbose <span class="sc">&gt;=</span> <span class="dv">1</span>) {</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">" "</span>, out_var)</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>  <span class="co"># which rows have missing data in the original data frame?</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>  miss_rows <span class="ot">&lt;-</span> <span class="fu">is.na</span>(dat_orig[[out_var]])</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>  <span class="co"># fit a regression model to the rows that didn't have missing values in</span></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>  <span class="co"># the original data</span></span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>  mod <span class="ot">&lt;-</span> <span class="fu">lm</span>(formula, <span class="at">data =</span> dat_cur[<span class="sc">!</span>miss_rows, ])</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>  <span class="co"># draw predictions for the rows with missing values</span></span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>  mf <span class="ot">&lt;-</span> <span class="fu">model.frame</span>(formula, <span class="at">data =</span> dat_cur[miss_rows, ])</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>  mat <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(formula, <span class="at">data =</span> mf)</span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>  dat_cur[miss_rows, out_var] <span class="ot">&lt;-</span> <span class="fu">draw_bayes_lm_ppred</span>(mod, mat)</span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a>  <span class="co"># return the updated data frame</span></span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a>  dat_cur</span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>To get one complete iteration of the MICE algorithm for a single imputed dataset, we need to apply the above function to each variable we need to impute. This is done using the <code>reduce()</code> function from the <code>purrr</code> package, which repeatedly applies a function to its own output (the current imputed dataset, <code>dat_cur</code>) and a list of new values (the regression model formulas for the variables to impute, <code>formula_list</code>).</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>dunnart_impute_iterate <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  dat_orig, dat_cur, formula_list, <span class="at">verbose =</span> <span class="cn">TRUE</span>, <span class="at">j =</span> <span class="cn">NA</span>, <span class="at">m =</span> <span class="cn">NA</span></span>
@@ -571,6 +600,10 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 <span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>  dat_out</span>
 <span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+</section>
+<section id="creating-multiple-imputed-datasets" class="level3">
+<h3 class="anchored" data-anchor-id="creating-multiple-imputed-datasets">Creating multiple imputed datasets</h3>
+<p>The functions we have above all operate on a single imputed dataset, but we want to produce multiple imputed datasets. The <code>dunnart_multiple_impute_iterate</code> function applies the <code>dunnart_impute_iterate</code> function to a list of imputed datasets using the <code>map2()</code> function from the <code>purrr</code> package. The code is slightly messier than ideal because we pass through some additional information (the imputation index and the total number of imputations) to allow progress reporting in verbose mode.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>dunnart_multiple_impute_iterate <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  data, imp_out, formula_list, <span class="at">verbose =</span> <span class="cn">TRUE</span>, <span class="at">i =</span> <span class="cn">NA</span>, <span class="at">iter =</span> <span class="cn">NA</span></span>
@@ -590,6 +623,7 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 <span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>Finally, putting it all together: <code>dunnart_impute()</code> is our equivalent of the <code>mice()</code> function, taking an incomplete dataset, a list of model formulas, the number of imputed datasets and number of iterations to run, and returning the multiple imputed output. Most of the code here is error checking. The two statements that actually do the work are the ones beginning <code>imp_out &lt;- map(...)</code> to create the initial imputation, and <code>all_imps &lt;- accumulate(...)</code> to create the subsequent iterations by repeatedly calling <code>dunnart_multiple_impute_iterate()</code>. Finally we create an object of class <code>dunnart</code> to hold the results.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>dunnart_impute <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  data, formula_list, <span class="at">m =</span> <span class="dv">5</span>, <span class="at">iter =</span> <span class="dv">10</span>, <span class="at">verbose =</span> <span class="cn">TRUE</span></span>
@@ -642,15 +676,17 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 </section>
 <section id="functions-for-extracting-imputed-data" class="level3">
 <h3 class="anchored" data-anchor-id="functions-for-extracting-imputed-data">Functions for extracting imputed data</h3>
+<p>Define a <code>print</code> method for <code>dunnart</code> objects so that we see a nice summary instead of all of the imputed data spewed to the console:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>print.dunnart <span class="ot">&lt;-</span> <span class="cf">function</span>(obj) {</span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"'dunnart' multiple imputation object:</span><span class="sc">\n</span><span class="st">"</span>,</span>
 <span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>      <span class="st">" -"</span>, obj<span class="sc">$</span>m, <span class="st">"imputed datasets</span><span class="sc">\n</span><span class="st">"</span>,</span>
 <span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>      <span class="st">" -"</span>, obj<span class="sc">$</span>iter, <span class="st">"iterations</span><span class="sc">\n</span><span class="st">"</span>,</span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>      <span class="st">" -"</span>, <span class="fu">nrow</span>(obj<span class="sc">$</span>orig_data), <span class="st">"observations of"</span>, <span class="fu">ncol</span>(obj<span class="sc">$</span>orig_data),</span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>      <span class="st">"variables</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>      <span class="st">" -"</span>, <span class="fu">nrow</span>(obj<span class="sc">$</span>orig_data), <span class="st">"observations of"</span>,</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>      <span class="fu">ncol</span>(obj<span class="sc">$</span>orig_data), <span class="st">"variables</span><span class="sc">\n</span><span class="st">"</span>)</span>
 <span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>The <code>dunnart_complete_long</code> function does something similar to the <code>complete</code> function in <code>mice</code>, returning a long-form data frame with all imputed datasets, containing a <code>.imp</code> variable identifying the imputation and a <code>.id</code> variable identifying the row within the imputation:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>dunnart_complete_long <span class="ot">&lt;-</span> <span class="cf">function</span>(obj, <span class="at">iteration =</span> obj<span class="sc">$</span>iter) {</span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">inherits</span>(obj, <span class="st">"dunnart"</span>))</span>
@@ -667,6 +703,7 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 <span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">remove_rownames</span>()</span>
 <span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>The <code>dunnart_all_iters_long()</code> function does similar, but includes all intermediate iterations of the imputation process. This will be used later to create trace plots to assess imputation convergence.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>dunnart_all_iters_long <span class="ot">&lt;-</span> <span class="cf">function</span>(obj) {</span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">inherits</span>(obj, <span class="st">"dunnart"</span>))</span>
@@ -683,10 +720,11 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 </section>
 <section id="taking-it-for-a-test-ride" class="level2">
 <h2 class="anchored" data-anchor-id="taking-it-for-a-test-ride">Taking it for a test ride</h2>
-<p>For this example we’ll use the <code>nhanes</code> data frame from the <code>mice</code> package.</p>
+<p>For this example we’ll use the <code>nhanes</code> data from the <code>mice</code> package. This dataset contains four variables: <code>age</code>, <code>bmi</code>, <code>hyp</code>, and <code>chl</code>; of which <code>age</code> is completely observed but all of the others contain missing values. The variable <code>hyp</code> is an indicator variable for a binary factor but we will treat it as if it’s numeric for our imputation purposes.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(nhanes, <span class="at">package =</span> <span class="st">"mice"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>The code below calls the <code>dunnart_impute()</code> function to obtain 5 imputed datasets, using 10 iterations. Each variable is imputed using all other variables. Unlike in <code>mice</code>, we need to specify this by providing a full regression formula for each variable to be imputed.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">314159</span>)</span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>imp <span class="ot">&lt;-</span> <span class="fu">dunnart_impute</span>(</span>
@@ -697,49 +735,111 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 <span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>    chl <span class="sc">~</span> age <span class="sc">+</span> bmi <span class="sc">+</span> hyp</span>
 <span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  ),</span>
 <span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">m =</span> <span class="dv">5</span>,</span>
-<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">iter =</span> <span class="dv">10</span>,</span>
-<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">verbose =</span> <span class="cn">FALSE</span></span>
-<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">iter =</span> <span class="dv">10</span></span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>generating 5 initial imputations
+imputation iteration 1 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl
+imputation iteration 2 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl
+imputation iteration 3 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl
+imputation iteration 4 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl
+imputation iteration 5 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl
+imputation iteration 6 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl
+imputation iteration 7 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl
+imputation iteration 8 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl
+imputation iteration 9 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl
+imputation iteration 10 of 10 
+  [ 1 / 5 ]  bmi  hyp  chl
+  [ 2 / 5 ]  bmi  hyp  chl
+  [ 3 / 5 ]  bmi  hyp  chl
+  [ 4 / 5 ]  bmi  hyp  chl
+  [ 5 / 5 ]  bmi  hyp  chl</code></pre>
+</div>
 </div>
 <section id="diagnostics" class="level3">
 <h3 class="anchored" data-anchor-id="diagnostics">Diagnostics</h3>
 <section id="trace-plots" class="level4">
 <h4 class="anchored" data-anchor-id="trace-plots">Trace plots</h4>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>miss_rows <span class="ot">&lt;-</span> nhanes <span class="sc">%&gt;%</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">.id =</span> <span class="fu">row_number</span>()) <span class="sc">%&gt;%</span></span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">c</span>(bmi, hyp, chl), <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"miss"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">miss =</span> <span class="fu">is.na</span>(miss))</span>
-<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>trace_data <span class="ot">&lt;-</span> <span class="fu">dunnart_all_iters_long</span>(imp) <span class="sc">%&gt;%</span></span>
-<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">c</span>(bmi, hyp, chl), <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"value"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(miss_rows, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">".id"</span>, <span class="st">"var"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(miss) <span class="sc">%&gt;%</span></span>
-<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean =</span> <span class="fu">mean</span>(value),</span>
-<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd =</span> <span class="fu">sd</span>(value),</span>
-<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(.iter, .imp, var)</span>
-<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
-<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(.iter, .imp), as.factor))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
+<p>The plot below shows the mean and standard deviation of the imputed values of each variable at each iteration of the imputation process. Each coloured line shows a different imputed dataset. The ‘zeroth’ iteration is the initial mean imputation step where all imputed datasets are the same. The subsequent iterations show that the imputations very quickly start ‘mixing’ well, resembling a low-resolution fuzzy caterpillar.</p>
 <div class="cell" data-layout-align="center">
 <details>
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_grid</span>(</span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  trace_data <span class="sc">%&gt;%</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> .iter, <span class="at">y =</span> mean, <span class="at">colour =</span> .imp, <span class="at">group =</span> .imp)) <span class="sc">+</span></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>() <span class="sc">+</span></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>var, <span class="at">scales =</span> <span class="st">"free_y"</span>) <span class="sc">+</span></span>
-<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">panel_border</span>() <span class="sc">+</span></span>
-<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"off"</span>),</span>
-<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  trace_data <span class="sc">%&gt;%</span></span>
-<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> .iter, <span class="at">y =</span> sd, <span class="at">colour =</span> .imp, <span class="at">group =</span> .imp)) <span class="sc">+</span></span>
-<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>() <span class="sc">+</span></span>
-<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>var, <span class="at">scales =</span> <span class="st">"free_y"</span>) <span class="sc">+</span></span>
-<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">panel_border</span>() <span class="sc">+</span></span>
-<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"off"</span>),</span>
-<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">nrow =</span> <span class="dv">2</span></span>
-<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>miss_rows <span class="ot">&lt;-</span> nhanes <span class="sc">%&gt;%</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">.id =</span> <span class="fu">row_number</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">c</span>(bmi, hyp, chl), <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"miss"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">miss =</span> <span class="fu">is.na</span>(miss))</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>trace_data <span class="ot">&lt;-</span> <span class="fu">dunnart_all_iters_long</span>(imp) <span class="sc">%&gt;%</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">c</span>(bmi, hyp, chl), <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"value"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(miss_rows, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">".id"</span>, <span class="st">"var"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(miss) <span class="sc">%&gt;%</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean =</span> <span class="fu">mean</span>(value),</span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd =</span> <span class="fu">sd</span>(value),</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(.iter, .imp, var)</span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(.iter, .imp), as.factor))</span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_grid</span>(</span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a>  trace_data <span class="sc">%&gt;%</span></span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> .iter, <span class="at">y =</span> mean, <span class="at">colour =</span> .imp, <span class="at">group =</span> .imp)) <span class="sc">+</span></span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>var, <span class="at">scales =</span> <span class="st">"free_y"</span>) <span class="sc">+</span></span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">panel_border</span>() <span class="sc">+</span></span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"off"</span>),</span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a>  trace_data <span class="sc">%&gt;%</span></span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> .iter, <span class="at">y =</span> sd, <span class="at">colour =</span> .imp, <span class="at">group =</span> .imp)) <span class="sc">+</span></span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span>var, <span class="at">scales =</span> <span class="st">"free_y"</span>) <span class="sc">+</span></span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">panel_border</span>() <span class="sc">+</span></span>
+<span id="cb27-29"><a href="#cb27-29" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"off"</span>),</span>
+<span id="cb27-30"><a href="#cb27-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">nrow =</span> <span class="dv">2</span></span>
+<span id="cb27-31"><a href="#cb27-31" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
@@ -752,6 +852,7 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 </section>
 <section id="distribution-of-imputed-data" class="level4">
 <h4 class="anchored" data-anchor-id="distribution-of-imputed-data">Distribution of imputed data</h4>
+<p>In the plot below, the blue circles show the original (completely observed data) and the red circles showing imputed values. We can see that the imputation for ‘hyp’ isn’t ideal, with the original data only taking the values of 1 or 2, but imputed values being anywhere on the real line.</p>
 <div class="cell" data-layout-align="center">
 <details>
 <summary>Code</summary>
@@ -778,6 +879,7 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 </section>
 <section id="running-an-analysis-on-the-imputed-data" class="level2">
 <h2 class="anchored" data-anchor-id="running-an-analysis-on-the-imputed-data">Running an analysis on the imputed data</h2>
+<p>Running the same analysis repeatedly on the imputed data is a fairly straightforward task. The function <code>dunnart_analyse()</code> below does this. The actual work is in the line <code>res &lt;- map(obj$imputations, fn)</code> which calls a provded function on each imputation and returns the result as a list.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>dunnart_analyse <span class="ot">&lt;-</span> <span class="cf">function</span>(obj, fn) {</span>
 <span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">inherits</span>(obj, <span class="st">"dunnart"</span>))</span>
@@ -788,6 +890,7 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 <span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>  res</span>
 <span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>As an example, let’s fit a regression model to our imputed data to predict <code>chl</code> from all other variables.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>example_model <span class="ot">&lt;-</span> <span class="fu">dunnart_analyse</span>(</span>
 <span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  imp,</span>
@@ -797,28 +900,43 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 </section>
 <section id="pooling-imputations-using-rubins-rules" class="level2">
 <h2 class="anchored" data-anchor-id="pooling-imputations-using-rubins-rules">Pooling imputations using Rubin’s rules</h2>
+<p>Once repeated analyses on each imputed dataset have been done, the results need to be combined into a single output. This is done using Rubin’s rules, as described in e.g. <span class="citation" data-cites="rubin1996multipleimputation18">Rubin (<a href="#ref-rubin1996multipleimputation18" role="doc-biblioref">1996</a>)</span>. The final pooled estimate is the mean of the estimates from each dataset, and the variance of the estimate is the mean of the estimates from each dataset plus <span class="math inline">\((m+1)/m\)</span> times the between-imputation variance. There are some additional rules to derive the appropriate degrees of freedom for a <em>t</em> distribution but in this case we will keep things simple and just use a large-sample Normal approximation.</p>
+<p>The function below implements this, taking advantage of the <code>broom::tidy()</code> function to obtain a data frame of estimates and standard errors for each model parameter. In principle a different function could be supplied (e.g.&nbsp;from the <code>emmeans</code> or <code>marginaleffects</code> package) to obtain a data frame of estimates and standard errors of any estimand of interest from a model.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>dunnart_pool <span class="ot">&lt;-</span> <span class="cf">function</span>(obj, <span class="at">tidy_fn =</span> broom<span class="sc">::</span>tidy) {</span>
-<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  tidy_analysis <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
-<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">map</span>(obj, tidy_fn),</span>
-<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">.id =</span> <span class="st">".imp"</span></span>
-<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>  m <span class="ot">&lt;-</span> <span class="fu">length</span>(obj)</span>
-<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>  tidy_analysis <span class="sc">%&gt;%</span></span>
-<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
-<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">std.error =</span> <span class="fu">sqrt</span>(<span class="fu">mean</span>(std.error<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> (m <span class="sc">+</span> <span class="dv">1</span>)<span class="sc">/</span>m <span class="sc">*</span> <span class="fu">sd</span>(estimate)<span class="sc">^</span><span class="dv">2</span>),</span>
-<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>      <span class="at">estimate =</span> <span class="fu">mean</span>(estimate),</span>
-<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">.by =</span> term</span>
-<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
-<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">relocate</span>(std.error, <span class="at">.after =</span> estimate) <span class="sc">%&gt;%</span></span>
-<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
-<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>      <span class="at">statistic =</span> estimate <span class="sc">/</span> std.error,</span>
-<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a>      <span class="at">p.value =</span> <span class="dv">2</span><span class="sc">*</span><span class="fu">pnorm</span>(<span class="sc">-</span><span class="fu">abs</span>(statistic)),</span>
-<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a>      <span class="at">conf.low =</span> estimate <span class="sc">-</span> <span class="fu">qnorm</span>(<span class="fl">0.975</span>)<span class="sc">*</span>std.error,</span>
-<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>      <span class="at">conf.high =</span> estimate <span class="sc">+</span> <span class="fu">qnorm</span>(<span class="fl">0.975</span>)<span class="sc">*</span>std.error</span>
-<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>dunnart_pool <span class="ot">&lt;-</span> <span class="cf">function</span>(obj, <span class="at">tidy_fn =</span> broom<span class="sc">::</span>tidy, <span class="at">conf_level =</span> <span class="fl">0.95</span>) {</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">inherits</span>(obj, <span class="st">"dunnart_analysis"</span>))</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopifnot</span>(<span class="fu">is.function</span>(tidy_fn))</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># apply the tidier function to each imputation dataset. this should return</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>  <span class="co"># a data frame for each analysis output.</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>  tidy_analysis <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">map</span>(obj, tidy_fn),</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">.id =</span> <span class="st">".imp"</span></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># number of imputed datasets (needed for Rubin's rules)</span></span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>  m <span class="ot">&lt;-</span> <span class="fu">length</span>(obj)</span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>  <span class="co"># multiplier for confidence interval, e.g. 1.96 for 95% CI</span></span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a>  ci_mult <span class="ot">&lt;-</span> <span class="fu">qnorm</span>(<span class="fl">0.5</span> <span class="sc">+</span> <span class="fl">0.5</span><span class="sc">*</span>conf_level)</span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>  <span class="co"># apply Rubin's rules and compute CIs and p-values</span></span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>  tidy_analysis <span class="sc">%&gt;%</span></span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>      <span class="at">std.error =</span> <span class="fu">sqrt</span>(<span class="fu">mean</span>(std.error<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> (m<span class="sc">+</span><span class="dv">1</span>)<span class="sc">/</span>m <span class="sc">*</span> <span class="fu">sd</span>(estimate)<span class="sc">^</span><span class="dv">2</span>),</span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a>      <span class="at">estimate =</span> <span class="fu">mean</span>(estimate),</span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a>      <span class="at">.by =</span> term</span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">relocate</span>(std.error, <span class="at">.after =</span> estimate) <span class="sc">%&gt;%</span></span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true" tabindex="-1"></a>      <span class="at">statistic =</span> estimate <span class="sc">/</span> std.error,</span>
+<span id="cb31-28"><a href="#cb31-28" aria-hidden="true" tabindex="-1"></a>      <span class="at">p.value =</span> <span class="dv">2</span><span class="sc">*</span><span class="fu">pnorm</span>(<span class="sc">-</span><span class="fu">abs</span>(statistic)),</span>
+<span id="cb31-29"><a href="#cb31-29" aria-hidden="true" tabindex="-1"></a>      <span class="at">conf.low =</span> estimate <span class="sc">-</span> ci_mult<span class="sc">*</span>std.error,</span>
+<span id="cb31-30"><a href="#cb31-30" aria-hidden="true" tabindex="-1"></a>      <span class="at">conf.high =</span> estimate <span class="sc">+</span> ci_mult<span class="sc">*</span>std.error</span>
+<span id="cb31-31"><a href="#cb31-31" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb31-32"><a href="#cb31-32" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>We can apply this to the regression model we fit earlier to get a table of pooled model parameters:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dunnart_pool</span>(example_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -831,7 +949,7 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 4 hyp            -9.92     19.8     -0.502 0.616       -48.7       28.8</code></pre>
 </div>
 </div>
-<p>This is very similar to the results from the complete case analysis:</p>
+<p>This is very similar to the results from the complete case analysis, which is reassuring:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>broom<span class="sc">::</span><span class="fu">tidy</span>(<span class="fu">lm</span>(chl <span class="sc">~</span> age <span class="sc">+</span> bmi <span class="sc">+</span> hyp, <span class="at">data =</span> nhanes), <span class="at">conf.int =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -856,6 +974,9 @@ F-statistic: 257.1 on 1 and 340 DF,  p-value: &lt; 2.2e-16</code></pre>
 <div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-line-spacing="2" role="list">
 <div id="ref-gelman2014bayesiandataanalysis" class="csl-entry" role="listitem">
 Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., &amp; Rubin, D. B. (2014). <em>Bayesian data analysis</em> (Third edition). CRC Press.
+</div>
+<div id="ref-rubin1996multipleimputation18" class="csl-entry" role="listitem">
+Rubin, D. B. (1996). Multiple Imputation after 18+ Years. <em>Journal of the American Statistical Association</em>, <em>91</em>(434), 473–489. <a href="https://doi.org/10.1080/01621459.1996.10476908">https://doi.org/10.1080/01621459.1996.10476908</a>
 </div>
 <div id="ref-vanbuuren2007multipleimputationdiscrete" class="csl-entry" role="listitem">
 Van Buuren, S. (2007). Multiple imputation of discrete and continuous data by fully conditional specification. <em>Statistical Methods in Medical Research</em>, <em>16</em>(3), 219–242. <a href="https://doi.org/10.1177/0962280206074463">https://doi.org/10.1177/0962280206074463</a>

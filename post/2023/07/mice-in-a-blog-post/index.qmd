@@ -109,8 +109,6 @@ summary.bayeslm <- function(m)
     term = names(m$beta),
     estimate = m$beta,
     std.error = sqrt(diag(m$V)),
-    conf.low = m$beta - qt(0.975, m$df) * sqrt(diag(m$V)),
-    conf.high = m$beta + qt(0.975, m$df) * sqrt(diag(m$V)),
     row.names = seq_along(m$beta)
   )
 ```
@@ -135,7 +133,7 @@ penguins_blm <- bayes_lm(
 )
 ```
 
-Check that the regression coefficients are the same for both models:
+Check that the regression coefficients and standard errors are the same for both models:
 
 ```{r}
 summary(penguins_lm)
@@ -257,32 +255,67 @@ If we only had missing values in one variable, we would be at the point of produ
 
 ## Creating imputations by chained equations
 
+Now we have a function to draw from the posterior of a Bayesian linear regression, we can apply it iteratively to each incomplete variable to produce multiple imputed datasets. The MICE algorithm works something like this:
+
+1. Create an initial dataset with complete values for all variables. (In this simple implementation, I will replace all missing values with the mean of the observed values.)
+
+2. For each incomplete variable, take the most recent iteration fit an appropriate linear regression to the subset of the observations for which that variable has been observed. Draw from the posterior predictive distribution to fill in new values for the observations where that variable was not observed.
+
+3. Repeat step 2 a fixed number of terms (`iter` in our example implementation).
+
+4. Repeat the entire procedure (steps 1 to 3) `m` times to produce `m` imputed datasets.
+
+This section of the blog will reimplement a simple version of this algorithm, which I have named dunnart (a smaller, cuter ~~MICE~~ mouse). It only supports imputation of numerical variables, and only using linear regression. Rather than the comprehensive inputs `mice` uses to control the imputation algorithm, the main input will be a list of regression formulas, one for each variable to impute.
+
 ### The first iteration of imputed data
+
+For the initial iteration of imputation, we will replace all missing values with the mean of the non-missing values. The function below does some error checking (ensures that at it is being called on a numeric variable with at least one missing value and at least one observed value) and then uses `replace_na()` from the `tidyr` package to do the actual work.
 
 ```{r}
 dunnart_initial_imputation_for_var <- function(x) {
   stopifnot(is.vector(x) & is.numeric(x))
   stopifnot(!all(is.na(x)))
   stopifnot(any(is.na(x)))
+
+  # replace missing values with the mean of the non-missing values
   replace_na(x, mean(x, na.rm = TRUE))
 }
 ```
+
+The function below applies `dunnart_initial_imputation_for_var` to several variables in a data frame, selected based on them appearing as outcome variables in a list of regression formulas.
 
 ```{r}
 dunnart_initial_imputation_for_df <- function(dat, formula_list) {
   stopifnot(is.data.frame(dat))
   stopifnot(is.list(formula_list))
+
+  # find the outcome variable in each formula in formula_list
   vars <- map_chr(formula_list, \(f) all.vars(f)[1])
+
+  # do the initial imputation for each of those variables
   mutate(dat, across(all_of(vars), dunnart_initial_imputation_for_var))
 }
 ```
 
 ### Creating subsequent iterations
 
+The function below, `dunnart_impute_var`, is really the heart of the multiple imputation algorithm. It takes the original data frame with incomplete data `dat_orig`, the current working iteration of the imputed data `dat_cur`, and a regression formula `formula` to specify which predictors are used for the imputation. There's an additional flag `verbose` which controls how much diagnostic information is printed to the console (the default emulates the output of `mice` as it runs).
+
+The steps are as follows:
+
+1. Determine which variable we're imputing, based on the outcome variable of the regression formula.
+
+2. Determine which observations we need to impute (and the inverse: which observations we should fit the regression model to), based on the original incomplete data frame.
+
+3. Fit a linear regression using the provided model formula to the observations of current imputation-in-progress data frame chosen above.
+
+4. Draw from the posterior predictive distribution of the observations which were not used to fit that model and use them to replace the corresponding observations of the variable we're imputing.
+
 ```{r}
 dunnart_impute_var <- function(dat_orig, dat_cur, formula, verbose = TRUE) {
   stopifnot(is.data.frame(dat_orig) & is.data.frame(dat_cur) &
             inherits(formula, "formula"))
+ 
   # find the variable we're imputing
   out_var <- all.vars(formula)[1]
   if (verbose >= 2) {
@@ -290,19 +323,25 @@ dunnart_impute_var <- function(dat_orig, dat_cur, formula, verbose = TRUE) {
   } else if (verbose >= 1) {
     cat(" ", out_var)
   }
+
   # which rows have missing data in the original data frame?
   miss_rows <- is.na(dat_orig[[out_var]])
+
   # fit a regression model to the rows that didn't have missing values in
   # the original data
   mod <- lm(formula, data = dat_cur[!miss_rows, ])
+
   # draw predictions for the rows with missing values
   mf <- model.frame(formula, data = dat_cur[miss_rows, ])
   mat <- model.matrix(formula, data = mf)
   dat_cur[miss_rows, out_var] <- draw_bayes_lm_ppred(mod, mat)
-  # return updated data frame
+
+  # return the updated data frame
   dat_cur
 }
 ```
+
+To get one complete iteration of the MICE algorithm for a single imputed dataset, we need to apply the above function to each variable we need to impute. This is done using the `reduce()` function from the `purrr` package, which repeatedly applies a function to its own output (the current imputed dataset, `dat_cur`) and a list of new values (the regression model formulas for the variables to impute, `formula_list`).
 
 ```{r}
 dunnart_impute_iterate <- function(
@@ -331,6 +370,10 @@ dunnart_impute_iterate <- function(
 }
 ```
 
+### Creating multiple imputed datasets
+
+The functions we have above all operate on a single imputed dataset, but we want to produce multiple imputed datasets. The `dunnart_multiple_impute_iterate` function applies the `dunnart_impute_iterate` function to a list of imputed datasets using the `map2()` function from the `purrr` package. The code is slightly messier than ideal because we pass through some additional information (the imputation index and the total number of imputations) to allow progress reporting in verbose mode.
+
 ```{r}
 dunnart_multiple_impute_iterate <- function(
   data, imp_out, formula_list, verbose = TRUE, i = NA, iter = NA
@@ -350,6 +393,8 @@ dunnart_multiple_impute_iterate <- function(
   )
 }
 ```
+
+Finally, putting it all together: `dunnart_impute()` is our equivalent of the `mice()` function, taking an incomplete dataset, a list of model formulas, the number of imputed datasets and number of iterations to run, and returning the multiple imputed output. Most of the code here is error checking. The two statements that actually do the work are the ones beginning `imp_out <- map(...)` to create the initial imputation, and `all_imps <- accumulate(...)` to create the subsequent iterations by repeatedly calling `dunnart_multiple_impute_iterate()`. Finally we create an object of class `dunnart` to hold the results.
 
 ```{r}
 dunnart_impute <- function(
@@ -403,15 +448,19 @@ dunnart_impute <- function(
 
 ### Functions for extracting imputed data
 
+Define a `print` method for `dunnart` objects so that we see a nice summary instead of all of the imputed data spewed to the console:
+
 ```{r}
 print.dunnart <- function(obj) {
   cat("'dunnart' multiple imputation object:\n",
       " -", obj$m, "imputed datasets\n",
       " -", obj$iter, "iterations\n",
-      " -", nrow(obj$orig_data), "observations of", ncol(obj$orig_data),
-      "variables\n")
+      " -", nrow(obj$orig_data), "observations of",
+      ncol(obj$orig_data), "variables\n")
 }
 ```
+
+The `dunnart_complete_long` function does something similar to the `complete` function in `mice`, returning a long-form data frame with all imputed datasets, containing a `.imp` variable identifying the imputation and a `.id` variable identifying the row within the imputation:
 
 ```{r}
 dunnart_complete_long <- function(obj, iteration = obj$iter) {
@@ -430,6 +479,8 @@ dunnart_complete_long <- function(obj, iteration = obj$iter) {
 }
 ```
 
+The `dunnart_all_iters_long()` function does similar, but includes all intermediate iterations of the imputation process. This will be used later to create trace plots to assess imputation convergence.
+
 ```{r}
 dunnart_all_iters_long <- function(obj) {
   stopifnot(inherits(obj, "dunnart"))
@@ -445,11 +496,13 @@ dunnart_all_iters_long <- function(obj) {
 
 ## Taking it for a test ride
 
-For this example we'll use the `nhanes` data frame from the `mice` package.
+For this example we'll use the `nhanes` data from the `mice` package. This dataset contains four variables: `age`, `bmi`, `hyp`, and `chl`; of which `age` is completely observed but all of the others contain missing values. The variable `hyp` is an indicator variable for a binary factor but we will treat it as if it's numeric for our imputation purposes.
 
 ```{r}
 data(nhanes, package = "mice")
 ```
+
+The code below calls the `dunnart_impute()` function to obtain 5 imputed datasets, using 10 iterations. Each variable is imputed using all other variables. Unlike in `mice`, we need to specify this by providing a full regression formula for each variable to be imputed.
 
 ```{r}
 set.seed(314159)
@@ -461,8 +514,7 @@ imp <- dunnart_impute(
     chl ~ age + bmi + hyp
   ),
   m = 5,
-  iter = 10,
-  verbose = FALSE
+  iter = 10
 )
 ```
 
@@ -470,7 +522,13 @@ imp <- dunnart_impute(
 
 #### Trace plots
 
-```{r}
+The plot below shows the mean and standard deviation of the imputed values of each variable at each iteration of the imputation process. Each coloured line shows a different imputed dataset. The 'zeroth' iteration is the initial mean imputation step where all imputed datasets are the same. The subsequent iterations show that the imputations very quickly start 'mixing' well, resembling a low-resolution fuzzy caterpillar.
+
+```{r trace-plot}
+#| code-fold: true
+#| fig-width: 5.5
+#| fig-height: 3.5
+#| fig-align: center
 miss_rows <- nhanes %>%
   mutate(.id = row_number()) %>%
   pivot_longer(c(bmi, hyp, chl), names_to = "var", values_to = "miss") %>%
@@ -486,13 +544,7 @@ trace_data <- dunnart_all_iters_long(imp) %>%
     .by = c(.iter, .imp, var)
   ) %>%
   mutate(across(c(.iter, .imp), as.factor))
-```
 
-```{r trace-plot}
-#| code-fold: true
-#| fig-width: 5.5
-#| fig-height: 3.5
-#| fig-align: center
 plot_grid(
   trace_data %>%
     ggplot(aes(x = .iter, y = mean, colour = .imp, group = .imp)) +
@@ -513,6 +565,8 @@ plot_grid(
 
 #### Distribution of imputed data
 
+In the plot below, the blue circles show the original (completely observed data) and the red circles showing imputed values. We can see that the imputation for 'hyp' isn't ideal, with the original data only taking the values of 1 or 2, but imputed values being anywhere on the real line.
+
 ```{r distribution-plot}
 #| code-fold: true
 #| fig-width: 5.5
@@ -531,6 +585,8 @@ dunnart_complete_long(imp) %>%
 
 ## Running an analysis on the imputed data
 
+Running the same analysis repeatedly on the imputed data is a fairly straightforward task. The function `dunnart_analyse()` below does this. The actual work is in the line `res <- map(obj$imputations, fn)` which calls a provded function on each imputation and returns the result as a list.
+
 ```{r}
 dunnart_analyse <- function(obj, fn) {
   stopifnot(inherits(obj, "dunnart"))
@@ -542,6 +598,8 @@ dunnart_analyse <- function(obj, fn) {
 }
 ```
 
+As an example, let's fit a regression model to our imputed data to predict `chl` from all other variables.
+
 ```{r}
 example_model <- dunnart_analyse(
   imp,
@@ -551,16 +609,32 @@ example_model <- dunnart_analyse(
 
 ## Pooling imputations using Rubin's rules
 
+Once repeated analyses on each imputed dataset have been done, the results need to be combined into a single output. This is done using Rubin's rules, as described in e.g. @rubin1996multipleimputation18. The final pooled estimate is the mean of the estimates from each dataset, and the variance of the estimate is the mean of the estimates from each dataset plus $(m+1)/m$ times the between-imputation variance. There are some additional rules to derive the appropriate degrees of freedom for a *t* distribution but in this case we will keep things simple and just use a large-sample Normal approximation.
+
+The function below implements this, taking advantage of the `broom::tidy()` function to obtain a data frame of estimates and standard errors for each model parameter. In principle a different function could be supplied (e.g. from the `emmeans` or `marginaleffects` package) to obtain a data frame of estimates and standard errors of any estimand of interest from a model.
+
 ```{r}
-dunnart_pool <- function(obj, tidy_fn = broom::tidy) {
+dunnart_pool <- function(obj, tidy_fn = broom::tidy, conf_level = 0.95) {
+  stopifnot(inherits(obj, "dunnart_analysis"))
+  stopifnot(is.function(tidy_fn))
+
+  # apply the tidier function to each imputation dataset. this should return
+  # a data frame for each analysis output.
   tidy_analysis <- bind_rows(
     map(obj, tidy_fn),
     .id = ".imp"
   )
+
+  # number of imputed datasets (needed for Rubin's rules)
   m <- length(obj)
+
+  # multiplier for confidence interval, e.g. 1.96 for 95% CI
+  ci_mult <- qnorm(0.5 + 0.5*conf_level)
+
+  # apply Rubin's rules and compute CIs and p-values
   tidy_analysis %>%
     summarise(
-      std.error = sqrt(mean(std.error^2) + (m + 1)/m * sd(estimate)^2),
+      std.error = sqrt(mean(std.error^2) + (m+1)/m * sd(estimate)^2),
       estimate = mean(estimate),
       .by = term
     ) %>%
@@ -568,17 +642,19 @@ dunnart_pool <- function(obj, tidy_fn = broom::tidy) {
     mutate(
       statistic = estimate / std.error,
       p.value = 2*pnorm(-abs(statistic)),
-      conf.low = estimate - qnorm(0.975)*std.error,
-      conf.high = estimate + qnorm(0.975)*std.error
+      conf.low = estimate - ci_mult*std.error,
+      conf.high = estimate + ci_mult*std.error
     )
 }
 ```
+
+We can apply this to the regression model we fit earlier to get a table of pooled model parameters:
 
 ```{r}
 dunnart_pool(example_model)
 ```
 
-This is very similar to the results from the complete case analysis:
+This is very similar to the results from the complete case analysis, which is reassuring:
 
 ```{r}
 broom::tidy(lm(chl ~ age + bmi + hyp, data = nhanes), conf.int = TRUE)
