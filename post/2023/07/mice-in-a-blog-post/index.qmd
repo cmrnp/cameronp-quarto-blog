@@ -609,7 +609,7 @@ example_model <- dunnart_analyse(
 
 ## Pooling imputations using Rubin's rules
 
-Once repeated analyses on each imputed dataset have been done, the results need to be combined into a single output. This is done using Rubin's rules, as described in e.g. @rubin1996multipleimputation18. The final pooled estimate is the mean of the estimates from each dataset, and the variance of the estimate is the mean of the estimates from each dataset plus $(m+1)/m$ times the between-imputation variance. There are some additional rules to derive the appropriate degrees of freedom for a *t* distribution but in this case we will keep things simple and just use a large-sample Normal approximation.
+Once repeated analyses on each imputed dataset have been done, the results need to be combined into a single output. This is done using Rubin's rules, as described in e.g. @rubin1996multipleimputation18. The pooled point estimate is the mean of the estimates from each dataset, and the variance of the pooled estimate is the mean of the variances from each dataset plus $(m+1)/m$ times the between-imputation variance. There are some additional rules to derive the appropriate degrees of freedom for a *t* distribution but in this case we will keep things simple and just use a large-sample Normal approximation.
 
 The function below implements this, taking advantage of the `broom::tidy()` function to obtain a data frame of estimates and standard errors for each model parameter. In principle a different function could be supplied (e.g. from the `emmeans` or `marginaleffects` package) to obtain a data frame of estimates and standard errors of any estimand of interest from a model.
 
