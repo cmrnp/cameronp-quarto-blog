@@ -1,43 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://cameronpatrick.com/post/2023/07/quarto-thesis-formatting/index.html</loc>
-    <lastmod>2023-07-20T23:13:32.145Z</lastmod>
-  </url>
-  <url>
-    <loc>https://cameronpatrick.com/post/2023/07/logit-rd-rr/index.html</loc>
-    <lastmod>2023-07-20T23:13:34.190Z</lastmod>
-  </url>
-  <url>
-    <loc>https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html</loc>
-    <lastmod>2023-07-20T23:13:35.413Z</lastmod>
-  </url>
-  <url>
-    <loc>https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index.html</loc>
-    <lastmod>2023-07-20T23:13:37.493Z</lastmod>
-  </url>
-  <url>
-    <loc>https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index.html</loc>
-    <lastmod>2023-07-20T23:13:38.617Z</lastmod>
-  </url>
-  <url>
-    <loc>https://cameronpatrick.com/post/2019/12/equivalent-to-t-test/index.html</loc>
-    <lastmod>2023-07-20T23:13:39.553Z</lastmod>
-  </url>
-  <url>
-    <loc>https://cameronpatrick.com/post/2019/12/understanding-levels-variation/index.html</loc>
-    <lastmod>2023-07-20T23:13:40.672Z</lastmod>
+    <loc>https://cameronpatrick.com/blog.html</loc>
+    <lastmod>2023-07-31T06:07:14.262Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/post/2020/03/beautiful-bar-charts-ggplot/index.html</loc>
-    <lastmod>2023-07-20T23:13:41.782Z</lastmod>
+    <lastmod>2023-07-31T06:07:13.300Z</lastmod>
+  </url>
+  <url>
+    <loc>https://cameronpatrick.com/post/2019/12/equivalent-to-t-test/index.html</loc>
+    <lastmod>2023-07-31T06:07:11.324Z</lastmod>
+  </url>
+  <url>
+    <loc>https://cameronpatrick.com/post/2023/06/untangling-mar-mcar-mnar/index.html</loc>
+    <lastmod>2023-07-31T06:07:09.394Z</lastmod>
+  </url>
+  <url>
+    <loc>https://cameronpatrick.com/post/2023/07/mice-in-a-blog-post/index.html</loc>
+    <lastmod>2023-07-31T06:07:06.668Z</lastmod>
+  </url>
+  <url>
+    <loc>https://cameronpatrick.com/post/2023/07/quarto-thesis-formatting/index.html</loc>
+    <lastmod>2023-07-31T06:07:03.153Z</lastmod>
+  </url>
+  <url>
+    <loc>https://cameronpatrick.com/post/2023/07/logit-rd-rr/index.html</loc>
+    <lastmod>2023-07-31T06:07:05.287Z</lastmod>
+  </url>
+  <url>
+    <loc>https://cameronpatrick.com/post/2023/06/dplyr-fitting-multiple-models-at-once/index.html</loc>
+    <lastmod>2023-07-31T06:07:07.861Z</lastmod>
+  </url>
+  <url>
+    <loc>https://cameronpatrick.com/post/2019/11/plotting-multiple-variables-ggplot2-tidyr/index.html</loc>
+    <lastmod>2023-07-31T06:07:10.473Z</lastmod>
+  </url>
+  <url>
+    <loc>https://cameronpatrick.com/post/2019/12/understanding-levels-variation/index.html</loc>
+    <lastmod>2023-07-31T06:07:12.234Z</lastmod>
   </url>
   <url>
     <loc>https://cameronpatrick.com/index.html</loc>
-    <lastmod>2023-07-31T06:06:02.047Z</lastmod>
-  </url>
-  <url>
-    <loc>https://cameronpatrick.com/blog.html</loc>
-    <lastmod>2023-07-31T06:06:02.579Z</lastmod>
+    <lastmod>2023-07-31T06:07:13.690Z</lastmod>
   </url>
 </urlset>

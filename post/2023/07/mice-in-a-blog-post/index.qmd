@@ -2,7 +2,7 @@
 title: "Dirty imputation done dirt cheap: implementing Multiple Imputation by Chained Equations in one blog post"
 author: "Cameron Patrick"
 date: "2023-07-31"
-draft: true
+draft: false
 categories: [r, statistics]
 csl: apa.csl
 bibliography: mice.yaml

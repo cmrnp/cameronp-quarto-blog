@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.3.302">
+<meta name="generator" content="quarto-1.3.433">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -110,7 +110,8 @@ div.csl-indent {
     "search-more-matches-text": "more matches in this document",
     "search-clear-button-title": "Clear",
     "search-detached-cancel-button-title": "Cancel",
-    "search-submit-button-title": "Submit"
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
   }
 }</script>
 
@@ -268,7 +269,7 @@ What’s an odds, anyway?
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="building-collapse.jpg" class="img-fluid figure-img" alt="Picture of a collapsing building with the caption &quot;I'll take the non-collapsible one&quot;"></p>
-<p></p><figcaption class="figure-caption">Surprisingly, many statisticians prefer collapsibility.</figcaption><p></p>
+<figcaption class="figure-caption">Surprisingly, many statisticians prefer collapsibility.</figcaption>
 </figure>
 </div>
 <p>Personally, I’m a fan of risk differences for communicating potential risks to an individual, ideally presented alongside the baseline level of risk. There’s some evidence that patients and clinicians find these measures easier to interpret than relative measures <span class="citation" data-cites="zipkin2014evidencebasedriskcommunication">(<a href="#ref-zipkin2014evidencebasedriskcommunication" role="doc-biblioref">Zipkin et al., 2014</a>)</span>, especially when presented in the form of a natural frequency, like “6 in 1000 people” rather than “0.6%”.</p>
@@ -305,7 +306,7 @@ What’s an odds, anyway?
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="american-chopper-argument.jpeg" class="img-fluid figure-img" alt="American Chopper argument meme: risk differences aren't transportable / nobody understands odds ratios / clinical trials aren't random samples from the population / marginal odds ratios aren't the average of conditional odds ratios / conditional odds ratios still tell us if an intervention works"></p>
-<p></p><figcaption class="figure-caption">True facts on both sides.</figcaption><p></p>
+<figcaption class="figure-caption">True facts on both sides.</figcaption>
 </figure>
 </div>
 <p>In the rest of this post I’ll demonstrate how odds ratios are noncollapsible and show how to calculate risk differences and relative risks from logistic regression models using R and the <code>marginaleffects</code> package.</p>

@@ -1,7 +1,8 @@
 [
   {
-    "listing": "/index.html",
+    "listing": "/blog.html",
     "items": [
+      "/post/2023/07/mice-in-a-blog-post/index.html",
       "/post/2023/07/quarto-thesis-formatting/index.html",
       "/post/2023/07/logit-rd-rr/index.html",
       "/post/2023/06/untangling-mar-mcar-mnar/index.html",
@@ -13,8 +14,9 @@
     ]
   },
   {
-    "listing": "/blog.html",
+    "listing": "/index.html",
     "items": [
+      "/post/2023/07/mice-in-a-blog-post/index.html",
       "/post/2023/07/quarto-thesis-formatting/index.html",
       "/post/2023/07/logit-rd-rr/index.html",
       "/post/2023/06/untangling-mar-mcar-mnar/index.html",
