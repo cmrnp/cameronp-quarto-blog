@@ -1,7 +1,7 @@
 ---
 title: "Dirty imputation done dirt cheap: implementing Multiple Imputation by Chained Equations in one blog post"
 author: "Cameron Patrick"
-date: "2023-07-24"
+date: "2023-07-31"
 draft: true
 categories: [r, statistics]
 csl: apa.csl
@@ -23,13 +23,17 @@ fig-dpi: 130
 
 ## Introduction
 
-Coding up an algorithm is a great way to make sure you really understand how the details work. In this post I'm going to implement multiple imputation and the MICE algorithm [@vanbuuren2007multipleimputationdiscrete], albeit in much simplified form: only considering numeric variables, only using Normal-distribution Bayesian linear regression to generate the imputed data, no concern about robustness.
+Coding up an algorithm is a great way to make sure you really understand how the details work. In this post I'm going to implement multiple imputation and the MICE algorithm [@vanbuuren2007multipleimputationdiscrete], albeit in much simplified form: only considering missing data in numeric variables, only using Normal-distribution Bayesian linear regression to generate the imputed data, no concerns about robustness of the code for production purposes.
+
+If the standard version of this method is called MICE, think of this as a smaller, cuter, maybe slightly endangered variation. Perhaps a fat-tailed dunnart.
+
+![Fat-tailed dunnart in Queensland, Australia. Image by [Bernard Dupont, sourced from Wikimedia Commons (CC-SA licence)](https://commons.wikimedia.org/wiki/File:Fat-tailed_Dunnart_(Sminthopsis_crassicaudata)_(9998321085).jpg).](fat-tailed-dunnart.jpg){width=715px}
 
 ## Bayesian linear regression
 
 We will be imputing each individual variable with missing data using Bayesian linear regression with uninformative Jeffreys priors. For this choice of prior, the posterior distribution of the parameters has an easily computable analytic distribution. This approach is explained in detail in @gelman2014bayesiandataanalysis, chapter 14.
 
-The regression equation is given by $E(Y|X) = X^T \beta$, where $Y$ is a column vector of observations, $X$ is the design matrix, and $\beta$ is a column vector of regression coefficients. We assume independent normally distributed errors with equal standard deviation: $Y|X \sim \mathrm{MVN}(0, \sigma^2 I)$. In other words, the usual classical linear regression.
+The regression equation is given by $E(Y|X) = X^T \beta$, where $Y$ is a column vector of observations, $X$ is the design matrix, and $\beta$ is a column vector of regression coefficients. We assume independent normally distributed errors with equal standard deviation: $Y|X \sim \mathrm{MVN}(X^T \beta, \sigma^2 I)$. In other words, the usual classical linear regression.
 
 ### Obtaining parameter estimates from Jeffreys priors
 
@@ -39,7 +43,7 @@ The posterior distribution of $\sigma^2$ is $\mathrm{Inverse-}\chi^2(n-k, s^2)$ 
 
 [^ugbayes]: Well, I probably met it and forgot about it long ago in undergrad Bayes class.
 
-We could just use the built-in R `lm` function, but it's been a long time since I last implemented linear regression from scratch, so thought I'd give it a go here. If you're not interested in seeing this, scroll to the next section.
+We could just use the built-in R `lm` function, but it's been a long time since I last implemented linear regression from scratch, so thought I'd give it a go here. If you're not interested in seeing this, [skip to the section about drawing from the posterior distribution](#sec-drawing-posterior).
 
 ```{r}
 # estimate_bayes_lm_jeffreys(Y, X): obtain Bayesian linear regression parameter
@@ -138,7 +142,7 @@ summary(penguins_lm)
 summary(penguins_blm)
 ```
 
-### Drawing from the posterior predictive distribution
+### Drawing from the posterior predictive distribution {#sec-drawing-posterior}
 
 To sample from the posterior predictive distribution, we use a two-stage process. First, draw from the posterior distribution of the parameters (regression coefficients and residual variance). As previously discussed, the regression coefficients have a multivariate normal distribution and the residual variance has an $\mathrm{Inverse-}\chi^2$ distribution. Secondly, draw posterior predictions conditional on those parameter estimates, using $Y|X,\beta,\sigma^2 \sim \mathrm{N}(X^T \beta, \sigma^2)$.
 
@@ -162,8 +166,7 @@ draw_bayes_lm_params <- function(m, ndraw = 1) {
 library(tidyverse)
 library(ggdist)
 library(cowplot)
-theme_set(theme_cowplot(font_size = 11, rel_small = 1, rel_tiny = 1, rel_large = 1))
-set.seed(12345)
+theme_set(theme_cowplot(font_size = 9, rel_small = 1, rel_tiny = 1, rel_large = 1))
 ```
 
 To get some idea if this is working, let's plot the posterior distribution of our parmaeters. They look like what we might expect - normally distributed about the parameter estimates shown above. In fact the distribution of sigma looks far closer to normal than I expected, given it's actually a scaled inverse Chi squared distribution!
@@ -173,6 +176,7 @@ To get some idea if this is working, let's plot the posterior distribution of ou
 #| fig-width: 5.5
 #| fig-height: 2
 #| fig-align: center
+set.seed(12345)
 penguins_blm %>%
   draw_bayes_lm_params(1000) %>%
   map(as_tibble) %>%
@@ -184,15 +188,15 @@ penguins_blm %>%
   scale_y_continuous(breaks = NULL) +
   facet_wrap(vars(var), scales = "free") +
   labs(x = "value", y = "density") +
-  panel_border() +
-  theme(axis.text.x = element_text(size = rel(9/11)))
+  panel_border()
 ```
 
-The regression coefficients for flipper length and intercept are negatively correlated, as we might expect:
+The posterior regression coefficients for flipper length and intercept are negatively correlated, as we might expect:
 
 ```{r, posterior-param-corr}
 #| code-fold: true
 #| fig-align: center
+set.seed(54321)
 penguins_blm %>%
   draw_bayes_lm_params(100) %>%
   pluck("beta") %>%
@@ -207,7 +211,7 @@ Now we're more confident that seemed to work, we can write another function to e
 draw_bayes_lm_ppred <- function(m, X = m$X, ndraw = 1) {
   stopifnot(inherits(m, c("lm", "bayeslm")))
   stopifnot(is.matrix(X) & is.numeric(X) & !any(is.na(X)))
-  stopifnot(ncol(X) == length(m$beta))
+  stopifnot(ncol(X) == length(coef(m)))
 
   params <- draw_bayes_lm_params(m, ndraw = ndraw)
   X %*% t(params$beta) + matrix(
@@ -217,7 +221,7 @@ draw_bayes_lm_ppred <- function(m, X = m$X, ndraw = 1) {
 }
 ```
 
-To demonstrate this in action, the plot below shows a subset of the penguins data, the regression line (grey), the observed data (solid blue points), and 10 draws from the posterior predictive distribution (red circles):
+To demonstrate this in action, the plot below shows a subset of the penguins data, the regression line (grey), the observed data (solid blue circles), and 10 draws from the posterior predictive distribution (hollow red circles):
 
 ```{r, posterior-ppred-plot}
 #| code-fold: true
@@ -249,16 +253,335 @@ ggplot(penguins_subset, aes(x = flipper_length_mm, y = bill_length_mm)) +
              data = penguins_subset_ppred_dat, alpha = 0.5)
 ```
 
+If we only had missing values in one variable, we would be at the point of producing imputed datasets now. But real-life missing data problems tend to have missing data in multiple variables, so we will need to use an iterative method to generate imputations for all variables.
+
 ## Creating imputations by chained equations
 
 ### The first iteration of imputed data
 
+```{r}
+dunnart_initial_imputation_for_var <- function(x) {
+  stopifnot(is.vector(x) & is.numeric(x))
+  stopifnot(!all(is.na(x)))
+  stopifnot(any(is.na(x)))
+  replace_na(x, mean(x, na.rm = TRUE))
+}
+```
+
+```{r}
+dunnart_initial_imputation_for_df <- function(dat, formula_list) {
+  stopifnot(is.data.frame(dat))
+  stopifnot(is.list(formula_list))
+  vars <- map_chr(formula_list, \(f) all.vars(f)[1])
+  mutate(dat, across(all_of(vars), dunnart_initial_imputation_for_var))
+}
+```
+
 ### Creating subsequent iterations
 
-## Pooling imputations using Rubin's rules
+```{r}
+dunnart_impute_var <- function(dat_orig, dat_cur, formula, verbose = TRUE) {
+  stopifnot(is.data.frame(dat_orig) & is.data.frame(dat_cur) &
+            inherits(formula, "formula"))
+  # find the variable we're imputing
+  out_var <- all.vars(formula)[1]
+  if (verbose >= 2) {
+    cat("    imputing using", deparse1(formula), "\n")
+  } else if (verbose >= 1) {
+    cat(" ", out_var)
+  }
+  # which rows have missing data in the original data frame?
+  miss_rows <- is.na(dat_orig[[out_var]])
+  # fit a regression model to the rows that didn't have missing values in
+  # the original data
+  mod <- lm(formula, data = dat_cur[!miss_rows, ])
+  # draw predictions for the rows with missing values
+  mf <- model.frame(formula, data = dat_cur[miss_rows, ])
+  mat <- model.matrix(formula, data = mf)
+  dat_cur[miss_rows, out_var] <- draw_bayes_lm_ppred(mod, mat)
+  # return updated data frame
+  dat_cur
+}
+```
+
+```{r}
+dunnart_impute_iterate <- function(
+  dat_orig, dat_cur, formula_list, verbose = TRUE, j = NA, m = NA
+) {
+  stopifnot(is.data.frame(dat_orig) & is.data.frame(dat_cur) &
+            is.list(formula_list) & all(!is.na(dat_cur)))
+
+  if (verbose >= 2) {
+    cat("  imputation", j, "of", m, "\n")
+  } else if (verbose >= 1) {
+    cat("  [", j, "/", m, "]")
+  }
+
+  dat_out <- reduce(
+    formula_list,
+    \(dat, form) dunnart_impute_var(dat_orig, dat, form, verbose),
+    .init = dat_cur
+  )
+
+  if (verbose == 1) {
+    cat("\n")
+  }
+
+  dat_out
+}
+```
+
+```{r}
+dunnart_multiple_impute_iterate <- function(
+  data, imp_out, formula_list, verbose = TRUE, i = NA, iter = NA
+) {
+  if (verbose >= 1) {
+    cat("imputation iteration", i, "of", iter, "\n")
+  }
+
+  # apply one imputation step to each imputed dataset
+  map2(
+    imp_out,
+    seq_along(imp_out),
+    \(dat_cur, j) dunnart_impute_iterate(
+      data, dat_cur, formula_list, verbose = verbose,
+      j = j, m = length(imp_out)
+    )
+  )
+}
+```
+
+```{r}
+dunnart_impute <- function(
+  data, formula_list, m = 5, iter = 10, verbose = TRUE
+) {
+  stopifnot(is.data.frame(data))
+  stopifnot(is.list(formula_list) & 
+            all(map_lgl(formula_list, \(x) inherits(x, "formula"))))
+  stopifnot(is.numeric(m) & length(m) == 1 & !is.na(m) & m >= 1)
+  stopifnot(is.numeric(iter) & length(iter) == 1 & !is.na(iter) & iter >= 0)
+  stopifnot((is.logical(verbose) | is.numeric(verbose)) & 
+            length(verbose) == 1 & !is.na(verbose))
+
+  # set up initial imputations (mean imputation)
+  if (verbose >= 1) {
+    cat("generating", m, "initial imputations\n")
+  }
+  imp_out <- map(
+    seq_len(m), 
+    \(x) dunnart_initial_imputation_for_df(data, formula_list)
+  )
+
+  # check for any NA values after initial imputation, signifying that some
+  # variables with missing data do not have imputation formulas provided
+  if (any(map_lgl(imp_out, \(dat) any(is.na(dat))))) {
+    stop("NAs found after initial imputation step - fix imputation formulas")
+  }
+
+  # repeat the imputation iteration step 'iter' times
+  all_imps <- accumulate(
+    seq_len(iter),
+    \(imp, i) dunnart_multiple_impute_iterate(
+      data, imp, formula_list, verbose = verbose, i = i, iter = iter
+    ),
+    .init = imp_out
+  )
+
+  # return results
+  res <- list(
+    m = m,
+    iter = iter,
+    formula_list = formula_list,
+    orig_data = data,
+    iterations = all_imps,
+    imputations = all_imps[[iter + 1]]
+  )
+  class(res) <- "dunnart"
+  res
+}
+```
+
+### Functions for extracting imputed data
+
+```{r}
+print.dunnart <- function(obj) {
+  cat("'dunnart' multiple imputation object:\n",
+      " -", obj$m, "imputed datasets\n",
+      " -", obj$iter, "iterations\n",
+      " -", nrow(obj$orig_data), "observations of", ncol(obj$orig_data),
+      "variables\n")
+}
+```
+
+```{r}
+dunnart_complete_long <- function(obj, iteration = obj$iter) {
+  stopifnot(inherits(obj, "dunnart"))
+  stopifnot(is.numeric(iteration) & length(iteration) == 1)
+  stopifnot(iteration >= 0 & iteration <= obj$iter)
+
+  bind_rows(
+    map(obj$iterations[[iteration + 1]],
+        \(dat) mutate(dat, .id = row_number(), .before = 1L,
+                      .by = all_of(NULL))),
+    .id = ".imp"
+  ) %>%
+    mutate(.imp = as.numeric(.imp)) %>%
+    remove_rownames()
+}
+```
+
+```{r}
+dunnart_all_iters_long <- function(obj) {
+  stopifnot(inherits(obj, "dunnart"))
+  iters <- seq_len(obj$iter + 1) - 1
+  bind_rows(
+    map(iters, \(i) dunnart_complete_long(obj, i)) %>%
+      set_names(iters),
+    .id = ".iter"
+  ) %>%
+    mutate(.iter = as.numeric(.iter))
+}
+```
 
 ## Taking it for a test ride
 
-## Acknowledgements
+For this example we'll use the `nhanes` data frame from the `mice` package.
+
+```{r}
+data(nhanes, package = "mice")
+```
+
+```{r}
+set.seed(314159)
+imp <- dunnart_impute(
+  nhanes,
+  list(
+    bmi ~ age + hyp + chl,
+    hyp ~ age + bmi + chl,
+    chl ~ age + bmi + hyp
+  ),
+  m = 5,
+  iter = 10,
+  verbose = FALSE
+)
+```
+
+### Diagnostics
+
+#### Trace plots
+
+```{r}
+miss_rows <- nhanes %>%
+  mutate(.id = row_number()) %>%
+  pivot_longer(c(bmi, hyp, chl), names_to = "var", values_to = "miss") %>%
+  mutate(miss = is.na(miss))
+
+trace_data <- dunnart_all_iters_long(imp) %>%
+  pivot_longer(c(bmi, hyp, chl), names_to = "var", values_to = "value") %>%
+  left_join(miss_rows, by = c(".id", "var")) %>%
+  filter(miss) %>%
+  summarise(
+    mean = mean(value),
+    sd = sd(value),
+    .by = c(.iter, .imp, var)
+  ) %>%
+  mutate(across(c(.iter, .imp), as.factor))
+```
+
+```{r trace-plot}
+#| code-fold: true
+#| fig-width: 5.5
+#| fig-height: 3.5
+#| fig-align: center
+plot_grid(
+  trace_data %>%
+    ggplot(aes(x = .iter, y = mean, colour = .imp, group = .imp)) +
+    geom_line() +
+    facet_wrap(~var, scales = "free_y") +
+    panel_border() +
+    theme(legend.position = "off"),
+  trace_data %>%
+    ggplot(aes(x = .iter, y = sd, colour = .imp, group = .imp)) +
+    geom_line() +
+    facet_wrap(~var, scales = "free_y") +
+    panel_border() +
+    theme(legend.position = "off"),
+  nrow = 2
+)
+```
+
+
+#### Distribution of imputed data
+
+```{r distribution-plot}
+#| code-fold: true
+#| fig-width: 5.5
+#| fig-height: 2
+#| fig-align: center
+dunnart_complete_long(imp) %>%
+  pivot_longer(c(bmi, hyp, chl), names_to = "var", values_to = "value") %>%
+  left_join(miss_rows, by = c(".id", "var")) %>%
+  ggplot(aes(x = value, y = .imp, colour = miss)) +
+  geom_point(pch = 1) +
+  scale_colour_manual(values = c("dodgerblue3", "firebrick3")) +
+  facet_grid(~var, scales = "free_x") +
+  panel_border() +
+  theme(legend.position = "bottom")
+```
+
+## Running an analysis on the imputed data
+
+```{r}
+dunnart_analyse <- function(obj, fn) {
+  stopifnot(inherits(obj, "dunnart"))
+  stopifnot(is.function(fn))
+
+  res <- map(obj$imputations, fn)
+  class(res) <- "dunnart_analysis"
+  res
+}
+```
+
+```{r}
+example_model <- dunnart_analyse(
+  imp,
+  \(dat) lm(chl ~ age + bmi + hyp, data = dat)
+)
+```
+
+## Pooling imputations using Rubin's rules
+
+```{r}
+dunnart_pool <- function(obj, tidy_fn = broom::tidy) {
+  tidy_analysis <- bind_rows(
+    map(obj, tidy_fn),
+    .id = ".imp"
+  )
+  m <- length(obj)
+  tidy_analysis %>%
+    summarise(
+      std.error = sqrt(mean(std.error^2) + (m + 1)/m * sd(estimate)^2),
+      estimate = mean(estimate),
+      .by = term
+    ) %>%
+    relocate(std.error, .after = estimate) %>%
+    mutate(
+      statistic = estimate / std.error,
+      p.value = 2*pnorm(-abs(statistic)),
+      conf.low = estimate - qnorm(0.975)*std.error,
+      conf.high = estimate + qnorm(0.975)*std.error
+    )
+}
+```
+
+```{r}
+dunnart_pool(example_model)
+```
+
+This is very similar to the results from the complete case analysis:
+
+```{r}
+broom::tidy(lm(chl ~ age + bmi + hyp, data = nhanes), conf.int = TRUE)
+```
 
 ## References
