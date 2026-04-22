@@ -6,7 +6,7 @@
 }
 
 /* background and text colour for page title block */
-.quarto-title-banner {
+.quarto-title-banner, .quarto-title-banner h1 {
   background: #dce3da;
   color: #323331;
 }

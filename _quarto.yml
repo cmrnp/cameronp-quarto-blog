@@ -19,8 +19,8 @@ website:
     right:
       - text: Blog
         file: blog.qmd
-      - icon: twitter
-        href: https://twitter.com/camjpatrick
+      - icon: bluesky
+        href: https://bsky.app/profile/cameronpat.bsky.social
       - icon: mastodon
         href: "https://fosstodon.org/%40cameronpat"
       - icon: github
