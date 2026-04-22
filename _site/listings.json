@@ -2,6 +2,7 @@
   {
     "listing": "/blog.html",
     "items": [
+      "/post/2026/impute-left-censored-counts/index.html",
       "/post/2023/07/mice-in-a-blog-post/index.html",
       "/post/2023/07/quarto-thesis-formatting/index.html",
       "/post/2023/07/logit-rd-rr/index.html",
@@ -16,6 +17,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/post/2026/impute-left-censored-counts/index.html",
       "/post/2023/07/mice-in-a-blog-post/index.html",
       "/post/2023/07/quarto-thesis-formatting/index.html",
       "/post/2023/07/logit-rd-rr/index.html",

@@ -10,7 +10,1601 @@
 <atom:link href="https://cameronpatrick.com/index.xml" rel="self" type="application/rss+xml"/>
 <description></description>
 <generator>quarto-1.8.27</generator>
-<lastBuildDate>Sun, 30 Jul 2023 14:00:00 GMT</lastBuildDate>
+<lastBuildDate>Tue, 21 Apr 2026 14:00:00 GMT</lastBuildDate>
+<item>
+  <title>Multiple imputation methods for left-censored counts</title>
+  <dc:creator>Cameron Patrick</dc:creator>
+  <link>https://cameronpatrick.com/post/2026/impute-left-censored-counts/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>Official statistics often publish tables with small counts omitted, out of concern for privacy. For example, an entry may be “&lt; 5” instead of containing an actual number. Most missing data methods won’t work well here, because the values aren’t missing at random (MAR) in the usual sense: we know the missing value is less than five, and all values less than five are missing.</p>
+<p>For more on this, see this helpful blog post by Peter Ellis over on Free Range Stats: <a href="https://freerangestats.info/blog/2018/11/06/suppressed-data">Suppressed data (left-censored counts)</a></p>
+<p>In short: substituting a value in the middle of the censored range works well in practice. Left-censored outcome models (using, e.g., the <code>VGAM</code> package) work well. Complete case analysis and standard multiple imputation both perform poorly and should be avoided.</p>
+<p>That post focussed on using the counts as an outcome. However, counts can also be predictors in other models, or used as the input for further processes. To give the example which motivated this effort originally, crude death counts are an input required to calculate standardised mortality ratios. In that case, using a left-censored outcome model is not an option.</p>
+<p>Another common characteristic of count data is that they are overdispersed, i.e., have a variance greater than would be predicted by a Poisson distribution. We will see that this is important to consider when modelling left-censored counts, too.</p>
+</section>
+<section id="using-mice-to-impute-left-censored-counts" class="level1">
+<h1>Using mice to impute left-censored counts</h1>
+<p>Here’s a <code>mice</code> imputation method for suppressed counts, which fits a left-censored Poisson regression model using <code>VGAM::vglm()</code>, then samples from its posterior distribution. This lets us obtain values for the censored counts, which can then be used e.g.&nbsp;as predictors in other models.</p>
+<p>To use it, call <code>mice()</code> with <code>method = "lcpoisson"</code> (or put <code>lcpoisson</code> in the method vector for the variables you want to use it for), and add a <code>left_cens =</code> parameter to lowest non-censored value.</p>
+<p>Bonus feature: if you set a variable’s entry in the predictor matrix to <code>-1</code>, it will be used as an offset term, with coefficient forced to <code>1</code>. Useful if you have a known total population for each observation and are interested in modelling rate ratios, for example.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># left-censored poisson imputation</span></span>
+<span id="cb1-2">mice.impute.lcpoisson <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span></span>
+<span id="cb1-3">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(y, ry, x, type, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">wy =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>,</span>
+<span id="cb1-4">           left_cens, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">offset =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>, ...) {</span>
+<span id="cb1-5">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># default: impute values to which the model is not fitted</span></span>
+<span id="cb1-6">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.null</span>(wy)) {</span>
+<span id="cb1-7">      wy <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!</span>ry</span>
+<span id="cb1-8">    }</span>
+<span id="cb1-9">    </span>
+<span id="cb1-10">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># fit left-censored Poisson regression</span></span>
+<span id="cb1-11">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># (adapted from countimp::mice.impute.poisson)</span></span>
+<span id="cb1-12">    offset_var <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">names</span>(type[type <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>])</span>
+<span id="cb1-13">    y[<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!</span>ry] <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> left_cens</span>
+<span id="cb1-14">    yy <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">SurvS4</span>(y, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.numeric</span>(ry), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">type =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"left"</span>) </span>
+<span id="cb1-15">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.null</span>(offset)) {</span>
+<span id="cb1-16">      fit <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vglm</span>(yy <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> x, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">family =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cens.poisson</span>())</span>
+<span id="cb1-17">    } <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">else</span> {</span>
+<span id="cb1-18">      fit <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vglm</span>(yy <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> x, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">offset =</span> x[, offset_var],</span>
+<span id="cb1-19">                  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">family =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cens.poisson</span>())</span>
+<span id="cb1-20">    }</span>
+<span id="cb1-21">    fit.sum <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">summary.vglm</span>(fit)</span>
+<span id="cb1-22">    beta <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">coef</span>(fit)</span>
+<span id="cb1-23">    </span>
+<span id="cb1-24">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># sample from posterior distribution of parameters</span></span>
+<span id="cb1-25">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># (adapted from countimp::mice.impute.poisson)</span></span>
+<span id="cb1-26">    rv <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">t</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">chol</span>(fit.sum<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">@</span>cov.unscaled))</span>
+<span id="cb1-27">    beta.star <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> beta <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> rv <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%*%</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ncol</span>(rv))</span>
+<span id="cb1-28">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># predicted mean for each row to impute</span></span>
+<span id="cb1-29">    p <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.vector</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">exp</span>((x[wy, , <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">drop =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>] <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%*%</span> beta.star)))</span>
+<span id="cb1-30"></span>
+<span id="cb1-31">    <span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## sample from truncated Poisson distributions</span></span>
+<span id="cb1-32">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># first obtain probability mass function</span></span>
+<span id="cb1-33">    interval <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>(left_cens <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>)</span>
+<span id="cb1-34">    pmf <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">matrix</span>(</span>
+<span id="cb1-35">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dpois</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rep</span>(interval, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">each =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(p)),</span>
+<span id="cb1-36">            <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rep</span>(p, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">times =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(interval))),</span>
+<span id="cb1-37">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nrow =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(p),</span>
+<span id="cb1-38">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ncol =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(interval)</span>
+<span id="cb1-39">    )</span>
+<span id="cb1-40">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># sample from interval using our pmf</span></span>
+<span id="cb1-41">    imp <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">apply</span>(pmf, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, \(prob) <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sample</span>(interval, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">prob =</span> prob))</span>
+<span id="cb1-42">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">return</span>(imp)</span>
+<span id="cb1-43">  }</span></code></pre></div></div>
+</div>
+<p>Count data are often overdispersed, so here’s a version that uses quasi-Poisson regression instead. Use it by setting <code>method = "lcquasipoisson"</code>. Note that this doesn’t work perfectly, because the censoring mechanism doesn’t properly incorporate the overdispersion, it’s just used to scale the standard errors after fitting the model. Imputed data are drawn from a negative binomial distribution with parameters set to match the estimated overdispersion from the quasi-Poisson model. This should still be better than complete ignoring overdispersion.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># left-censored quasipoisson imputation</span></span>
+<span id="cb2-2">mice.impute.lcquasipoisson <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span></span>
+<span id="cb2-3">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(y, ry, x, type, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">wy =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>,</span>
+<span id="cb2-4">           left_cens, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">offset =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>, ...) {</span>
+<span id="cb2-5">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># default: impute values to which the model is not fitted</span></span>
+<span id="cb2-6">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.null</span>(wy)) {</span>
+<span id="cb2-7">      wy <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!</span>ry</span>
+<span id="cb2-8">    }</span>
+<span id="cb2-9">    </span>
+<span id="cb2-10">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># fit left-censored Poisson regression</span></span>
+<span id="cb2-11">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># (adapted from countimp::mice.impute.poisson)</span></span>
+<span id="cb2-12">    offset_var <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">names</span>(type[type <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>])</span>
+<span id="cb2-13">    y[<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!</span>ry] <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> left_cens</span>
+<span id="cb2-14">    yy <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">SurvS4</span>(y, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.numeric</span>(ry), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">type =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"left"</span>) </span>
+<span id="cb2-15">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.null</span>(offset)) {</span>
+<span id="cb2-16">      fit <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vglm</span>(yy <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> x, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">family =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cens.poisson</span>())</span>
+<span id="cb2-17">    } <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">else</span> {</span>
+<span id="cb2-18">      fit <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">vglm</span>(yy <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> x, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">offset =</span> x[, offset_var],</span>
+<span id="cb2-19">                  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">family =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">cens.poisson</span>())</span>
+<span id="cb2-20">    }</span>
+<span id="cb2-21">    fit.sum <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">summary.vglm</span>(fit)</span>
+<span id="cb2-22">    beta <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">coef</span>(fit)</span>
+<span id="cb2-23">    dispersion <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sum</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">residuals</span>(fit, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"pearson"</span>)<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">^</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> fit<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">@</span>df.residual</span>
+<span id="cb2-24">    </span>
+<span id="cb2-25">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># sample from posterior distribution of parameters. we ignore</span></span>
+<span id="cb2-26">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># uncertainty in the estimate of overdispersion.</span></span>
+<span id="cb2-27">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#    (wotcha gonna do about it.)</span></span>
+<span id="cb2-28">    rv <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">t</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">chol</span>(dispersion <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> fit.sum<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">@</span>cov.unscaled))</span>
+<span id="cb2-29">    beta.star <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> beta <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> rv <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%*%</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">ncol</span>(rv))</span>
+<span id="cb2-30">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># predicted mean for each row to impute</span></span>
+<span id="cb2-31">    p <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.vector</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">exp</span>((x[wy, , <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">drop =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>] <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">%*%</span> beta.star)))</span>
+<span id="cb2-32">    phi <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> p <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> (dispersion <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>)</span>
+<span id="cb2-33"></span>
+<span id="cb2-34">    <span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## sample from truncated negative binomial distribution</span></span>
+<span id="cb2-35">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># first obtain probability mass function</span></span>
+<span id="cb2-36">    interval <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>(left_cens <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>)</span>
+<span id="cb2-37">    pmf <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">matrix</span>(</span>
+<span id="cb2-38">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dnbinom</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rep</span>(interval, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">each =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(p)),</span>
+<span id="cb2-39">              <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mu =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rep</span>(p, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">times =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(interval)),</span>
+<span id="cb2-40">              <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">size =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rep</span>(phi, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">times =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(interval))),</span>
+<span id="cb2-41">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">nrow =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(p),</span>
+<span id="cb2-42">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ncol =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">length</span>(interval)</span>
+<span id="cb2-43">    )</span>
+<span id="cb2-44">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># sample from interval using our pmf</span></span>
+<span id="cb2-45">    imp <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">apply</span>(pmf, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, \(prob) <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sample</span>(interval, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">prob =</span> prob))</span>
+<span id="cb2-46">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">return</span>(imp)</span>
+<span id="cb2-47">  }</span></code></pre></div></div>
+</div>
+<section id="other-imputation-methods-for-comparison" class="level2">
+<h2 class="anchored" data-anchor-id="other-imputation-methods-for-comparison">Other imputation methods for comparison</h2>
+<p>These are verbatim from Peter Ellis’s blog. The <code>desuppress</code> method imputes using an intercept-only Poisson model, and <code>uniform</code> imputes using a uniform distribution over the missing values. I would expect the first method to perform poorly if there are good predictors of missing values. In principle, <code>uniform</code> should show the same bias as just setting missing values to centre of the censored range, but with better standard errors, since it propagates uncertainty in the censored values.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#' Imputation function for suppressed data for use with mice - Poisson-based</span></span>
+<span id="cb3-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#'</span></span>
+<span id="cb3-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#' @param y vector to be imputed</span></span>
+<span id="cb3-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#' @param ry logical vector of observed (TRUE) and missing (FALSE) values of y</span></span>
+<span id="cb3-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#' @param x design matrix. Ignored but is probably needed for mice to use.</span></span>
+<span id="cb3-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#' @param wy vector that  is TRUE where imputations are created for y. Not </span></span>
+<span id="cb3-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#'   sure when this is different to just !ry (which is the default).</span></span>
+<span id="cb3-8">mice.impute.desuppress <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span> (y, ry, x, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">wy =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">max_value =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span>, ...) {</span>
+<span id="cb3-9">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># during dev:</span></span>
+<span id="cb3-10">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># y &lt;- data$censored_count_num; ry &lt;- !is.na(y)</span></span>
+<span id="cb3-11">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.null</span>(wy)){ </span>
+<span id="cb3-12">    wy <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!</span>ry</span>
+<span id="cb3-13">  }</span>
+<span id="cb3-14">  </span>
+<span id="cb3-15">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># What are the relative chances of getting values from 0 to the maximum </span></span>
+<span id="cb3-16">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># allowed value, if we have a Poisson distribution which we have estimated </span></span>
+<span id="cb3-17">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># the mean of via trimmed mean? (this is very approximate but probably better</span></span>
+<span id="cb3-18">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># than just giving equal chances to 0:5)</span></span>
+<span id="cb3-19">  probs <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dpois</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>max_value, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mean</span>(y[ry], <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">tr =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.2</span>))</span>
+<span id="cb3-20">  </span>
+<span id="cb3-21">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">return</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sample</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>max_value, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sum</span>(wy), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">prob =</span> probs, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">replace =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>))</span>
+<span id="cb3-22">}</span>
+<span id="cb3-23"></span>
+<span id="cb3-24"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#' Imputation function for suppressed data for use with mice - simple</span></span>
+<span id="cb3-25"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#'</span></span>
+<span id="cb3-26">mice.impute.uniform <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span> (y, ry, x, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">wy =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">max_value =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span>, ...) {</span>
+<span id="cb3-27">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">return</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sample</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>max_value, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">sum</span>(wy), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">replace =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>))</span>
+<span id="cb3-28">}</span></code></pre></div></div>
+</div>
+</section>
+</section>
+<section id="simulation-study-design" class="level1">
+<h1>Simulation study design</h1>
+<p>The primary goal of this simulation was to determine whether or not the <code>lcpoisson</code> imputation method (code shown earlier) recovers a distribution consistent with the original data generating process. A secondary goal was to compare other suggested methods for analysing left-censored counts.</p>
+<section id="data-generating-process" class="level2">
+<h2 class="anchored" data-anchor-id="data-generating-process">Data generating process</h2>
+<p>The structure of the simulated data was chosen to resemble real public health data on cardiovascular mortality across geographic areas. The predictors, outcomes, and their relationships are based broadly on publicly available health data in Australia from <a href="https://www.aihw.gov.au/">AIHW</a> and <a href="https://phidu.torrens.edu.au/">PHIDU</a>. The simulated datasets all had a sample size of 1000 observations.</p>
+<p>The simulated variables are as follows:</p>
+<ul>
+<li><code>pop</code>: population of the statistical area (median: approx 8000)</li>
+<li><code>pct_female</code>: percentage of female residents</li>
+<li><code>med_age</code>: median age</li>
+<li><code>ses_z</code>: relative socioeconomic status (continuous)</li>
+<li><code>bp_z</code>: relative prevalence of high blood pressure (continuous)</li>
+<li><code>weight_z</code>: relative prevalence of obesity (continuous)</li>
+<li><code>smoker_z</code>: relative prevalence of smokers (continuous)</li>
+<li><code>deaths</code>: annual deaths due to cardiovascular disease</li>
+<li><code>deaths_cens</code>: left-censored version of <code>deaths</code>, with missing data introduced if <code>deaths &lt;= 5</code>. Approximately 31% of the observations were censored.</li>
+</ul>
+<p>To ensure Monte Carlo error was well controlled, 2000 simulated datasets were created, sufficient to ensure ±1% margin of error for confidence interval coverage.</p>
+<p>The code to generate the simulated data is shown below:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">simulate_data <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">n =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1000</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">seed =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NA</span>) {</span>
+<span id="cb4-2">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.na</span>(seed)) {</span>
+<span id="cb4-3">    <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">set.seed</span>(seed)</span>
+<span id="cb4-4">  }</span>
+<span id="cb4-5">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tibble</span>(</span>
+<span id="cb4-6">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">id =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span>n,</span>
+<span id="cb4-7">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">log_pop =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(n, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">8.8</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>),</span>
+<span id="cb4-8">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">pop =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">round</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">exp</span>(log_pop)),</span>
+<span id="cb4-9">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">ses_z =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(n, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>),</span>
+<span id="cb4-10">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">med_age =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(n, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">35</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.9</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>ses_z, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>),</span>
+<span id="cb4-11">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">pct_female =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(n, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">50</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(med_age<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">-35</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.6</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>ses_z, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.5</span>),</span>
+<span id="cb4-12">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">smoker_z =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(n, <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.85</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>ses_z, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>),</span>
+<span id="cb4-13">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">weight_z =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(n, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.12</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(med_age<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">-35</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.15</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(pct_female<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">-50</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span></span>
+<span id="cb4-14">                       <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.55</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>smoker_z, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>),</span>
+<span id="cb4-15">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">bp_z =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnorm</span>(n, <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.25</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(med_age<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">-35</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(pct_female<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">-50</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>ses_z <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> </span>
+<span id="cb4-16">                   <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.1</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>smoker_z <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>weight_z, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>),</span>
+<span id="cb4-17">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">log_mu =</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">6.5</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> log_pop <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.07</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(med_age<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">-35</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.07</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>(pct_female<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">-50</span>) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span></span>
+<span id="cb4-18">      <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.15</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>ses_z <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>bp_z <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>weight_z <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.2</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span>smoker_z,</span>
+<span id="cb4-19">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mu =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">exp</span>(log_mu),</span>
+<span id="cb4-20">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">deaths =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rnbinom</span>(n, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">mu =</span> mu, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">size =</span> mu<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span>), <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># somewhat overdispersed...</span></span>
+<span id="cb4-21">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">deaths_cens =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">case_when</span>(</span>
+<span id="cb4-22">      deaths <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&gt;</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> deaths,</span>
+<span id="cb4-23">      <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NA</span></span>
+<span id="cb4-24">    ),</span>
+<span id="cb4-25">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">deaths_mean_imp =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">replace_na</span>(deaths_cens, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>),</span>
+<span id="cb4-26">  )</span>
+<span id="cb4-27">}</span></code></pre></div></div>
+</div>
+</section>
+<section id="analysis-methods-to-compare" class="level2">
+<h2 class="anchored" data-anchor-id="analysis-methods-to-compare">Analysis methods to compare</h2>
+<p>The following methods for handling censored data are considered here:</p>
+<ul>
+<li><code>full</code>: Analysis of the full (non-censored) data using a quasi-Poisson model was performed as a check that the data generation process and analysis models were working as expected, but not presented in the results below</li>
+<li><code>cca</code>: Complete case analysis. Censored observations are removed, then a quasi-Poisson model was fit to the remaining data</li>
+<li><code>vglm</code>: Left-censored Poisson regression using the <code>VGAM</code> package</li>
+<li><code>vglm quasi</code>: Left-censored quasi-Poisson regression. This was implemented by fitting a Poisson regression using the <code>VGAM</code> package, then inflating standard errors based on estimated overdispersion</li>
+<li><code>mean imp</code>: Mean imputation. Censored observations are replaced by 2.5, the mean of the values they could possibly take, then a quasi-Poisson model was fit to the data.</li>
+<li><code>mi vglm</code>: Multiple imputation using left-censored Poisson regression, followed by a quasi-Poisson model fit to the imputed data</li>
+<li><code>mi vglm quasi</code>: Multiple imputation using left-censored quasi-Poisson regression, followed by a quasi-Poisson model fit to the imputed data</li>
+<li><code>mi pois mean</code>: Multiple imputation using an intercept-only Poisson distribution (as demonstrated by Peter Ellis previously), followed by a quasi-Poisson model fit to the imputed data</li>
+<li><code>mi unif</code>: Multiple imputation using a uniform distribution, followed by a quasi-Poisson model fit to the imputed data</li>
+</ul>
+</section>
+<section id="estimands" class="level2">
+<h2 class="anchored" data-anchor-id="estimands">Estimands</h2>
+<p>The estimands of interest are the coefficients of the (quasi-)Poisson regression model used to generate the simulated data:</p>
+<p><code>deaths ~ offset(log(pop)) + pct_female + med_age + ses_z + bp_z + weight_z + smoker_z</code></p>
+<p>The true values of these parameters are shown below:</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="mrpnnuidae" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#mrpnnuidae table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#mrpnnuidae thead, #mrpnnuidae tbody, #mrpnnuidae tfoot, #mrpnnuidae tr, #mrpnnuidae td, #mrpnnuidae th {
+  border-style: none;
+}
+
+#mrpnnuidae p {
+  margin: 0;
+  padding: 0;
+}
+
+#mrpnnuidae .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#mrpnnuidae .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#mrpnnuidae .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#mrpnnuidae .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#mrpnnuidae .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#mrpnnuidae .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#mrpnnuidae .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#mrpnnuidae .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#mrpnnuidae .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#mrpnnuidae .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#mrpnnuidae .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#mrpnnuidae .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#mrpnnuidae .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#mrpnnuidae .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#mrpnnuidae .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#mrpnnuidae .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#mrpnnuidae .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#mrpnnuidae .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#mrpnnuidae .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#mrpnnuidae .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_left {
+  text-align: left;
+}
+
+#mrpnnuidae .gt_center {
+  text-align: center;
+}
+
+#mrpnnuidae .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#mrpnnuidae .gt_font_normal {
+  font-weight: normal;
+}
+
+#mrpnnuidae .gt_font_bold {
+  font-weight: bold;
+}
+
+#mrpnnuidae .gt_font_italic {
+  font-style: italic;
+}
+
+#mrpnnuidae .gt_super {
+  font-size: 65%;
+}
+
+#mrpnnuidae .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#mrpnnuidae .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#mrpnnuidae .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#mrpnnuidae .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#mrpnnuidae .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#mrpnnuidae .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#mrpnnuidae .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#mrpnnuidae .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#mrpnnuidae div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<thead>
+<tr class="gt_col_headings header">
+<th id="term" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Model parameter</th>
+<th id="true_value" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">True value</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="term">(Intercept)</td>
+<td class="gt_row gt_right" headers="true_value">-5.45</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="term">pct female</td>
+<td class="gt_row gt_right" headers="true_value">-0.07</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="term">med age</td>
+<td class="gt_row gt_right" headers="true_value">0.07</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="term">ses z</td>
+<td class="gt_row gt_right" headers="true_value">-0.15</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="term">bp z</td>
+<td class="gt_row gt_right" headers="true_value">0.05</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="term">weight z</td>
+<td class="gt_row gt_right" headers="true_value">0.05</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="term">smoker z</td>
+<td class="gt_row gt_right" headers="true_value">0.20</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="performance-measures" class="level2">
+<h2 class="anchored" data-anchor-id="performance-measures">Performance measures</h2>
+<p>Methods were evaluated in terms of bias, empirical and model-based standard error, coverage of nominal 95% confidence intervals, and root-mean-square error.</p>
+</section>
+</section>
+<section id="results" class="level1">
+<h1>Results</h1>
+<p>As expected, complete case analysis (<code>cca</code>) was biased for all parameters, and showed more bias than any alternative method. The best performers were mean imputation (<code>mean imp</code>), multiple imputation using left-censored quasi-Poisson (<code>mi vglm quasi</code>), and multiple imputation using a uniform distribution (<code>mi unif</code>).</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-bias" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-bias-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="https://cameronpatrick.com/post/2026/impute-left-censored-counts/index_files/figure-html/fig-bias-1.png" class="img-fluid figure-img" width="715">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-bias-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Bias in parameter estimates for each method
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Most methods demonstrated model-based standard errors similar to their empirical standard errors, with notable exceptions of left-censored Poisson (<code>vglm</code>), which had falsely low standard errors, and left-censored quasi-Poisson (<code>vglm quasi</code>), which had falsely high standard errors. Two of the multiple imputation methods, <code>mi vglm</code> and <code>mi pois mean</code>, and displayed standard errors lower than that of the full data model; this combination of bias and low standard error may make them problematic in practice.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-se" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-se-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="https://cameronpatrick.com/post/2026/impute-left-censored-counts/index_files/figure-html/fig-se-1.png" class="img-fluid figure-img" width="715">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-se-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Empirical and model-based standard errors for each method
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The worst performers for interval coverage were left-censored Poisson (<code>vglm</code>), likely due to it not accounting for overdispersion, and <code>cca</code>, likely due to bias. The best performers were the same as the best performers for bias: <code>mean imp</code>, <code>mi vglm quasi</code> and <code>mi unif</code>.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-coverage" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-coverage-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="https://cameronpatrick.com/post/2026/impute-left-censored-counts/index_files/figure-html/fig-coverage-1.png" class="img-fluid figure-img" width="715">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-coverage-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Coverage of 95% confidence intervals for each method
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>RMS error shows notably poor performance of CCA, but is otherwise not particularly interesting.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-rmse" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-rmse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="https://cameronpatrick.com/post/2026/impute-left-censored-counts/index_files/figure-html/fig-rmse-1.png" class="img-fluid figure-img" width="715">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-rmse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Root-mean-square error in parameter estimates for each method
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="discussion" class="level1">
+<h1>Discussion</h1>
+<p>Based on the above results, my recommendations are:</p>
+<ul>
+<li>Complete case analysis was a consistently bad performer and should not be used in this context</li>
+<li>Replacing censored values by half the censoring point (<code>mean imp</code>) is simple to implement and performed remarkably well</li>
+<li>Left-censored Poisson models (<code>vglm</code>) seem appealing, but by not allowing for overdispersion, perform poorly in practice unless the only interest is in point estimates. An attempt to fix this by inflating standard errors using estimated overdispersion (<code>vglm quasi</code>) was less successful than hoped.</li>
+<li>If multiple imputation is to be used, consider either the left censored quasi-Poisson (<code>mi vglm quasi</code>, selected in <code>mice</code> using <code>method = "lcquasipoisson"</code>) or uniform (<code>mi unif</code>, selected in <code>mice</code> using <code>method = "uniform"</code>)</li>
+</ul>
+</section>
+<section id="code-availability" class="level1">
+<h1>Code availability</h1>
+<p>The full code for this simulation can be found on GitHub: <a href="https://github.com/cmrnp/cameronp-quarto-blog/tree/master/post/2026/impute-left-censored-counts/" class="uri">https://github.com/cmrnp/cameronp-quarto-blog/tree/master/post/2026/impute-left-censored-counts/</a></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://cameronpatrick.com/post/2026/impute-left-censored-counts/</guid>
+  <pubDate>Tue, 21 Apr 2026 14:00:00 GMT</pubDate>
+</item>
 <item>
   <title>Dirty imputation done dirt cheap: implementing Multiple Imputation by Chained Equations in one blog post</title>
   <dc:creator>Cameron Patrick</dc:creator>

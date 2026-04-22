@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Cameron Patrick">
+
+<title>Multiple imputation methods for left-censored counts – Cameron Patrick</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<link href="../../../Cam_headshot_small.jpg" rel="icon" type="image/jpeg">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-43ffb8487b164b94306735ed21d0d9f3.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../../styles.css">
+<meta property="og:title" content="Multiple imputation methods for left-censored counts – Cameron Patrick">
+<meta property="og:description" content="Data with left-censored counts, e.g.&nbsp;“< 5” instead of a small value, need to be handled with care in statistical analysis. Common missing data approaches, including complete case analysis and default options for multiple imputation, perform very poorly. This post evaluates some alternatives, including a multiple imputation-based option that I haven’t seen described previously, which appears to work well.">
+<meta property="og:image" content="https://cameronpatrick.com/post/2026/impute-left-censored-counts/index_files/figure-html/fig-coverage-1.png">
+<meta property="og:site_name" content="Cameron Patrick">
+<meta property="og:image:height" content="1170">
+<meta property="og:image:width" content="1430">
+<meta name="twitter:title" content="Multiple imputation methods for left-censored counts – Cameron Patrick">
+<meta name="twitter:description" content="Data with left-censored counts, e.g.&nbsp;“< 5” instead of a small value, need to be handled with care in statistical analysis. Common missing data approaches, including complete case analysis and default options for multiple imputation, perform very poorly. This post evaluates some alternatives, including a multiple imputation-based option that I haven’t seen described previously, which appears to work well.">
+<meta name="twitter:image" content="https://cameronpatrick.com/post/2026/impute-left-censored-counts/index_files/figure-html/fig-coverage-1.png">
+<meta name="twitter:creator" content="@camjpatrick">
+<meta name="twitter:image-height" content="1170">
+<meta name="twitter:image-width" content="1430">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Posting completely at random</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../blog.html"> 
+<span class="menu-text">Blog</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://bsky.app/profile/cameronpat.bsky.social"> <i class="bi bi-bluesky" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://fosstodon.org/%40cameronpat"> <i class="bi bi-mastodon" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/cmrnp"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Multiple imputation methods for left-censored counts</h1>
+                      </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Cameron Patrick </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">22 April, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  <div>
+    <div class="abstract">
+      <div class="block-title">Abstract</div>
+      <p>Data with left-censored counts, e.g.&nbsp;“&lt; 5” instead of a small value, need to be handled with care in statistical analysis. Common missing data approaches, including complete case analysis and default options for multiple imputation, perform very poorly. This post evaluates some alternatives, including a multiple imputation-based option that I haven’t seen described previously, which appears to work well.</p>
+    </div>
+  </div>
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#using-mice-to-impute-left-censored-counts" id="toc-using-mice-to-impute-left-censored-counts" class="nav-link" data-scroll-target="#using-mice-to-impute-left-censored-counts">Using mice to impute left-censored counts</a>
+  <ul class="collapse">
+  <li><a href="#other-imputation-methods-for-comparison" id="toc-other-imputation-methods-for-comparison" class="nav-link" data-scroll-target="#other-imputation-methods-for-comparison">Other imputation methods for comparison</a></li>
+  </ul></li>
+  <li><a href="#simulation-study-design" id="toc-simulation-study-design" class="nav-link" data-scroll-target="#simulation-study-design">Simulation study design</a>
+  <ul class="collapse">
+  <li><a href="#data-generating-process" id="toc-data-generating-process" class="nav-link" data-scroll-target="#data-generating-process">Data generating process</a></li>
+  <li><a href="#analysis-methods-to-compare" id="toc-analysis-methods-to-compare" class="nav-link" data-scroll-target="#analysis-methods-to-compare">Analysis methods to compare</a></li>
+  <li><a href="#estimands" id="toc-estimands" class="nav-link" data-scroll-target="#estimands">Estimands</a></li>
+  <li><a href="#performance-measures" id="toc-performance-measures" class="nav-link" data-scroll-target="#performance-measures">Performance measures</a></li>
+  </ul></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
+  <li><a href="#discussion" id="toc-discussion" class="nav-link" data-scroll-target="#discussion">Discussion</a></li>
+  <li><a href="#code-availability" id="toc-code-availability" class="nav-link" data-scroll-target="#code-availability">Code availability</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>Official statistics often publish tables with small counts omitted, out of concern for privacy. For example, an entry may be “&lt; 5” instead of containing an actual number. Most missing data methods won’t work well here, because the values aren’t missing at random (MAR) in the usual sense: we know the missing value is less than five, and all values less than five are missing.</p>
+<p>For more on this, see this helpful blog post by Peter Ellis over on Free Range Stats: <a href="https://freerangestats.info/blog/2018/11/06/suppressed-data">Suppressed data (left-censored counts)</a></p>
+<p>In short: substituting a value in the middle of the censored range works well in practice. Left-censored outcome models (using, e.g., the <code>VGAM</code> package) work well. Complete case analysis and standard multiple imputation both perform poorly and should be avoided.</p>
+<p>That post focussed on using the counts as an outcome. However, counts can also be predictors in other models, or used as the input for further processes. To give the example which motivated this effort originally, crude death counts are an input required to calculate standardised mortality ratios. In that case, using a left-censored outcome model is not an option.</p>
+<p>Another common characteristic of count data is that they are overdispersed, i.e., have a variance greater than would be predicted by a Poisson distribution. We will see that this is important to consider when modelling left-censored counts, too.</p>
+</section>
+<section id="using-mice-to-impute-left-censored-counts" class="level1">
+<h1>Using mice to impute left-censored counts</h1>
+<p>Here’s a <code>mice</code> imputation method for suppressed counts, which fits a left-censored Poisson regression model using <code>VGAM::vglm()</code>, then samples from its posterior distribution. This lets us obtain values for the censored counts, which can then be used e.g.&nbsp;as predictors in other models.</p>
+<p>To use it, call <code>mice()</code> with <code>method = "lcpoisson"</code> (or put <code>lcpoisson</code> in the method vector for the variables you want to use it for), and add a <code>left_cens =</code> parameter to lowest non-censored value.</p>
+<p>Bonus feature: if you set a variable’s entry in the predictor matrix to <code>-1</code>, it will be used as an offset term, with coefficient forced to <code>1</code>. Useful if you have a known total population for each observation and are interested in modelling rate ratios, for example.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># left-censored poisson imputation</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>mice.impute.lcpoisson <span class="ot">&lt;-</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(y, ry, x, type, <span class="at">wy =</span> <span class="cn">NULL</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>           left_cens, <span class="at">offset =</span> <span class="cn">NULL</span>, ...) {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># default: impute values to which the model is not fitted</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">is.null</span>(wy)) {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      wy <span class="ot">&lt;-</span> <span class="sc">!</span>ry</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># fit left-censored Poisson regression</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># (adapted from countimp::mice.impute.poisson)</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    offset_var <span class="ot">&lt;-</span> <span class="fu">names</span>(type[type <span class="sc">==</span> <span class="sc">-</span><span class="dv">1</span>])</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    y[<span class="sc">!</span>ry] <span class="ot">&lt;-</span> left_cens</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    yy <span class="ot">&lt;-</span> <span class="fu">SurvS4</span>(y, <span class="fu">as.numeric</span>(ry), <span class="at">type =</span> <span class="st">"left"</span>) </span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">is.null</span>(offset)) {</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>      fit <span class="ot">&lt;-</span> <span class="fu">vglm</span>(yy <span class="sc">~</span> <span class="dv">0</span> <span class="sc">+</span> x, <span class="at">family =</span> <span class="fu">cens.poisson</span>())</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>      fit <span class="ot">&lt;-</span> <span class="fu">vglm</span>(yy <span class="sc">~</span> <span class="dv">0</span> <span class="sc">+</span> x, <span class="at">offset =</span> x[, offset_var],</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>                  <span class="at">family =</span> <span class="fu">cens.poisson</span>())</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    fit.sum <span class="ot">&lt;-</span> <span class="fu">summary.vglm</span>(fit)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    beta <span class="ot">&lt;-</span> <span class="fu">coef</span>(fit)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="co"># sample from posterior distribution of parameters</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    <span class="co"># (adapted from countimp::mice.impute.poisson)</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    rv <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">chol</span>(fit.sum<span class="sc">@</span>cov.unscaled))</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    beta.star <span class="ot">&lt;-</span> beta <span class="sc">+</span> rv <span class="sc">%*%</span> <span class="fu">rnorm</span>(<span class="fu">ncol</span>(rv))</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    <span class="co"># predicted mean for each row to impute</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    p <span class="ot">&lt;-</span> <span class="fu">as.vector</span>(<span class="fu">exp</span>((x[wy, , <span class="at">drop =</span> <span class="cn">FALSE</span>] <span class="sc">%*%</span> beta.star)))</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    <span class="do">## sample from truncated Poisson distributions</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="co"># first obtain probability mass function</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    interval <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>(left_cens <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>    pmf <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>      <span class="fu">dpois</span>(<span class="fu">rep</span>(interval, <span class="at">each =</span> <span class="fu">length</span>(p)),</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>            <span class="fu">rep</span>(p, <span class="at">times =</span> <span class="fu">length</span>(interval))),</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>      <span class="at">nrow =</span> <span class="fu">length</span>(p),</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>      <span class="at">ncol =</span> <span class="fu">length</span>(interval)</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>    <span class="co"># sample from interval using our pmf</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>    imp <span class="ot">&lt;-</span> <span class="fu">apply</span>(pmf, <span class="dv">1</span>, \(prob) <span class="fu">sample</span>(interval, <span class="dv">1</span>, <span class="at">prob =</span> prob))</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(imp)</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Count data are often overdispersed, so here’s a version that uses quasi-Poisson regression instead. Use it by setting <code>method = "lcquasipoisson"</code>. Note that this doesn’t work perfectly, because the censoring mechanism doesn’t properly incorporate the overdispersion, it’s just used to scale the standard errors after fitting the model. Imputed data are drawn from a negative binomial distribution with parameters set to match the estimated overdispersion from the quasi-Poisson model. This should still be better than complete ignoring overdispersion.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># left-censored quasipoisson imputation</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>mice.impute.lcquasipoisson <span class="ot">&lt;-</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(y, ry, x, type, <span class="at">wy =</span> <span class="cn">NULL</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>           left_cens, <span class="at">offset =</span> <span class="cn">NULL</span>, ...) {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># default: impute values to which the model is not fitted</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">is.null</span>(wy)) {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      wy <span class="ot">&lt;-</span> <span class="sc">!</span>ry</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># fit left-censored Poisson regression</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># (adapted from countimp::mice.impute.poisson)</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    offset_var <span class="ot">&lt;-</span> <span class="fu">names</span>(type[type <span class="sc">==</span> <span class="sc">-</span><span class="dv">1</span>])</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    y[<span class="sc">!</span>ry] <span class="ot">&lt;-</span> left_cens</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    yy <span class="ot">&lt;-</span> <span class="fu">SurvS4</span>(y, <span class="fu">as.numeric</span>(ry), <span class="at">type =</span> <span class="st">"left"</span>) </span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">is.null</span>(offset)) {</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>      fit <span class="ot">&lt;-</span> <span class="fu">vglm</span>(yy <span class="sc">~</span> <span class="dv">0</span> <span class="sc">+</span> x, <span class="at">family =</span> <span class="fu">cens.poisson</span>())</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>      fit <span class="ot">&lt;-</span> <span class="fu">vglm</span>(yy <span class="sc">~</span> <span class="dv">0</span> <span class="sc">+</span> x, <span class="at">offset =</span> x[, offset_var],</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>                  <span class="at">family =</span> <span class="fu">cens.poisson</span>())</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    fit.sum <span class="ot">&lt;-</span> <span class="fu">summary.vglm</span>(fit)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    beta <span class="ot">&lt;-</span> <span class="fu">coef</span>(fit)</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    dispersion <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">residuals</span>(fit, <span class="st">"pearson"</span>)<span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> fit<span class="sc">@</span>df.residual</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="co"># sample from posterior distribution of parameters. we ignore</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="co"># uncertainty in the estimate of overdispersion.</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="co">#    (wotcha gonna do about it.)</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    rv <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">chol</span>(dispersion <span class="sc">*</span> fit.sum<span class="sc">@</span>cov.unscaled))</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    beta.star <span class="ot">&lt;-</span> beta <span class="sc">+</span> rv <span class="sc">%*%</span> <span class="fu">rnorm</span>(<span class="fu">ncol</span>(rv))</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    <span class="co"># predicted mean for each row to impute</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    p <span class="ot">&lt;-</span> <span class="fu">as.vector</span>(<span class="fu">exp</span>((x[wy, , <span class="at">drop =</span> <span class="cn">FALSE</span>] <span class="sc">%*%</span> beta.star)))</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    phi <span class="ot">&lt;-</span> p <span class="sc">/</span> (dispersion <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    <span class="do">## sample from truncated negative binomial distribution</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    <span class="co"># first obtain probability mass function</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>    interval <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>(left_cens <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>    pmf <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>      <span class="fu">dnbinom</span>(<span class="at">x =</span> <span class="fu">rep</span>(interval, <span class="at">each =</span> <span class="fu">length</span>(p)),</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>              <span class="at">mu =</span> <span class="fu">rep</span>(p, <span class="at">times =</span> <span class="fu">length</span>(interval)),</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>              <span class="at">size =</span> <span class="fu">rep</span>(phi, <span class="at">times =</span> <span class="fu">length</span>(interval))),</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>      <span class="at">nrow =</span> <span class="fu">length</span>(p),</span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>      <span class="at">ncol =</span> <span class="fu">length</span>(interval)</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>    <span class="co"># sample from interval using our pmf</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>    imp <span class="ot">&lt;-</span> <span class="fu">apply</span>(pmf, <span class="dv">1</span>, \(prob) <span class="fu">sample</span>(interval, <span class="dv">1</span>, <span class="at">prob =</span> prob))</span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(imp)</span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="other-imputation-methods-for-comparison" class="level2">
+<h2 class="anchored" data-anchor-id="other-imputation-methods-for-comparison">Other imputation methods for comparison</h2>
+<p>These are verbatim from Peter Ellis’s blog. The <code>desuppress</code> method imputes using an intercept-only Poisson model, and <code>uniform</code> imputes using a uniform distribution over the missing values. I would expect the first method to perform poorly if there are good predictors of missing values. In principle, <code>uniform</code> should show the same bias as just setting missing values to centre of the censored range, but with better standard errors, since it propagates uncertainty in the censored values.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">#' Imputation function for suppressed data for use with mice - Poisson-based</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param y vector to be imputed</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param ry logical vector of observed (TRUE) and missing (FALSE) values of y</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param x design matrix. Ignored but is probably needed for mice to use.</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">#' @param wy vector that  is TRUE where imputations are created for y. Not </span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">#'   sure when this is different to just !ry (which is the default).</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>mice.impute.desuppress <span class="ot">&lt;-</span> <span class="cf">function</span> (y, ry, x, <span class="at">wy =</span> <span class="cn">NULL</span>, <span class="at">max_value =</span> <span class="dv">5</span>, ...) {</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="co"># during dev:</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># y &lt;- data$censored_count_num; ry &lt;- !is.na(y)</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">is.null</span>(wy)){ </span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    wy <span class="ot">&lt;-</span> <span class="sc">!</span>ry</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  <span class="co"># What are the relative chances of getting values from 0 to the maximum </span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  <span class="co"># allowed value, if we have a Poisson distribution which we have estimated </span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  <span class="co"># the mean of via trimmed mean? (this is very approximate but probably better</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  <span class="co"># than just giving equal chances to 0:5)</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  probs <span class="ot">&lt;-</span> <span class="fu">dpois</span>(<span class="dv">0</span><span class="sc">:</span>max_value, <span class="fu">mean</span>(y[ry], <span class="at">tr =</span> <span class="fl">0.2</span>))</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span>max_value, <span class="fu">sum</span>(wy), <span class="at">prob =</span> probs, <span class="at">replace =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a><span class="co">#' Imputation function for suppressed data for use with mice - simple</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="co">#'</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>mice.impute.uniform <span class="ot">&lt;-</span> <span class="cf">function</span> (y, ry, x, <span class="at">wy =</span> <span class="cn">NULL</span>, <span class="at">max_value =</span> <span class="dv">5</span>, ...) {</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span>max_value, <span class="fu">sum</span>(wy), <span class="at">replace =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+</section>
+<section id="simulation-study-design" class="level1">
+<h1>Simulation study design</h1>
+<p>The primary goal of this simulation was to determine whether or not the <code>lcpoisson</code> imputation method (code shown earlier) recovers a distribution consistent with the original data generating process. A secondary goal was to compare other suggested methods for analysing left-censored counts.</p>
+<section id="data-generating-process" class="level2">
+<h2 class="anchored" data-anchor-id="data-generating-process">Data generating process</h2>
+<p>The structure of the simulated data was chosen to resemble real public health data on cardiovascular mortality across geographic areas. The predictors, outcomes, and their relationships are based broadly on publicly available health data in Australia from <a href="https://www.aihw.gov.au/">AIHW</a> and <a href="https://phidu.torrens.edu.au/">PHIDU</a>. The simulated datasets all had a sample size of 1000 observations.</p>
+<p>The simulated variables are as follows:</p>
+<ul>
+<li><code>pop</code>: population of the statistical area (median: approx 8000)</li>
+<li><code>pct_female</code>: percentage of female residents</li>
+<li><code>med_age</code>: median age</li>
+<li><code>ses_z</code>: relative socioeconomic status (continuous)</li>
+<li><code>bp_z</code>: relative prevalence of high blood pressure (continuous)</li>
+<li><code>weight_z</code>: relative prevalence of obesity (continuous)</li>
+<li><code>smoker_z</code>: relative prevalence of smokers (continuous)</li>
+<li><code>deaths</code>: annual deaths due to cardiovascular disease</li>
+<li><code>deaths_cens</code>: left-censored version of <code>deaths</code>, with missing data introduced if <code>deaths &lt;= 5</code>. Approximately 31% of the observations were censored.</li>
+</ul>
+<p>To ensure Monte Carlo error was well controlled, 2000 simulated datasets were created, sufficient to ensure ±1% margin of error for confidence interval coverage.</p>
+<p>The code to generate the simulated data is shown below:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>simulate_data <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">n =</span> <span class="dv">1000</span>, <span class="at">seed =</span> <span class="cn">NA</span>) {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.na</span>(seed)) {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">set.seed</span>(seed)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tibble</span>(</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">id =</span> <span class="dv">1</span><span class="sc">:</span>n,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">log_pop =</span> <span class="fu">rnorm</span>(n, <span class="fl">8.8</span>, <span class="fl">0.5</span>),</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">pop =</span> <span class="fu">round</span>(<span class="fu">exp</span>(log_pop)),</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">ses_z =</span> <span class="fu">rnorm</span>(n, <span class="dv">0</span>, <span class="dv">1</span>),</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">med_age =</span> <span class="fu">rnorm</span>(n, <span class="dv">35</span> <span class="sc">+</span> <span class="fl">0.9</span><span class="sc">*</span>ses_z, <span class="dv">3</span>),</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">pct_female =</span> <span class="fu">rnorm</span>(n, <span class="dv">50</span> <span class="sc">+</span> <span class="fl">0.1</span><span class="sc">*</span>(med_age<span class="dv">-35</span>) <span class="sc">+</span> <span class="fl">0.6</span><span class="sc">*</span>ses_z, <span class="fl">1.5</span>),</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">smoker_z =</span> <span class="fu">rnorm</span>(n, <span class="sc">-</span><span class="fl">0.85</span><span class="sc">*</span>ses_z, <span class="dv">1</span>),</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">weight_z =</span> <span class="fu">rnorm</span>(n, <span class="fl">0.12</span><span class="sc">*</span>(med_age<span class="dv">-35</span>) <span class="sc">-</span> <span class="fl">0.15</span><span class="sc">*</span>(pct_female<span class="dv">-50</span>) <span class="sc">-</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>                       <span class="fl">0.55</span><span class="sc">*</span>smoker_z, <span class="dv">1</span>),</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">bp_z =</span> <span class="fu">rnorm</span>(n, <span class="sc">-</span><span class="fl">0.25</span><span class="sc">*</span>(med_age<span class="dv">-35</span>) <span class="sc">-</span> <span class="fl">0.05</span><span class="sc">*</span>(pct_female<span class="dv">-50</span>) <span class="sc">-</span> <span class="fl">0.1</span><span class="sc">*</span>ses_z <span class="sc">+</span> </span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>                   <span class="fl">0.1</span><span class="sc">*</span>smoker_z <span class="sc">+</span> <span class="fl">0.05</span><span class="sc">*</span>weight_z, <span class="dv">1</span>),</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">log_mu =</span> <span class="sc">-</span><span class="fl">6.5</span> <span class="sc">+</span> log_pop <span class="sc">+</span> <span class="fl">0.07</span><span class="sc">*</span>(med_age<span class="dv">-35</span>) <span class="sc">-</span> <span class="fl">0.07</span><span class="sc">*</span>(pct_female<span class="dv">-50</span>) <span class="sc">-</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>      <span class="fl">0.15</span><span class="sc">*</span>ses_z <span class="sc">+</span> <span class="fl">0.05</span><span class="sc">*</span>bp_z <span class="sc">+</span> <span class="fl">0.05</span><span class="sc">*</span>weight_z <span class="sc">+</span> <span class="fl">0.2</span><span class="sc">*</span>smoker_z,</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">mu =</span> <span class="fu">exp</span>(log_mu),</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">deaths =</span> <span class="fu">rnbinom</span>(n, <span class="at">mu =</span> mu, <span class="at">size =</span> mu<span class="sc">/</span><span class="dv">3</span>), <span class="co"># somewhat overdispersed...</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">deaths_cens =</span> <span class="fu">case_when</span>(</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>      deaths <span class="sc">&gt;</span> <span class="dv">5</span> <span class="sc">~</span> deaths,</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>      <span class="cn">TRUE</span> <span class="sc">~</span> <span class="cn">NA</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">deaths_mean_imp =</span> <span class="fu">replace_na</span>(deaths_cens, <span class="fl">2.5</span>),</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="analysis-methods-to-compare" class="level2">
+<h2 class="anchored" data-anchor-id="analysis-methods-to-compare">Analysis methods to compare</h2>
+<p>The following methods for handling censored data are considered here:</p>
+<ul>
+<li><code>full</code>: Analysis of the full (non-censored) data using a quasi-Poisson model was performed as a check that the data generation process and analysis models were working as expected, but not presented in the results below</li>
+<li><code>cca</code>: Complete case analysis. Censored observations are removed, then a quasi-Poisson model was fit to the remaining data</li>
+<li><code>vglm</code>: Left-censored Poisson regression using the <code>VGAM</code> package</li>
+<li><code>vglm quasi</code>: Left-censored quasi-Poisson regression. This was implemented by fitting a Poisson regression using the <code>VGAM</code> package, then inflating standard errors based on estimated overdispersion</li>
+<li><code>mean imp</code>: Mean imputation. Censored observations are replaced by 2.5, the mean of the values they could possibly take, then a quasi-Poisson model was fit to the data.</li>
+<li><code>mi vglm</code>: Multiple imputation using left-censored Poisson regression, followed by a quasi-Poisson model fit to the imputed data</li>
+<li><code>mi vglm quasi</code>: Multiple imputation using left-censored quasi-Poisson regression, followed by a quasi-Poisson model fit to the imputed data</li>
+<li><code>mi pois mean</code>: Multiple imputation using an intercept-only Poisson distribution (as demonstrated by Peter Ellis previously), followed by a quasi-Poisson model fit to the imputed data</li>
+<li><code>mi unif</code>: Multiple imputation using a uniform distribution, followed by a quasi-Poisson model fit to the imputed data</li>
+</ul>
+</section>
+<section id="estimands" class="level2">
+<h2 class="anchored" data-anchor-id="estimands">Estimands</h2>
+<p>The estimands of interest are the coefficients of the (quasi-)Poisson regression model used to generate the simulated data:</p>
+<p><code>deaths ~ offset(log(pop)) + pct_female + med_age + ses_z + bp_z + weight_z + smoker_z</code></p>
+<p>The true values of these parameters are shown below:</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="mrpnnuidae" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#mrpnnuidae table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#mrpnnuidae thead, #mrpnnuidae tbody, #mrpnnuidae tfoot, #mrpnnuidae tr, #mrpnnuidae td, #mrpnnuidae th {
+  border-style: none;
+}
+
+#mrpnnuidae p {
+  margin: 0;
+  padding: 0;
+}
+
+#mrpnnuidae .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#mrpnnuidae .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#mrpnnuidae .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#mrpnnuidae .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#mrpnnuidae .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#mrpnnuidae .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#mrpnnuidae .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#mrpnnuidae .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#mrpnnuidae .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#mrpnnuidae .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#mrpnnuidae .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#mrpnnuidae .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#mrpnnuidae .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#mrpnnuidae .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#mrpnnuidae .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#mrpnnuidae .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#mrpnnuidae .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#mrpnnuidae .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#mrpnnuidae .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#mrpnnuidae .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#mrpnnuidae .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#mrpnnuidae .gt_left {
+  text-align: left;
+}
+
+#mrpnnuidae .gt_center {
+  text-align: center;
+}
+
+#mrpnnuidae .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#mrpnnuidae .gt_font_normal {
+  font-weight: normal;
+}
+
+#mrpnnuidae .gt_font_bold {
+  font-weight: bold;
+}
+
+#mrpnnuidae .gt_font_italic {
+  font-style: italic;
+}
+
+#mrpnnuidae .gt_super {
+  font-size: 65%;
+}
+
+#mrpnnuidae .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#mrpnnuidae .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#mrpnnuidae .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#mrpnnuidae .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#mrpnnuidae .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#mrpnnuidae .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#mrpnnuidae .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#mrpnnuidae .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#mrpnnuidae div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<thead>
+<tr class="gt_col_headings header">
+<th id="term" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Model parameter</th>
+<th id="true_value" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">True value</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="term">(Intercept)</td>
+<td class="gt_row gt_right" headers="true_value">-5.45</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="term">pct female</td>
+<td class="gt_row gt_right" headers="true_value">-0.07</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="term">med age</td>
+<td class="gt_row gt_right" headers="true_value">0.07</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="term">ses z</td>
+<td class="gt_row gt_right" headers="true_value">-0.15</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="term">bp z</td>
+<td class="gt_row gt_right" headers="true_value">0.05</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="term">weight z</td>
+<td class="gt_row gt_right" headers="true_value">0.05</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="term">smoker z</td>
+<td class="gt_row gt_right" headers="true_value">0.20</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="performance-measures" class="level2">
+<h2 class="anchored" data-anchor-id="performance-measures">Performance measures</h2>
+<p>Methods were evaluated in terms of bias, empirical and model-based standard error, coverage of nominal 95% confidence intervals, and root-mean-square error.</p>
+</section>
+</section>
+<section id="results" class="level1">
+<h1>Results</h1>
+<p>As expected, complete case analysis (<code>cca</code>) was biased for all parameters, and showed more bias than any alternative method. The best performers were mean imputation (<code>mean imp</code>), multiple imputation using left-censored quasi-Poisson (<code>mi vglm quasi</code>), and multiple imputation using a uniform distribution (<code>mi unif</code>).</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-bias" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-bias-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-bias-1.png" class="img-fluid figure-img" width="715">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-bias-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Bias in parameter estimates for each method
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Most methods demonstrated model-based standard errors similar to their empirical standard errors, with notable exceptions of left-censored Poisson (<code>vglm</code>), which had falsely low standard errors, and left-censored quasi-Poisson (<code>vglm quasi</code>), which had falsely high standard errors. Two of the multiple imputation methods, <code>mi vglm</code> and <code>mi pois mean</code>, and displayed standard errors lower than that of the full data model; this combination of bias and low standard error may make them problematic in practice.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-se" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-se-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-se-1.png" class="img-fluid figure-img" width="715">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-se-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Empirical and model-based standard errors for each method
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The worst performers for interval coverage were left-censored Poisson (<code>vglm</code>), likely due to it not accounting for overdispersion, and <code>cca</code>, likely due to bias. The best performers were the same as the best performers for bias: <code>mean imp</code>, <code>mi vglm quasi</code> and <code>mi unif</code>.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-coverage" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-coverage-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-coverage-1.png" class="img-fluid figure-img" width="715">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-coverage-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Coverage of 95% confidence intervals for each method
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>RMS error shows notably poor performance of CCA, but is otherwise not particularly interesting.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-rmse" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-rmse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="index_files/figure-html/fig-rmse-1.png" class="img-fluid figure-img" width="715">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-rmse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Root-mean-square error in parameter estimates for each method
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="discussion" class="level1">
+<h1>Discussion</h1>
+<p>Based on the above results, my recommendations are:</p>
+<ul>
+<li>Complete case analysis was a consistently bad performer and should not be used in this context</li>
+<li>Replacing censored values by half the censoring point (<code>mean imp</code>) is simple to implement and performed remarkably well</li>
+<li>Left-censored Poisson models (<code>vglm</code>) seem appealing, but by not allowing for overdispersion, perform poorly in practice unless the only interest is in point estimates. An attempt to fix this by inflating standard errors using estimated overdispersion (<code>vglm quasi</code>) was less successful than hoped.</li>
+<li>If multiple imputation is to be used, consider either the left censored quasi-Poisson (<code>mi vglm quasi</code>, selected in <code>mice</code> using <code>method = "lcquasipoisson"</code>) or uniform (<code>mi unif</code>, selected in <code>mice</code> using <code>method = "uniform"</code>)</li>
+</ul>
+</section>
+<section id="code-availability" class="level1">
+<h1>Code availability</h1>
+<p>The full code for this simulation can be found on GitHub: <a href="https://github.com/cmrnp/cameronp-quarto-blog/tree/master/post/2026/impute-left-censored-counts/" class="uri">https://github.com/cmrnp/cameronp-quarto-blog/tree/master/post/2026/impute-left-censored-counts/</a></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/cameronpatrick\.com\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<input type="hidden" id="giscus-base-theme" value="light">
+<input type="hidden" id="giscus-alt-theme" value="dark">
+<script>
+  function loadGiscus() {
+    // Function to get the theme based on body class
+    const getTheme = () => {
+      let baseTheme = document.getElementById('giscus-base-theme').value;
+      let altTheme = document.getElementById('giscus-alt-theme').value;
+      return document.body.classList.contains('quarto-dark') ? altTheme : baseTheme;
+    };
+    const script = document.createElement("script");
+    script.src = "https://giscus.app/client.js";
+    script.async = true;
+    script.dataset.repo = "cmrnp/cameronp-quarto-blog";
+    script.dataset.repoId = "R_kgDOJqc0AQ";
+    script.dataset.category = "General";
+    script.dataset.categoryId = "DIC_kwDOJqc0Ac4CX79J";
+    script.dataset.mapping = "title";
+    script.dataset.reactionsEnabled = "1";
+    script.dataset.emitMetadata = "0";
+    script.dataset.inputPosition = "top";
+    script.dataset.theme = getTheme();
+    script.dataset.lang = "en";
+    script.crossOrigin = "anonymous";
+    // Append the script to the desired div instead of at the end of the body
+    document.getElementById("quarto-content").appendChild(script);
+  }
+  loadGiscus();
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

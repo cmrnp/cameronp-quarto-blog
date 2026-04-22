@@ -1,0 +1,581 @@
+---
+title: "Multiple imputation methods for left-censored counts"
+author: "Cameron Patrick"
+date: "2026-04-22"
+draft: false
+abstract: |
+  Data with left-censored counts, e.g. "< 5" instead of a small value, need to be handled with care in statistical analysis. Common missing data approaches, including complete case analysis and default options for multiple imputation, perform very poorly. This post evaluates some alternatives, including a multiple imputation-based option that I haven't seen described previously, which appears to work well.
+execute:
+  echo: false
+format: 
+  html:
+    toc: true
+    fig-dpi: 130
+    fig-width: 5.5
+    fig-height: 4.5
+---
+
+```{r}
+#| include: false
+library(tidyverse)
+library(gt)
+library(glue)
+library(mice)
+library(nanoparquet)
+library(cowplot)
+library(see)
+library(VGAM)
+```
+
+```{r}
+theme_set(
+  theme_cowplot(font_size = 11, rel_small = 9/11, rel_tiny = 9/11) +
+    panel_border()
+)
+```
+
+
+# Introduction
+
+Official statistics often publish tables with small counts omitted, out of concern for privacy. For example, an entry may be "< 5" instead of containing an actual number. Most missing data methods won't work well here, because the values aren't missing at random (MAR) in the usual sense: we know the missing value is less than five, and all values less than five are missing.
+
+For more on this, see this helpful blog post by Peter Ellis over on Free Range Stats: [Suppressed data (left-censored counts)](https://freerangestats.info/blog/2018/11/06/suppressed-data)
+
+In short: substituting a value in the middle of the censored range works well in practice. Left-censored outcome models (using, e.g., the `VGAM` package) work well. Complete case analysis and standard multiple imputation both perform poorly and should be avoided.
+
+That post focussed on using the counts as an outcome. However, counts can also be predictors in other models, or used as the input for further processes. To give the example which motivated this effort originally, crude death counts are an input required to calculate standardised mortality ratios. In that case, using a left-censored outcome model is not an option.
+
+Another common characteristic of count data is that they are overdispersed, i.e., have a variance greater than would be predicted by a Poisson distribution. We will see that this is important to consider when modelling left-censored counts, too.
+
+# Using mice to impute left-censored counts
+
+Here's a `mice` imputation method for suppressed counts, which fits a left-censored Poisson regression model using `VGAM::vglm()`, then samples from its posterior distribution. This lets us obtain values for the censored counts, which can then be used e.g. as predictors in other models.
+
+To use it, call `mice()` with `method = "lcpoisson"` (or put `lcpoisson` in the method vector for the variables you want to use it for), and add a `left_cens =` parameter to lowest non-censored value.
+
+Bonus feature: if you set a variable's entry in the predictor matrix to `-1`, it will be used as an offset term, with coefficient forced to `1`. Useful if you have a known total population for each observation and are interested in modelling rate ratios, for example.
+
+```{r}
+#| echo: true
+# left-censored poisson imputation
+mice.impute.lcpoisson <-
+  function(y, ry, x, type, wy = NULL,
+           left_cens, offset = NULL, ...) {
+    # default: impute values to which the model is not fitted
+    if (is.null(wy)) {
+      wy <- !ry
+    }
+    
+    # fit left-censored Poisson regression
+    # (adapted from countimp::mice.impute.poisson)
+    offset_var <- names(type[type == -1])
+    y[!ry] <- left_cens
+    yy <- SurvS4(y, as.numeric(ry), type = "left") 
+    if (is.null(offset)) {
+      fit <- vglm(yy ~ 0 + x, family = cens.poisson())
+    } else {
+      fit <- vglm(yy ~ 0 + x, offset = x[, offset_var],
+                  family = cens.poisson())
+    }
+    fit.sum <- summary.vglm(fit)
+    beta <- coef(fit)
+    
+    # sample from posterior distribution of parameters
+    # (adapted from countimp::mice.impute.poisson)
+    rv <- t(chol(fit.sum@cov.unscaled))
+    beta.star <- beta + rv %*% rnorm(ncol(rv))
+    # predicted mean for each row to impute
+    p <- as.vector(exp((x[wy, , drop = FALSE] %*% beta.star)))
+
+    ## sample from truncated Poisson distributions
+    # first obtain probability mass function
+    interval <- 0:(left_cens - 1)
+    pmf <- matrix(
+      dpois(rep(interval, each = length(p)),
+            rep(p, times = length(interval))),
+      nrow = length(p),
+      ncol = length(interval)
+    )
+    # sample from interval using our pmf
+    imp <- apply(pmf, 1, \(prob) sample(interval, 1, prob = prob))
+    return(imp)
+  }
+```
+
+Count data are often overdispersed, so here's a version that uses quasi-Poisson regression instead. Use it by setting `method = "lcquasipoisson"`. Note that this doesn't work perfectly, because the censoring mechanism doesn't properly incorporate the overdispersion, it's just used to scale the standard errors after fitting the model. Imputed data are drawn from a negative binomial distribution with parameters set to match the estimated overdispersion from the quasi-Poisson model. This should still be better than complete ignoring overdispersion.
+
+```{r}
+#| echo: true
+# left-censored quasipoisson imputation
+mice.impute.lcquasipoisson <-
+  function(y, ry, x, type, wy = NULL,
+           left_cens, offset = NULL, ...) {
+    # default: impute values to which the model is not fitted
+    if (is.null(wy)) {
+      wy <- !ry
+    }
+    
+    # fit left-censored Poisson regression
+    # (adapted from countimp::mice.impute.poisson)
+    offset_var <- names(type[type == -1])
+    y[!ry] <- left_cens
+    yy <- SurvS4(y, as.numeric(ry), type = "left") 
+    if (is.null(offset)) {
+      fit <- vglm(yy ~ 0 + x, family = cens.poisson())
+    } else {
+      fit <- vglm(yy ~ 0 + x, offset = x[, offset_var],
+                  family = cens.poisson())
+    }
+    fit.sum <- summary.vglm(fit)
+    beta <- coef(fit)
+    dispersion <- sum(residuals(fit, "pearson")^2) / fit@df.residual
+    
+    # sample from posterior distribution of parameters. we ignore
+    # uncertainty in the estimate of overdispersion.
+    #    (wotcha gonna do about it.)
+    rv <- t(chol(dispersion * fit.sum@cov.unscaled))
+    beta.star <- beta + rv %*% rnorm(ncol(rv))
+    # predicted mean for each row to impute
+    p <- as.vector(exp((x[wy, , drop = FALSE] %*% beta.star)))
+    phi <- p / (dispersion - 1)
+
+    ## sample from truncated negative binomial distribution
+    # first obtain probability mass function
+    interval <- 0:(left_cens - 1)
+    pmf <- matrix(
+      dnbinom(x = rep(interval, each = length(p)),
+              mu = rep(p, times = length(interval)),
+              size = rep(phi, times = length(interval))),
+      nrow = length(p),
+      ncol = length(interval)
+    )
+    # sample from interval using our pmf
+    imp <- apply(pmf, 1, \(prob) sample(interval, 1, prob = prob))
+    return(imp)
+  }
+```
+
+## Other imputation methods for comparison
+
+These are verbatim from Peter Ellis's blog. The `desuppress` method imputes using an intercept-only Poisson model, and `uniform` imputes using a uniform distribution over the missing values. I would expect the first method to perform poorly if there are good predictors of missing values. In principle, `uniform` should show the same bias as just setting missing values to centre of the censored range, but with better standard errors, since it propagates uncertainty in the censored values.
+
+```{r}
+#| echo: true
+#' Imputation function for suppressed data for use with mice - Poisson-based
+#'
+#' @param y vector to be imputed
+#' @param ry logical vector of observed (TRUE) and missing (FALSE) values of y
+#' @param x design matrix. Ignored but is probably needed for mice to use.
+#' @param wy vector that  is TRUE where imputations are created for y. Not 
+#'   sure when this is different to just !ry (which is the default).
+mice.impute.desuppress <- function (y, ry, x, wy = NULL, max_value = 5, ...) {
+  # during dev:
+  # y <- data$censored_count_num; ry <- !is.na(y)
+  if (is.null(wy)){ 
+    wy <- !ry
+  }
+  
+  # What are the relative chances of getting values from 0 to the maximum 
+  # allowed value, if we have a Poisson distribution which we have estimated 
+  # the mean of via trimmed mean? (this is very approximate but probably better
+  # than just giving equal chances to 0:5)
+  probs <- dpois(0:max_value, mean(y[ry], tr = 0.2))
+  
+  return(sample(0:max_value, sum(wy), prob = probs, replace = TRUE))
+}
+
+#' Imputation function for suppressed data for use with mice - simple
+#'
+mice.impute.uniform <- function (y, ry, x, wy = NULL, max_value = 5, ...) {
+  return(sample(0:max_value, sum(wy), replace = TRUE))
+}
+```
+
+# Simulation study design
+
+The primary goal of this simulation was to determine whether or not the `lcpoisson` imputation method (code shown earlier) recovers a distribution consistent with the original data generating process. A secondary goal was to compare other suggested methods for analysing left-censored counts.
+
+## Data generating process
+
+The structure of the simulated data was chosen to resemble real public health data on cardiovascular mortality across geographic areas. The predictors, outcomes, and their relationships are based broadly on publicly available health data in Australia from [AIHW](https://www.aihw.gov.au/) and [PHIDU](https://phidu.torrens.edu.au/). The simulated datasets all had a sample size of 1000 observations.
+
+The simulated variables are as follows:
+
+- `pop`: population of the statistical area (median: approx 8000)
+- `pct_female`: percentage of female residents
+- `med_age`: median age
+- `ses_z`: relative socioeconomic status (continuous)
+- `bp_z`: relative prevalence of high blood pressure (continuous)
+- `weight_z`: relative prevalence of obesity (continuous)
+- `smoker_z`: relative prevalence of smokers (continuous)
+- `deaths`: annual deaths due to cardiovascular disease
+- `deaths_cens`: left-censored version of `deaths`, with missing data introduced if `deaths <= 5`. Approximately 31% of the observations were censored.
+
+To ensure Monte Carlo error was well controlled, 2000 simulated datasets were created, sufficient to ensure ±1% margin of error for confidence interval coverage.
+
+The code to generate the simulated data is shown below:
+
+```{r}
+#| echo: true
+simulate_data <- function(n = 1000, seed = NA) {
+  if (!is.na(seed)) {
+    set.seed(seed)
+  }
+  tibble(
+    id = 1:n,
+    log_pop = rnorm(n, 8.8, 0.5),
+    pop = round(exp(log_pop)),
+    ses_z = rnorm(n, 0, 1),
+    med_age = rnorm(n, 35 + 0.9*ses_z, 3),
+    pct_female = rnorm(n, 50 + 0.1*(med_age-35) + 0.6*ses_z, 1.5),
+    smoker_z = rnorm(n, -0.85*ses_z, 1),
+    weight_z = rnorm(n, 0.12*(med_age-35) - 0.15*(pct_female-50) -
+                       0.55*smoker_z, 1),
+    bp_z = rnorm(n, -0.25*(med_age-35) - 0.05*(pct_female-50) - 0.1*ses_z + 
+                   0.1*smoker_z + 0.05*weight_z, 1),
+    log_mu = -6.5 + log_pop + 0.07*(med_age-35) - 0.07*(pct_female-50) -
+      0.15*ses_z + 0.05*bp_z + 0.05*weight_z + 0.2*smoker_z,
+    mu = exp(log_mu),
+    deaths = rnbinom(n, mu = mu, size = mu/3), # somewhat overdispersed...
+    deaths_cens = case_when(
+      deaths > 5 ~ deaths,
+      TRUE ~ NA
+    ),
+    deaths_mean_imp = replace_na(deaths_cens, 2.5),
+  )
+}
+```
+
+```{r}
+true_param_values <- tribble(
+  ~term, ~true_value,
+  "(Intercept)", -5.45,
+  "pct_female", -0.07,
+  "med_age", 0.07,
+  "ses_z", -0.15,
+  "bp_z", 0.05,
+  "weight_z", 0.05,
+  "smoker_z", 0.2
+)
+```
+
+
+```{r}
+#| eval: false
+dat <- simulate_data(1000000, seed = 25858917)
+mean(dat$deaths <= 5)
+```
+
+## Analysis methods to compare
+
+The following methods for handling censored data are considered here:
+
+- `full`: Analysis of the full (non-censored) data using a quasi-Poisson model was performed as a check that the data generation process and analysis models were working as expected, but not presented in the results below
+- `cca`: Complete case analysis. Censored observations are removed, then a quasi-Poisson model was fit to the remaining data
+- `vglm`: Left-censored Poisson regression using the `VGAM` package
+- `vglm quasi`: Left-censored quasi-Poisson regression. This was implemented by fitting a Poisson regression using the `VGAM` package, then inflating standard errors based on estimated overdispersion
+- `mean imp`: Mean imputation. Censored observations are replaced by 2.5, the mean of the values they could possibly take, then a quasi-Poisson model was fit to the data.
+- `mi vglm`: Multiple imputation using left-censored Poisson regression, followed by a quasi-Poisson model fit to the imputed data
+- `mi vglm quasi`: Multiple imputation using left-censored quasi-Poisson regression, followed by a quasi-Poisson model fit to the imputed data
+- `mi pois mean`: Multiple imputation using an intercept-only Poisson distribution (as demonstrated by Peter Ellis previously), followed by a quasi-Poisson model fit to the imputed data
+- `mi unif`: Multiple imputation using a uniform distribution, followed by a quasi-Poisson model fit to the imputed data
+
+```{r}
+# analysis on the full (non-censored) data
+sim_analysis_full <- function(dat) {
+  m_full_data <- glm(
+    deaths ~ offset(log(pop)) + pct_female + med_age + ses_z + bp_z + weight_z + smoker_z,
+    family = quasipoisson,
+    data = dat
+  )
+  tidy(m_full_data) |>
+    select(term, estimate, std.error)
+}
+
+# left-censored Poisson regression
+sim_analysis_vglm <- function(dat, cens = 6) {
+  cy <- dat$deaths_cens
+  cy[is.na(cy)] <- cens
+  m_vglm <- vglm(
+    SurvS4(cy, as.numeric(!is.na(dat$deaths_cens)), type = "left") ~ 
+      offset(log(pop)) + pct_female + med_age + ses_z + bp_z + weight_z + smoker_z,
+    family = cens.poisson(),
+    data = dat
+  )
+  coefs <- coef(summary(m_vglm))
+  tibble(term = rownames(coefs), estimate = coefs[, 1], std.error = coefs[, 2])
+}
+
+# left-censored quasi-Poisson regression
+# vglm() doesn't support quasi-Poisson directly but we can fake it
+sim_analysis_vglm_quasi <- function(dat, cens = 6) {
+  cy <- dat$deaths_cens
+  cy[is.na(cy)] <- cens
+  m_vglm <- vglm(
+    SurvS4(cy, as.numeric(!is.na(dat$deaths_cens)), type = "left") ~ 
+      offset(log(pop)) + pct_female + med_age + ses_z + bp_z + weight_z + smoker_z,
+    family = cens.poisson(),
+    data = dat
+  )
+  coefs <- coef(summary(m_vglm))
+  dispersion <- sum(residuals(m_vglm, "pearson")^2) / m_vglm@df.residual
+  tibble(term = rownames(coefs), estimate = coefs[, 1],
+         std.error = coefs[, 2] * sqrt(dispersion))
+}
+
+# complete case analysis
+sim_analysis_cca <- function(dat) {
+  m_cca <- glm(
+    deaths_cens ~ offset(log(pop)) + pct_female + med_age + ses_z + bp_z + weight_z + smoker_z,
+    family = quasipoisson,
+    data = dat
+  )
+  tidy(m_cca) |>
+    select(term, estimate, std.error)
+}
+
+# mean imputation
+sim_analysis_mean_imp <- function(dat) {
+  m_mean_imp <- glm(
+    deaths_mean_imp ~ offset(log(pop)) + pct_female + med_age + ses_z + bp_z + weight_z + smoker_z,
+    family = quasipoisson,
+    data = dat
+  )
+  tidy(m_mean_imp) |>
+    select(term, estimate, std.error)
+}
+
+# multiple imputation
+sim_analysis_mi <- function(dat, mi_method, seed = NA) {
+  dat_for_mi <- dat |>
+    select(log_pop, pct_female, med_age, ses_z, bp_z, weight_z,
+           smoker_z, deaths = deaths_cens)
+  pm <- make.predictorMatrix(dat_for_mi)
+  # use log(pop) as offset
+  pm[, "log_pop"] <- -1
+  imp <- mice(
+    dat_for_mi,
+    predictorMatrix = pm,
+    method = mi_method,
+    left_cens = 6, # for my vglm methods
+    max_value = 5, # for Peter Ellis' methods
+    m = 30,
+    maxit = 1,
+    printFlag = FALSE,
+    seed = seed
+  )
+  m_mi <- with(imp, glm(
+    deaths ~ offset(log_pop) + pct_female + med_age + ses_z + bp_z + weight_z + smoker_z,
+    family = quasipoisson
+  ))
+  summary(pool(m_mi)) |>
+    select(term, estimate, std.error)
+}
+```
+
+## Estimands
+
+The estimands of interest are the coefficients of the (quasi-)Poisson regression model used to generate the simulated data:
+
+`deaths ~ offset(log(pop)) + pct_female + med_age + ses_z + bp_z + weight_z + smoker_z`
+
+The true values of these parameters are shown below:
+
+```{r}
+true_param_values |>
+  mutate(term = str_replace_all(term, "_", " ")) |>
+  gt() |>
+  cols_label(term = "Model parameter",
+             true_value = "True value")
+```
+
+
+## Performance measures
+
+Methods were evaluated in terms of bias, empirical and model-based standard error, coverage of nominal 95% confidence intervals, and root-mean-square error.
+
+```{r}
+do_sim_rep <- function(n = 1000, seed = seed, rep_id = NA) {
+  if (!is.na(seed)) {
+    set.seed(seed)
+  }
+  dat_seed <- as.integer(runif(1) * 1e8)
+  mi_seed1 <- as.integer(runif(1) * 1e8)
+  mi_seed2 <- as.integer(runif(1) * 1e8)
+  mi_seed3 <- as.integer(runif(1) * 1e8)
+  mi_seed4 <- as.integer(runif(1) * 1e8)
+  dat <- simulate_data(n, seed = dat_seed)
+  bind_rows(
+    "full" = sim_analysis_full(dat),
+    "cca" = sim_analysis_cca(dat),
+    "vglm" = sim_analysis_vglm(dat),
+    "vglm_quasi" = sim_analysis_vglm_quasi(dat),
+    "mean_imp" = sim_analysis_mean_imp(dat),
+    "mi_vglm" = sim_analysis_mi(dat, "lcpoisson", seed = mi_seed1),
+    "mi_vglm_quasi" = sim_analysis_mi(dat, "lcquasipoisson", seed = mi_seed2),
+    "mi_pois_mean" = sim_analysis_mi(dat, "desuppress", seed = mi_seed3),
+    "mi_unif" = sim_analysis_mi(dat, "uniform", seed = mi_seed4),
+    .id = "method"
+  ) |>
+    mutate(rep_id = rep_id)
+}
+```
+
+```{r}
+sim_reps <- 2000
+reps_per_batch <- 100
+sim_batches <- ceiling(sim_reps / reps_per_batch)
+master_seed <- 57099123
+cache_file <- "sim_out.parquet"
+
+set.seed(master_seed)
+sim_seeds <- as.integer(runif(sim_reps) * 1e8)
+
+if (!file.exists(cache_file)) {
+  run_sim_batch <- function(batch) {
+    if (file.exists(glue("sim_batch_{batch}.parquet"))) {
+      cat("** skipping batch", batch, "of", sim_batches, "**\n")
+      return(NULL)
+    }
+    cat("** starting batch", batch, "of", sim_batches, "**\n")
+    first_rep <- reps_per_batch * (batch - 1) + 1
+    last_rep <- reps_per_batch * batch
+    sim_out_batch <- bind_rows(
+      map(first_rep:last_rep,
+          \(i) do_sim_rep(rep_id = i, seed = sim_seeds[i]),
+          .progress = TRUE)
+    )
+    write_parquet(sim_out_batch, glue("sim_batch_{batch}.parquet"))
+  }
+  walk(1:sim_batches, run_sim_batch)
+  sim_out <- bind_rows(
+    map(1:sim_batches,
+        \(i) read_parquet(glue("sim_batch_{i}.parquet")))
+  )
+  write_parquet(sim_out, cache_file)
+} else {
+  sim_out <- read_parquet(cache_file)
+}
+```
+
+# Results
+
+```{r}
+sim_results <- sim_out |>
+  left_join(true_param_values, by = "term") |>
+  summarise(
+    mean_estimate = mean(estimate),
+    bias = mean(estimate - true_value),
+    bias_mcse = sd(estimate) / sqrt(n()),
+    emp_se = sd(estimate),
+    model_se = sqrt(mean(std.error^2)),
+    rmse = sqrt(mean((estimate - true_value)^2)),
+    coverage = mean(
+      (true_value > estimate - qnorm(0.975)*std.error) &
+        (true_value < estimate + qnorm(0.975)*std.error)
+    ),
+    n_sim = n(),
+    .by = c(method, term)
+  ) |>
+  filter(term != "(Intercept)", method != "full") |>
+  mutate(
+    method = fct_inorder(method),
+    method = fct_relabel(method, \(x) str_replace_all(x, "_", " ")),   
+    term = fct_inorder(term),
+    term = fct_relabel(term, \(x) str_replace_all(x, "_", " ")),   
+  )
+```
+
+As expected, complete case analysis (`cca`) was biased for all parameters, and showed more bias than any alternative method. The best performers were mean imputation (`mean imp`), multiple imputation using left-censored quasi-Poisson (`mi vglm quasi`), and multiple imputation using a uniform distribution (`mi unif`).
+
+```{r fig-bias}
+#| fig-cap: Bias in parameter estimates for each method
+sim_results |>
+  ggplot(
+    aes(x = bias, xmin = bias - 1.96*bias_mcse, xmax = bias + 1.96*bias_mcse,
+        y = method)
+  ) +
+  geom_vline(xintercept = 0, colour = "grey45", linetype = "22") +
+  geom_point(size = 2) +
+  #geom_errorbar(width = 0.25) +
+  scale_y_discrete(limits = rev) +
+  facet_wrap(vars(term), ncol = 2) +
+  background_grid("y")
+```
+
+Most methods demonstrated model-based standard errors similar to their empirical standard errors, with notable exceptions of left-censored Poisson (`vglm`), which had falsely low standard errors, and left-censored quasi-Poisson (`vglm quasi`), which had falsely high standard errors. Two of the multiple imputation methods, `mi vglm` and `mi pois mean`, and displayed standard errors lower than that of the full data model; this combination of bias and low standard error may make them problematic in practice.
+
+```{r fig-se}
+#| fig-cap: Empirical and model-based standard errors for each method
+#| fig-height: 5
+sim_results |>
+  pivot_longer(c(emp_se, model_se), 
+               names_sep = "_", 
+               names_to = c("se_type", ".value")) |>
+  mutate(se_type = fct_recode(se_type, "empirical" = "emp", "model-based" = "model")) |>
+  ggplot(
+    aes(x = se, y = method, colour = se_type)
+  ) +
+  labs(
+    x = "standard error",
+    colour = "std. err. type"
+  ) +
+  #geom_line(colour = "grey45", linewidth = 0.75) +
+  geom_point(size = 2, position = position_dodge(width = 2/3, reverse = TRUE)) +
+  scale_y_discrete(limits = rev) +
+  scale_colour_okabeito() +
+  facet_wrap(vars(term), ncol = 2) +
+  background_grid("y") +
+  theme(legend.position = "bottom")
+```
+
+The worst performers for interval coverage were left-censored Poisson (`vglm`), likely due to it not accounting for overdispersion, and `cca`, likely due to bias. The best performers were the same as the best performers for bias: `mean imp`, `mi vglm quasi` and `mi unif`.
+
+```{r fig-coverage}
+#| fig-cap: Coverage of 95% confidence intervals for each method
+sim_results |>
+  mutate(method = fct_inorder(method),
+         coverage_mcse = sqrt(coverage*(1-coverage)/n_sim)) |>
+  ggplot(
+    aes(x = coverage, xmin = coverage - 1.96*coverage_mcse,
+        xmax = coverage + 1.96*coverage_mcse,
+        y = method)
+  ) +
+  geom_vline(xintercept = 0.95, colour = "grey45", linetype = "22") +
+  geom_point(size = 2) +
+  labs(x = "coverage of 95% confidence intervals") +
+  #geom_errorbar(width = 0.5) +
+  scale_y_discrete(limits = rev) +
+  facet_wrap(vars(term), ncol = 2) +
+  background_grid("y")
+```
+
+RMS error shows notably poor performance of CCA, but is otherwise not particularly interesting.
+
+```{r fig-rmse}
+#| fig-cap: Root-mean-square error in parameter estimates for each method
+sim_results |>
+  mutate(method = fct_inorder(method)) |>
+  ggplot(
+    aes(x = rmse, y = method)
+  ) +
+  geom_point(size = 2) +
+  expand_limits(x = 0) +
+  scale_y_discrete(limits = rev) +
+  facet_wrap(vars(term), ncol = 2) +
+  background_grid("y")
+```
+
+# Discussion
+
+Based on the above results, my recommendations are:
+
+- Complete case analysis was a consistently bad performer and should not be used in this context
+- Replacing censored values by half the censoring point (`mean imp`) is simple to implement and performed remarkably well
+- Left-censored Poisson models (`vglm`) seem appealing, but by not allowing for overdispersion, perform poorly in practice unless the only interest is in point estimates. An attempt to fix this by inflating standard errors using estimated overdispersion (`vglm quasi`) was less successful than hoped.
+- If multiple imputation is to be used, consider either the left censored quasi-Poisson (`mi vglm quasi`, selected in `mice` using `method = "lcquasipoisson"`) or uniform (`mi unif`, selected in `mice` using `method = "uniform"`)
+
+# Code availability
+
+The full code for this simulation can be found on GitHub:
+<https://github.com/cmrnp/cameronp-quarto-blog/tree/master/post/2026/impute-left-censored-counts/>
