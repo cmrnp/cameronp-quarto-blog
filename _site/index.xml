@@ -9,7 +9,7 @@
 <link>https://cameronpatrick.com/</link>
 <atom:link href="https://cameronpatrick.com/index.xml" rel="self" type="application/rss+xml"/>
 <description></description>
-<generator>quarto-1.8.27</generator>
+<generator>quarto-1.10.19</generator>
 <lastBuildDate>Tue, 21 Apr 2026 14:00:00 GMT</lastBuildDate>
 <item>
   <title>Multiple imputation methods for left-censored counts</title>
@@ -10535,7 +10535,7 @@ font-style: inherit;">scale_colour_identity</span>()</span></code></pre></div></
 </div>
 </div>
 </div>
-<p>If you have an m-DAG where a quantity of interest cannot be recovered, you can consider doing a sensitivity analysis using a <img src="https://latex.codecogs.com/png.latex?%5Cdelta">-adjustment. This process is described in popular texts on missing data, e.g. <span class="citation" data-cites="van_buuren_flexible_2018">van Buuren (2018)</span> sec 9.2 (also <a href="https://stefvanbuuren.name/fimd/sec-sensitivity.html">available online</a>) or <span class="citation" data-cites="molenberghs_handbook_2015">Molenberghs et al. (2015)</span>.</p>
+<p>If you have an m-DAG where a quantity of interest cannot be recovered, you can consider doing a sensitivity analysis using a <img src="https://latex.codecogs.com/png.latex?%5Cdelta">-adjustment. This process is described in popular texts on missing data, e.g. <span class="citation" data-cites="van_buuren_flexible_2018"><span class="nocase">van Buuren</span> (2018)</span> sec 9.2 (also <a href="https://stefvanbuuren.name/fimd/sec-sensitivity.html">available online</a>) or <span class="citation" data-cites="molenberghs_handbook_2015">Molenberghs et al. (2015)</span>.</p>
 </section>
 <section id="applying-dags-to-real-missing-data-problems" class="level2">
 <h2 class="anchored" data-anchor-id="applying-dags-to-real-missing-data-problems">Applying DAGs to real missing data problems</h2>
@@ -10603,7 +10603,7 @@ Sullivan, T. R., White, I. R., Salter, A. B., Ryan, P., &amp; Lee, K. J. (2018).
 Textor, J., Van Der Zander, B., Gilthorpe, M. S., Liśkiewicz, M., &amp; Ellison, G. T. H. (2017). Robust causal inference using directed acyclic graphs: The <span>R</span> package <span>“dagitty.”</span> <em>International Journal of Epidemiology</em>, dyw341. <a href="https://doi.org/10.1093/ije/dyw341">https://doi.org/10.1093/ije/dyw341</a>
 </div>
 <div id="ref-van_buuren_flexible_2018" class="csl-entry">
-van Buuren, S. (2018). <em>Flexible imputation of missing data</em> (Second edition). CRC Press, Taylor; Francis Group.
+<span class="nocase">van Buuren, S.</span> (2018). <em>Flexible imputation of missing data</em> (Second edition). CRC Press, Taylor; Francis Group.
 </div>
 <div id="ref-white_bias_2010" class="csl-entry">
 White, I. R., &amp; Carlin, J. B. (2010). Bias and efficiency of multiple imputation compared with complete-case analysis for missing covariate values. <em>Statistics in Medicine</em>, <em>29</em>(28), 2920–2931. <a href="https://doi.org/10.1002/sim.3944">https://doi.org/10.1002/sim.3944</a>
